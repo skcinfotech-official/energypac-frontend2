@@ -9,6 +9,8 @@ import Login from "./pages/Login";
 import Products from "./pages/Products";
 import Vendor from "./pages/Vendor";
 import VendorAssignment from "./pages/VendorAssignment";
+import VendorQuotations from "./pages/VendorQuotation";
+import PurchaseOrderList from "./pages/PurchaseOrderList";
 
 export default function App() {
   return (
@@ -25,6 +27,8 @@ export default function App() {
               <Route path="/sales" element={<Dashboard />} />
               <Route path="/requisition" element={<Requisition />} />
               <Route path="/vendor-assignment" element={<VendorAssignment />} />
+              <Route path="/vendor-quotation" element={<VendorQuotations />} />
+              <Route path="/purchase-order" element={<PurchaseOrderList />} />
             </Route>
           </Route>
         </Routes>

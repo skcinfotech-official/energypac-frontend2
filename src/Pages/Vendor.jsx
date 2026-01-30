@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import axiosSecure from "../api/axiosSecure";
-import { FaPlus, FaEdit, FaTrash } from "react-icons/fa";
+import { FaPlus, FaEdit, FaTrash, FaEye, FaFileExcel } from "react-icons/fa";
 
 import VendorModal from "../components/vendors/VendorModal";
+import VendorViewModal from "../components/vendors/VendorViewModal";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import AlertToast from "../components/ui/AlertToast";
-import { getVendors, deleteVendor } from "../services/vendorService";
+import { getVendors, deleteVendor, getVendor, getVendorPerformanceReport } from "../services/vendorService";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+
 
 export default function Vendors() {
     const [vendors, setVendors] = useState([]);
@@ -20,9 +24,25 @@ export default function Vendors() {
     const [showConfirm, setShowConfirm] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [selectedVendor, setSelectedVendor] = useState(null);
+
+    // View Modal State
+    const [viewModalOpen, setViewModalOpen] = useState(false);
+    const [viewVendor, setViewVendor] = useState(null);
+    const [viewLoading, setViewLoading] = useState(false);
+
     const [searchText, setSearchText] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     // "" | "active" | "inactive"
+
+    /* =========================
+       REPORT STATE
+       ========================= */
+    const [showReportModal, setShowReportModal] = useState(false);
+    const [reportType, setReportType] = useState("date_range"); // "date_range", "vendor"
+    const [reportDates, setReportDates] = useState({ start: "", end: "" });
+    const [selectedVendorId, setSelectedVendorId] = useState("");
+    const [allVendors, setAllVendors] = useState([]);
+    const [downloading, setDownloading] = useState(false);
 
 
     const [toast, setToast] = useState({
@@ -43,7 +63,7 @@ export default function Vendors() {
                         ? true
                         : statusFilter === "inactive"
                             ? false
-                            : "",
+                            : null,
             });
 
             // Result is already normalized in service
@@ -85,6 +105,26 @@ export default function Vendors() {
     const handleDelete = (vendor) => {
         setSelectedVendor(vendor);
         setShowConfirm(true);
+    };
+
+    const handleView = async (vendor) => {
+        setViewModalOpen(true);
+        setViewLoading(true);
+        setViewVendor(null);
+        try {
+            const res = await getVendor(vendor.id);
+            setViewVendor(res.data);
+        } catch (err) {
+            console.error(err);
+            setToast({
+                open: true,
+                type: "error",
+                message: "Failed to load vendor details",
+            });
+            setViewModalOpen(false);
+        } finally {
+            setViewLoading(false);
+        }
     };
 
     const handleSearch = () => {
@@ -131,8 +171,98 @@ export default function Vendors() {
         }
     };
 
+    const handleDownloadReport = async () => {
+        if (reportType === "date_range") {
+            if (!reportDates.start || !reportDates.end) {
+                setToast({ open: true, type: "error", message: "Please select start and end dates" });
+                return;
+            }
+        }
+
+        setDownloading(true);
+        try {
+            const params = {
+                start_date: reportDates.start,
+                end_date: reportDates.end
+            };
+
+            if (reportType === "vendor") {
+                if (!selectedVendorId) {
+                    setToast({ open: true, type: "error", message: "Please select a vendor" });
+                    setDownloading(false);
+                    return;
+                }
+                params.vendor = selectedVendorId;
+            }
+
+            const res = await getVendorPerformanceReport(params);
+            const data = res.data;
+            const vendors = data.vendors || [];
+
+            if (vendors.length === 0) {
+                setToast({ open: true, type: "info", message: "No data found for the selected range" });
+            }
+
+            const wb = XLSX.utils.book_new();
+
+            const sheetData = [
+                // --- HEADER ---
+                [data.report_type || "Vendor Performance Report"],
+                ["Generated At:", data.generated_at ? new Date(data.generated_at).toLocaleString() : new Date().toLocaleString()],
+                ["Date Range:", `${data.date_range?.start_date} to ${data.date_range?.end_date}`],
+                [],
+                ["SUMMARY"],
+                ["Total Vendors:", data.total_vendors || 0],
+                [],
+                // --- TABLE HEADERS ---
+                [
+                    "Vendor Code", "Vendor Name", "Contact Person", "Phone", "Email",
+                    "Quotations Submitted", "Quotations Selected", "Selection Rate (%)",
+                    "Purchase Orders", "Completed POs", "Completion Rate (%)",
+                    "Total Business Value", "Avg Quotation Value"
+                ]
+            ];
+
+            vendors.forEach(v => {
+                const p = v.performance || {};
+                sheetData.push([
+                    v.vendor_code,
+                    v.vendor_name,
+                    v.contact_person,
+                    v.phone,
+                    v.email,
+                    p.quotations_submitted || 0,
+                    p.quotations_selected || 0,
+                    p.selection_rate || 0,
+                    p.purchase_orders || 0,
+                    p.completed_orders || 0,
+                    p.completion_rate || 0,
+                    p.total_business_value || 0,
+                    p.average_quotation_value || 0
+                ]);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
+            XLSX.utils.book_append_sheet(wb, ws, "Performance Report");
+
+            const filename = `Vendor_Performance_${params.start_date}_to_${params.end_date}.xlsx`;
+            const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+            const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
+            saveAs(blob, filename);
+
+            setShowReportModal(false);
+            setToast({ open: true, type: "success", message: "Report downloaded successfully" });
+
+        } catch (err) {
+            console.error("Report download failed", err);
+            setToast({ open: true, type: "error", message: "Failed to download report" });
+        } finally {
+            setDownloading(false);
+        }
+    };
+
     return (
-        <div className="p-6">
+        <div>
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
 
                 {/* HEADER */}
@@ -144,13 +274,27 @@ export default function Vendors() {
                         </span>
                     </div>
 
-                    <button
-                        onClick={handleAddVendor}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-500"
-                    >
-                        <FaPlus className="text-xs" />
-                        Add Vendor
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => {
+                                const today = new Date().toISOString().split('T')[0];
+                                const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+                                setReportDates({ start: firstDay, end: today });
+                                setShowReportModal(true);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-500"
+                        >
+                            <FaFileExcel className="text-sm" />
+                            Download Report
+                        </button>
+                        <button
+                            onClick={handleAddVendor}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-500"
+                        >
+                            <FaPlus className="text-xs" />
+                            Add Vendor
+                        </button>
+                    </div>
                 </div>
 
                 {/* SEARCH & FILTER */}
@@ -259,6 +403,13 @@ export default function Vendors() {
                                     <td className="px-6 py-4">
                                         <div className="flex items-center justify-center gap-3">
                                             <button
+                                                onClick={() => handleView(v)}
+                                                className="text-slate-500 hover:text-blue-600"
+                                                title="View"
+                                            >
+                                                <FaEye />
+                                            </button>
+                                            <button
                                                 onClick={() => handleEdit(v)}
                                                 className="text-blue-600 hover:text-blue-800"
                                                 title="Edit"
@@ -310,6 +461,13 @@ export default function Vendors() {
                 onSuccess={handleVendorSuccess}
             />
 
+            <VendorViewModal
+                open={viewModalOpen}
+                onClose={() => setViewModalOpen(false)}
+                data={viewVendor}
+                loading={viewLoading}
+            />
+
             {/* CONFIRM DELETE */}
             <ConfirmDialog
                 open={showConfirm}
@@ -328,6 +486,115 @@ export default function Vendors() {
                 message={toast.message}
                 onClose={() => setToast({ ...toast, open: false })}
             />
+            {/* REPORT MODAL */}
+            {showReportModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                <FaFileExcel className="text-emerald-600" /> Performance Report
+                            </h3>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <p className="text-sm text-slate-600 font-medium">Select Report Type:</p>
+
+                            <div className="space-y-3">
+                                {/* Date Range Option */}
+                                <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition">
+                                    <input
+                                        type="radio"
+                                        name="reportType"
+                                        value="date_range"
+                                        checked={reportType === "date_range"}
+                                        onChange={(e) => setReportType(e.target.value)}
+                                        className="text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm font-semibold text-slate-700">Date Range</span>
+                                </label>
+                                {reportType === "date_range" && (
+                                    <div className="pl-8 pt-2 space-y-3 animate-in fade-in slide-in-from-top-2">
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-xs font-semibold text-slate-600 mb-1">Start Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={reportDates.start}
+                                                    onChange={(e) => setReportDates({ ...reportDates, start: e.target.value })}
+                                                    className="input w-full text-xs"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-semibold text-slate-600 mb-1">End Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={reportDates.end}
+                                                    onChange={(e) => setReportDates({ ...reportDates, end: e.target.value })}
+                                                    className="input w-full text-xs"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Specific Vendor Option */}
+                                <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition">
+                                    <input
+                                        type="radio"
+                                        name="reportType"
+                                        value="vendor"
+                                        checked={reportType === "vendor"}
+                                        onChange={(e) => {
+                                            setReportType(e.target.value);
+                                            // Ideally fetch all vendors here if list is incomplete
+                                            if (allVendors.length === 0) {
+                                                getVendors({ isActive: true }).then(res => {
+                                                    setAllVendors(res.results || []);
+                                                });
+                                            }
+                                        }}
+                                        className="text-purple-600 focus:ring-purple-500"
+                                    />
+                                    <span className="text-sm font-semibold text-slate-700">Specific Vendor</span>
+                                </label>
+                                {reportType === "vendor" && (
+                                    <div className="pl-8 pt-2 space-y-3 animate-in fade-in slide-in-from-top-2">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-600 mb-1">Select Vendor</label>
+                                            <select
+                                                value={selectedVendorId}
+                                                onChange={(e) => setSelectedVendorId(e.target.value)}
+                                                className="input w-full text-xs"
+                                            >
+                                                <option value="">-- Choose Vendor --</option>
+                                                {allVendors.map(v => (
+                                                    <option key={v.id} value={v.id}>
+                                                        {v.vendor_name} ({v.vendor_code})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50">
+                            <button
+                                onClick={() => setShowReportModal(false)}
+                                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDownloadReport}
+                                disabled={downloading}
+                                className="px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-500 disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {downloading ? "Downloading..." : "Download Excel"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

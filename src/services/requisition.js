@@ -25,3 +25,12 @@ export const getRequisitionAssignments = (id) =>
 
 export const getRequisitionItems = (id) =>
   axiosSecure.get(`/api/requisitions/${id}/items`);
+
+// Fetch detailed report for a specific requisition
+export const getRequisitionDetailReport = (id) =>
+  axiosSecure.get(`/api/reports/requisitions/${id}/detailed`);
+
+export const getRequisitionReport = (params) => {
+  // params can be { start_date, end_date } OR { status: 'pending' }
+  return axiosSecure.get(`/api/reports/requisitions`, { params });
+};

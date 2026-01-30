@@ -14,7 +14,10 @@ import {
 } from "react-icons/fa";
 import { BiImport, BiExport } from "react-icons/bi";
 
+import { useAuth } from "../../context/AuthContext";
+
 export default function Sidebar({ isOpen }) {
+  const { user } = useAuth();
 
   return (
     <aside
@@ -42,14 +45,14 @@ export default function Sidebar({ isOpen }) {
           {isOpen ? "Management Console" : "•••"}
         </div>
 
-        <SidebarLink to="/" label="Accounts" icon={<FaThLarge />} isOpen={isOpen} />
+        <SidebarLink to="/" label="Dashboard" icon={<FaThLarge />} isOpen={isOpen} />
 
         <SidebarDropdown
           label="Master"
           icon={<BiImport />}
           isOpen={isOpen}
           items={[
-            { to: "/master/hsn", label: "HSN Code", icon: <FaBarcode /> },
+            { to: "/", label: "HSN Code", icon: <FaBarcode /> },
             { to: "/master/item", label: "Item", icon: <FaCube /> },
             { to: "/master/vendor", label: "Vendor", icon: <FaUserTie /> },
           ]}
@@ -60,14 +63,16 @@ export default function Sidebar({ isOpen }) {
           icon={<BiExport />}
           isOpen={isOpen}
           items={[
-            { to: "/export/data", label: "Export Data", icon: <FaFileExport /> },
-            { to: "/export/log", label: "Export Log", icon: <FaHistory /> },
+            { to: "/", label: "Export Data", icon: <FaFileExport /> },
+            { to: "/", label: "Export Log", icon: <FaHistory /> },
           ]}
         />
 
         <SidebarLink to="/sales" label="Sales" icon={<FaMoneyCheckAlt />} isOpen={isOpen} />
         <SidebarLink to="/requisition" label="Requisition" icon={<FaFileAlt />} isOpen={isOpen} />
         <SidebarLink to="/vendor-assignment" label="Vendor Assignment" icon={<FaFileAlt />} isOpen={isOpen} />
+        <SidebarLink to="/vendor-quotation" label="Vendor Quotation" icon={<FaFileAlt />} isOpen={isOpen} />
+        <SidebarLink to="/purchase-order" label="Purchase Order" icon={<FaFileAlt />} isOpen={isOpen} />
 
       </nav>
 
@@ -75,12 +80,12 @@ export default function Sidebar({ isOpen }) {
       <div className="p-4 border-t border-slate-800/50">
         <div className={`flex items-center ${isOpen ? "gap-3" : "justify-center"}`}>
           <div className="h-8 w-8 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-xs font-semibold text-white">
-            JD
+            {user?.full_name ? user.full_name.charAt(0).toUpperCase() : "U"}
           </div>
           {isOpen && (
             <div className="truncate">
-              <p className="text-xs font-semibold text-white truncate">John Doe</p>
-              <p className="text-[10px] text-slate-500 truncate uppercase tracking-wider font-bold">Administrator</p>
+              <p className="text-xs font-semibold text-white truncate">{user?.full_name || "User"}</p>
+              <p className="text-[10px] text-slate-500 truncate uppercase tracking-wider font-bold">{user?.role || "Employee"}</p>
             </div>
           )}
         </div>

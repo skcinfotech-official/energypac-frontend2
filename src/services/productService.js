@@ -18,6 +18,11 @@ export const getProducts = ({
     return axiosSecure.get(url, { params });
 };
 
+// RETRIEVE (View Details)
+export const getProduct = (id) => {
+    return axiosSecure.get(`/api/products/${id}`);
+};
+
 // CREATE
 export const createProduct = (data) => {
     return axiosSecure.post("/api/products", data);
@@ -31,4 +36,9 @@ export const updateProduct = (id, data) => {
 // DELETE
 export const deleteProduct = (id) => {
     return axiosSecure.delete(`/api/products/${id}`);
+};
+
+export const getInventoryReport = (status = "") => {
+    const params = status ? { status } : {};
+    return axiosSecure.get(`/api/reports/inventory/stock`, { params });
 };

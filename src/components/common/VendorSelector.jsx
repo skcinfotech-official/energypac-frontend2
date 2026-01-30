@@ -58,7 +58,8 @@ const VendorSelector = ({
       setLoading(true);
       try {
         const res = await getVendors({ search });
-        setVendors(res.data.results || res.data || []);
+        // getVendors returns the data object directly (normalized), not the axios response
+        setVendors(res.results || res || []);
       } catch (e) {
         console.error("Failed to load vendors", e);
       } finally {

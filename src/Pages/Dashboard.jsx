@@ -1,71 +1,218 @@
-import { FaUsers, FaFileAlt, FaChartLine, FaArrowUp } from "react-icons/fa";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { FaUsers, FaFileAlt, FaChartLine, FaArrowUp, FaBox, FaShoppingBag, FaFileInvoiceDollar, FaRegListAlt, FaArrowRight } from "react-icons/fa";
+import { getDashboardStats } from "../services/dashboardService";
+import { useAuth } from "../context/AuthContext";
+
+// Helper to fix API links to Client Routes
+const normalizeLink = (link) => {
+  if (!link) return "#";
+
+  // Handle base route mapping
+  let newLink = link;
+
+  if (link.includes("/purchase-orders")) {
+    newLink = link.replace("/purchase-orders", "/purchase-order");
+  } else if (link.includes("/requisitions")) {
+    newLink = link.replace("/requisitions", "/requisition");
+  } else if (link.includes("/quotations")) {
+    newLink = link.replace("/quotations", "/vendor-quotation");
+  }
+
+  // If it contains an ID (UUID) AND not a query param, redirect to list root
+  // Because we don't have detailed routes for /purchase-order/:id etc.
+  // Example: /purchase-order/a5e0... -> /purchase-order
+  const hasId = /\/[a-f0-9-]{36}/.test(newLink);
+  if (hasId) {
+    // Remove the ID part, effectively going to the list
+    // But keep query params if any (though ID and query params together is rare here)
+    newLink = newLink.split('/').slice(0, 2).join('/');
+  }
+
+  return newLink;
+};
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const data = await getDashboardStats();
+        setStats(data);
+      } catch (err) {
+        console.error("Failed to load dashboard stats", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       {/* HEADER */}
-      <div>
-        <h2 className="text-2xl font-bold text-slate-800">System Overview</h2>
-        <p className="text-slate-500 text-sm">Welcome back, John. Here's what's happening today.</p>
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800">System Overview</h2>
+          <p className="text-slate-500 text-sm">Welcome back, {user?.name || "User"}. Here's what's happening today.</p>
+        </div>
+        {stats?.generated_at && (
+          <div className="text-xs text-slate-500 font-medium">
+            Updated Date : {new Date(stats.generated_at).toLocaleString()}
+          </div>
+        )}
       </div>
 
-      {/* STATS GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Users"
-          value="2,543"
-          change="+12.5%"
-          icon={<FaUsers />}
-          color="blue"
-        />
-        <StatCard
-          title="Documents"
-          value="158"
-          change="+3.4%"
-          icon={<FaFileAlt />}
-          color="indigo"
-        />
-        <StatCard
-          title="Revenue"
-          value="$45,200"
-          change="+8.2%"
-          icon={<FaChartLine />}
-          color="emerald"
-        />
-        <StatCard
-          title="Conversion"
-          value="4.2%"
-          change="-0.5%"
-          icon={<FaArrowUp className="rotate-45" />}
-          color="orange"
-        />
-      </div>
+      {stats && (
+        <>
+          {/* STATS GRID */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatCard
+              title="Total Inventory Value"
+              value={stats.inventory?.total_inventory_value?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' }) || "₹0"}
+              change={`${stats.inventory?.total_products || 0} Products`}
+              icon={<FaBox />}
+              color="blue"
+            />
+            <StatCard
+              title="Active Vendors"
+              value={stats.vendors?.active_vendors_last_30_days || 0}
+              change={`Total: ${stats.vendors?.total_vendors || 0}`}
+              icon={<FaUsers />}
+              color="indigo"
+            />
+            <StatCard
+              title="Pending Requisitions"
+              value={stats.requisitions?.pending_requisitions || 0}
+              change={`Total: ${stats.requisitions?.total_requisitions || 0}`}
+              icon={<FaRegListAlt />}
+              color="orange"
+            />
+            <StatCard
+              title="Pending PO Value"
+              value={stats.purchase_orders?.pending_po_value?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' }) || "₹0"}
+              change={`${stats.purchase_orders?.pending_pos || 0} Pending POs`}
+              icon={<FaShoppingBag />}
+              color="emerald"
+            />
+          </div>
 
-      {/* RECENT ACTIVITY SECTION */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="font-bold text-slate-800">Recent Transactions</h3>
-          <button className="text-blue-600 text-sm font-semibold hover:underline">View All</button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-blue-50/50 text-slate-800 uppercase text-[10px] font-bold tracking-widest">
-                <th className="px-6 text-[15px] py-4">Entity</th>
-                <th className="px-6 text-[15px] py-4">Status</th>
-                <th className="px-6 text-[15px] py-4">Date</th>
-                <th className="px-6 text-[15px] py-4 text-right">Amount</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 uppercase">
-              <TableRow name="Energypac Power" status="Completed" date="Jan 20, 2026" amount="$12,000.00" />
-              <TableRow name="Solar Solutions" status="Pending" date="Jan 19, 2026" amount="$8,500.00" />
-              <TableRow name="Grid Tech" status="Completed" date="Jan 18, 2026" amount="$3,200.00" />
-              <TableRow name="Eco Energy" status="Cancelled" date="Jan 15, 2026" amount="$1,100.00" />
-            </tbody>
-          </table>
-        </div>
-      </div>
+          {/* ALERTS SECTION */}
+          {stats.alerts && stats.alerts.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {stats.alerts.map((alert, idx) => (
+                <div key={idx} className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                  <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
+                    <FaFileAlt />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-amber-900 text-sm">{alert.title}</h4>
+                    <p className="text-amber-700 text-xs mt-1 mb-2">{alert.message}</p>
+                    {alert.link && (
+                      <Link to={normalizeLink(alert.link)} className="inline-flex items-center text-xs font-bold text-amber-600 hover:text-amber-800 hover:underline gap-1">
+                        {alert.action || "View Details"} <FaArrowRight className="text-[10px]" />
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* RECENT ACTIVITY SECTION */}
+            <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="font-bold text-slate-800">Recent Activity</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold tracking-widest">
+                      <th className="px-6 py-4">Title</th>
+                      <th className="px-6 py-4">Description</th>
+                      <th className="px-6 py-4">Type</th>
+                      <th className="px-6 py-4 text-right">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {stats.recent_activities?.slice(0, 10).map((activity, index) => (
+                      <TableRow key={index} activity={activity} />
+                    ))}
+                    {(!stats.recent_activities || stats.recent_activities.length === 0) && (
+                      <tr><td colSpan="4" className="p-6 text-center text-slate-400">No recent activity</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {/* TOP PRODUCTS */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-fit">
+                <div className="px-6 py-4 border-b border-slate-100">
+                  <h3 className="font-bold text-slate-800">Top Inventory Value</h3>
+                </div>
+                <div className="p-0">
+                  {stats.top_products?.slice(0, 5).map((prod, idx) => (
+                    <div key={idx} className="px-6 py-3 border-b border-slate-50 hover:bg-slate-50 flex items-center justify-between last:border-0">
+                      <div>
+                        <p className="font-bold text-slate-800 text-sm">{prod.item_name}</p>
+                        <p className="text-xs text-slate-500 font-mono">{prod.item_code}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-blue-600 text-sm">
+                          {prod.stock_value?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                        </p>
+                        <p className="text-[10px] text-slate-400">Stock: {prod.current_stock}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* TOP VENDORS */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-fit">
+                <div className="px-6 py-4 border-b border-slate-100">
+                  <h3 className="font-bold text-slate-800">Top Vendors (by PO)</h3>
+                </div>
+                <div className="p-0">
+                  {stats.top_vendors?.slice(0, 5).map((vendor, idx) => (
+                    <div key={idx} className="px-6 py-3 border-b border-slate-50 hover:bg-slate-50 flex items-center justify-between last:border-0">
+                      <div>
+                        <p className="font-bold text-slate-800 text-sm">{vendor.vendor_name}</p>
+                        <p className="text-xs text-slate-500 font-mono">{vendor.vendor_code}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-emerald-600 text-sm">
+                          {(vendor.total_po_value || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                        </p>
+                        <p className="text-[10px] text-slate-400">Total PO Value</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -96,25 +243,46 @@ function StatCard({ title, value, change, icon, color }) {
   );
 }
 
-function TableRow({ name, status, date, amount }) {
-  const statusColors = {
-    Completed: "bg-emerald-100 text-emerald-700",
-    Pending: "bg-amber-100 text-amber-700",
-    Cancelled: "bg-red-100 text-red-700",
+function TableRow({ activity }) {
+  const typeColors = {
+    purchase_order: "bg-emerald-100 text-emerald-700",
+    quotation: "bg-blue-100 text-blue-700",
+    requisition: "bg-amber-100 text-amber-700",
+    other: "bg-slate-100 text-slate-700"
   };
+
+  const typeLabel = {
+    purchase_order: "PO",
+    quotation: "Quotation",
+    requisition: "Requisition",
+  };
+
+  const typeKey = activity.type || 'other';
 
   return (
     <tr className="hover:bg-slate-50/50 transition-colors">
       <td className="px-6 py-4">
-        <span className="font-semibold text-slate-700 text-sm tracking-wide">{name}</span>
-      </td>
-      <td className="px-6 py-4">
-        <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${statusColors[status]}`}>
-          {status}
+        <span className="font-semibold text-slate-700 text-sm tracking-wide block">
+          {activity.link ? (
+            <Link to={normalizeLink(activity.link)} className="hover:text-blue-600 hover:underline">
+              {activity.title}
+            </Link>
+          ) : (
+            activity.title
+          )}
         </span>
       </td>
-      <td className="px-6 py-4 text-slate-500 text-sm">{date}</td>
-      <td className="px-6 py-4 text-right font-bold text-slate-800 text-sm">{amount}</td>
+      <td className="px-6 py-4">
+        <span className="text-slate-500 text-xs">{activity.description}</span>
+      </td>
+      <td className="px-6 py-4">
+        <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase ${typeColors[typeKey] || typeColors.other}`}>
+          {typeLabel[typeKey] || typeKey}
+        </span>
+      </td>
+      <td className="px-6 py-4 text-right text-slate-500 text-xs">
+        {new Date(activity.date).toLocaleDateString()}
+      </td>
     </tr>
   );
 }

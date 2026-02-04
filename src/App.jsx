@@ -3,15 +3,15 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Layout from "./components/Layout.jsx";
 
-import Dashboard from "./pages/Dashboard.jsx"
-import Requisition from "./pages/Requisition.jsx";
-import Login from "./pages/Login.jsx";
-import Products from "./pages/Products.jsx";
-import Vendor from "./pages/Vendor.jsx";
-import VendorAssignment from "./pages/VendorAssignment.jsx";
-import VendorQuotations from "./pages/VendorQuotation.jsx";
-import PurchaseOrderList from "./pages/PurchaseOrderList.jsx";
-import Pending from "./pages/pending.jsx";
+import Dashboard from "./Pages/Dashboard.jsx"
+import Requisition from "./Pages/Requisition.jsx";
+import Login from "./Pages/Login.jsx";
+import Products from "./Pages/Products.jsx";
+import Vendor from "./Pages/Vendor.jsx";
+import VendorAssignment from "./Pages/VendorAssignment.jsx";
+import VendorQuotations from "./Pages/VendorQuotation.jsx";
+import PurchaseOrderList from "./Pages/PurchaseOrderList.jsx";
+import Pending from "./Pages/pending.jsx";
 
 export default function App() {
   return (

@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { FaTimes, FaFileInvoiceDollar, FaPrint } from "react-icons/fa";
 import { getClientQuotationSummary } from "../../services/salesService";
+import { PDFDownloadLink } from "@react-pdf/renderer";
+import ClientQuotationPDF from "./ClientQuotationPDF";
 
 const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
     const [details, setDetails] = useState(null);
@@ -38,9 +40,16 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
                         Quotation Details
                     </h2>
                     <div className="flex items-center gap-2">
-                        <button className="p-2 text-slate-500 hover:text-blue-600 hover:bg-white rounded-full transition-all" title="Print">
-                            <FaPrint />
-                        </button>
+                        {details && (
+                            <PDFDownloadLink
+                                document={<ClientQuotationPDF quotation={details} />}
+                                fileName={`Quotation_${details.quotation_number}.pdf`}
+                                className="p-2 text-slate-500 hover:text-blue-600 hover:bg-white rounded-full transition-all"
+                                title="Download PDF"
+                            >
+                                {({ loading }) => (loading ? <span className="text-xs">...</span> : <FaPrint />)}
+                            </PDFDownloadLink>
+                        )}
                         <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-full transition-all">
                             <FaTimes />
                         </button>

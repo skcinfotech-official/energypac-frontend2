@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createVendor, updateVendor } from "../../services/vendorService";
+import AlertToast from "../ui/AlertToast";
 
 const initialState = {
     vendor_code: "",
@@ -22,6 +23,7 @@ export default function VendorModal({
     const [form, setForm] = useState(initialState);
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
+    const [toast, setToast] = useState({ open: false, type: "error", message: "" });
 
     useEffect(() => {
         if (mode === "edit" && vendor) {
@@ -122,7 +124,7 @@ export default function VendorModal({
             onClose();
         } catch (err) {
             console.log(err);
-            alert("Failed to save vendor");
+            setToast({ open: true, type: "error", message: "Failed to save vendor" });
         } finally {
             setLoading(false);
         }
@@ -242,6 +244,13 @@ export default function VendorModal({
                         </button>
                     </div>
                 </form>
+
+                <AlertToast
+                    open={toast.open}
+                    type={toast.type}
+                    message={toast.message}
+                    onClose={() => setToast({ ...toast, open: false })}
+                />
             </div>
         </div>
     );

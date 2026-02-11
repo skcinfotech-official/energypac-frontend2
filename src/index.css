@@ -4,11 +4,11 @@
 
 @layer base {
   :root {
-    --primary: 15 23 42;        /* Slate 900 */
-    --accent: 37 99 235;        /* Blue 600 */
-    --background: 248 250 252;  /* Slate 50 */
-    --sidebar-bg: 15 23 42;     /* Slate 900 */
-    --sidebar-text: 241 245 249;/* Slate 100 */
+    --primary: 15 23 42;
+    --accent: 37 99 235;
+    --background: 248 250 252;
+    --sidebar-bg: 15 23 42;
+    --sidebar-text: 241 245 249;
     --navbar-bg: 255 255 255;
     --font-inter: 'Inter', sans-serif;
   }
@@ -20,6 +20,17 @@
 
   button {
     @apply cursor-pointer;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 

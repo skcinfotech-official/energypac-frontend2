@@ -96,8 +96,11 @@ const Requisition = () => {
   };
 
   useEffect(() => {
-    loadData();
-  }, []);
+    const timer = setTimeout(() => {
+      loadData(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchText, statusFilter, dateFilter]);
 
   // Check for view_id param
   useEffect(() => {
@@ -421,7 +424,6 @@ const Requisition = () => {
               <input
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && loadData(1)}
                 placeholder="Search by req no, items..."
                 className="input"
               />
@@ -436,7 +438,6 @@ const Requisition = () => {
                 type="date"
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && loadData(1)}
                 className="input"
               />
             </div>
@@ -457,18 +458,7 @@ const Requisition = () => {
               </select>
             </div>
 
-            {/* Search Button */}
-            <div className="w-32">
-              <label className="block text-xs font-semibold text-transparent mb-1">
-                Action
-              </label>
-              <button
-                onClick={() => loadData(1)}
-                className="w-full px-5 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-500"
-              >
-                Search
-              </button>
-            </div>
+
           </div>
         </div>
 

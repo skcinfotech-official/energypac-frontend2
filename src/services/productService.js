@@ -38,6 +38,11 @@ export const deleteProduct = (id) => {
     return axiosSecure.delete(`/api/products/${id}`);
 };
 
+// LOW STOCK
+export const getLowStockProducts = () => {
+    return axiosSecure.get("/api/products/low_stock");
+};
+
 export const getInventoryReport = (status = "") => {
     const params = status ? { status } : {};
     return axiosSecure.get(`/api/reports/inventory/stock`, { params });

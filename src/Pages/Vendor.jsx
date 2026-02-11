@@ -84,8 +84,11 @@ export default function Vendors() {
 
 
     useEffect(() => {
-        fetchVendors();
-    }, []);
+        const timer = setTimeout(() => {
+            fetchVendors();
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchText, statusFilter]);
 
     /* =========================
        ACTION HANDLERS
@@ -309,7 +312,6 @@ export default function Vendors() {
                             <input
                                 value={searchText}
                                 onChange={(e) => setSearchText(e.target.value)}
-                                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                                 placeholder="Search by name, code, phone"
                                 className="input"
                             />
@@ -331,18 +333,7 @@ export default function Vendors() {
                             </select>
                         </div>
 
-                        {/* Search Button */}
-                        <div className="w-32">
-                            <label className="block text-xs font-semibold text-transparent mb-1">
-                                Action
-                            </label>
-                            <button
-                                onClick={handleSearch}
-                                className="w-full px-5 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-500"
-                            >
-                                Search
-                            </button>
-                        </div>
+
                     </div>
                 </div>
 

@@ -3,6 +3,7 @@ import { getVendorQuotationsList } from "../../services/vendorQuotationService";
 import { FaEye, FaSearch, FaFileInvoiceDollar, FaEdit } from "react-icons/fa";
 import VendorQuotationViewModal from "./VendorQuotationViewModal";
 import VendorQuotationEditModal from "./VendorQuotationEditModal";
+import AlertToast from "../ui/AlertToast";
 
 const VendorQuotationList = ({ initialViewId }) => {
     const [data, setData] = useState([]);
@@ -10,6 +11,7 @@ const VendorQuotationList = ({ initialViewId }) => {
     const [count, setCount] = useState(0);
     const [next, setNext] = useState(null);
     const [previous, setPrevious] = useState(null);
+    const [toast, setToast] = useState({ open: false, type: "success", message: "" });
 
     // View Modal State
     const [viewId, setViewId] = useState(null);
@@ -30,6 +32,7 @@ const VendorQuotationList = ({ initialViewId }) => {
             setPrevious(res.previous);
         } catch (err) {
             console.error("Failed to load quotations list", err);
+            setToast({ open: true, type: "error", message: "Failed to load quotations" });
         } finally {
             setLoading(false);
         }
@@ -57,6 +60,7 @@ const VendorQuotationList = ({ initialViewId }) => {
 
     const handleEditSuccess = () => {
         loadData(); // Refresh list to show updated totals if any
+        setToast({ open: true, type: "success", message: "Quotation updated successfully" });
     };
 
     return (
@@ -185,6 +189,13 @@ const VendorQuotationList = ({ initialViewId }) => {
                 onClose={() => setOpenEdit(false)}
                 quotationId={editId}
                 onSuccess={handleEditSuccess}
+            />
+
+            <AlertToast
+                open={toast.open}
+                type={toast.type}
+                message={toast.message}
+                onClose={() => setToast({ ...toast, open: false })}
             />
         </div>
     );

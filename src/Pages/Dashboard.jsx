@@ -66,12 +66,36 @@ export default function Dashboard() {
     );
   }
 
+
+  const alertsToDisplay = stats && stats.alerts ? (() => {
+    const stockAlerts = stats.alerts.filter(a => {
+      const text = (a.title + " " + a.message).toLowerCase();
+      return text.includes("low stock") || text.includes("out of stock");
+    });
+
+    const otherAlerts = stats.alerts.filter(a => {
+      const text = (a.title + " " + a.message).toLowerCase();
+      return !text.includes("low stock") && !text.includes("out of stock");
+    });
+
+    if (stockAlerts.length > 0) {
+      return [{
+        title: "Stock Health Alert",
+        message: `${stockAlerts.length} items are Low or Out of Stock.`,
+        link: "/master/item?filter=low_stock",
+        action: "View All"
+      }, ...otherAlerts];
+    }
+    return stats.alerts;
+  })() : [];
+
+
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">System Overview</h2>
+          <h2 className="text-2xl font-bold text-slate-800">Purchase Overview</h2>
           <p className="text-slate-500 text-sm">Welcome back, {user?.full_name || "User"}. Here's what's happening today.</p>
         </div>
         {stats?.generated_at && (
@@ -116,9 +140,9 @@ export default function Dashboard() {
           </div>
 
           {/* ALERTS SECTION */}
-          {stats.alerts && stats.alerts.length > 0 && (
+          {alertsToDisplay.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {stats.alerts.map((alert, idx) => (
+              {alertsToDisplay.map((alert, idx) => (
                 <div key={idx} className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
                   <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
                     <FaFileAlt />

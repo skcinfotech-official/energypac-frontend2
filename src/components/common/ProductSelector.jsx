@@ -8,36 +8,64 @@ const ProductSelector = ({ value, onChange, placeholder = "Search product...", d
     const [search, setSearch] = useState("");
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+    const [coords, setCoords] = useState({ top: 0, left: 0, width: 0, placement: 'bottom' });
     const dropdownRef = useRef(null);
 
     useEffect(() => {
-  const handleClickOutside = (event) => {
-    if (
-      dropdownRef.current &&
-      !dropdownRef.current.contains(event.target) &&
-      !event.target.closest(".product-selector-portal")
-    ) {
-      setIsOpen(false);
-    }
-  };
+        const handleClickOutside = (event) => {
+            if (
+                dropdownRef.current &&
+                !dropdownRef.current.contains(event.target) &&
+                !event.target.closest(".product-selector-portal")
+            ) {
+                setIsOpen(false);
+            }
+        };
 
-  document.addEventListener("mousedown", handleClickOutside);
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutside);
-  };
-}, []);
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
 
-    // Update coords when opening
+    // Initial fetch to get the selected product details
     useEffect(() => {
-        if (isOpen && dropdownRef.current) {
-            const rect = dropdownRef.current.getBoundingClientRect();
-            setCoords({
-                top: rect.bottom + window.scrollY,
-                left: rect.left + window.scrollX,
-                width: rect.width
-            });
+        const calculatePosition = () => {
+            if (isOpen && dropdownRef.current) {
+                const rect = dropdownRef.current.getBoundingClientRect();
+                const viewportHeight = window.innerHeight;
+                const spaceBelow = viewportHeight - rect.bottom;
+                const spaceAbove = rect.top;
+                const dropdownMaxHeight = 250;
+
+                // Determine placement based on available space
+                // Default to bottom, switch to top if space below is tight and space above is better
+                let placement = 'bottom';
+                if (spaceBelow < dropdownMaxHeight && spaceAbove > spaceBelow) {
+                    placement = 'top';
+                }
+
+                setCoords({
+                    top: rect.bottom, // Viewport coords (for fixed)
+                    bottom: rect.top, // Viewport coords (for fixed)
+                    left: rect.left,
+                    width: rect.width,
+                    placement
+                });
+            }
+        };
+
+        if (isOpen) {
+            calculatePosition();
+            // Update position on scroll/resize to keep it attached (since we use fixed)
+            window.addEventListener('scroll', calculatePosition, true);
+            window.addEventListener('resize', calculatePosition);
         }
+
+        return () => {
+            window.removeEventListener('scroll', calculatePosition, true);
+            window.removeEventListener('resize', calculatePosition);
+        };
     }, [isOpen]);
 
     // ... (rest of fetch logic remains similar, ensuring useEffects are closed properly)
@@ -102,16 +130,18 @@ const ProductSelector = ({ value, onChange, placeholder = "Search product...", d
     const selectedProduct = foundProduct || defaultItem;
 
     // Dropdown Content
-    const dropdownContent = (
+    const dropdownContent = isOpen && (
         <div
-            className="product-selector-portal fixed z-9999 bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto"
+            className="product-selector-portal fixed z-[9999] bg-white border border-slate-200 rounded-lg shadow-xl flex flex-col"
             style={{
-                top: coords.top + 4,
+                top: coords.placement === 'bottom' ? coords.top : 'auto',
+                bottom: coords.placement === 'top' ? (window.innerHeight - coords.bottom) : 'auto',
                 left: coords.left,
-                width: coords.width
+                width: coords.width,
+                maxHeight: '250px'
             }}
         >
-            <div className="sticky top-0 bg-white p-2 border-b border-slate-100">
+            <div className="sticky top-0 bg-white p-2 border-b border-slate-100 shrink-0">
                 <div className="relative">
                     <HiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
@@ -125,7 +155,8 @@ const ProductSelector = ({ value, onChange, placeholder = "Search product...", d
                 </div>
             </div>
 
-            <div className="py-1">
+            {/* Scrollable List */}
+            <div className="overflow-y-auto max-h-[200px] py-1">
                 {loading ? (
                     <div className="px-4 py-3 text-sm text-slate-500 text-center">Loading...</div>
                 ) : products.length > 0 ? (
@@ -140,7 +171,12 @@ const ProductSelector = ({ value, onChange, placeholder = "Search product...", d
                             }}
                         >
                             <div className="font-medium text-slate-900">{p.item_name}</div>
-                            <div className="text-xs text-slate-500">{p.item_code || "No code"}</div>
+                            <div className="text-xs text-slate-500 flex items-center justify-between">
+                                <span>{p.item_code || "No code"}</span>
+                                <span className={p.current_stock > 0 ? "text-emerald-600 font-medium" : "text-red-500"}>
+                                    Stock: {p.current_stock ?? '-'}
+                                </span>
+                            </div>
                         </div>
                     ))
                 ) : (

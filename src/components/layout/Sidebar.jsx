@@ -8,9 +8,15 @@ import {
   FaBarcode,
   FaCube,
   FaUserTie,
+  FaChartLine,
+  FaTrophy,
+  FaBoxOpen,
 } from "react-icons/fa";
 import { BiImport } from "react-icons/bi";
-
+import { RiCustomerService2Fill } from "react-icons/ri";
+import { BiSolidPurchaseTag } from "react-icons/bi";
+import { HiUserAdd } from "react-icons/hi";
+import { HiDocumentText } from "react-icons/hi";
 import { useAuth } from "../../context/AuthContext";
 
 export default function Sidebar({ isOpen }) {
@@ -37,16 +43,15 @@ export default function Sidebar({ isOpen }) {
         )}
       </div>
 
-      <nav className="flex-1 px-2 py-6 space-y-1.5 overflow-y-auto">
+      <nav className="flex-1 px-2 py-6 space-y-1.5 overflow-y-auto no-scrollbar">
         <div
-          className={`px-3 mb-3 text-[10px] font-bold uppercase tracking-widest ${
-            !isOpen && "text-center"
-          } text-slate-400`}
+          className={`px-3 mb-3 text-[10px] font-bold uppercase tracking-widest ${!isOpen && "text-center"
+            } text-slate-400`}
         >
           {isOpen ? "Management Console" : "•••"}
         </div>
 
-        <SidebarLink to="/" label="Dashboard" icon={<FaThLarge />} isOpen={isOpen} />
+        {/* <SidebarLink to="/" label="Dashboard" icon={<FaThLarge />} isOpen={isOpen} /> */}
 
         <SidebarDropdown
           label="Master"
@@ -58,12 +63,39 @@ export default function Sidebar({ isOpen }) {
             { to: "/master/vendor", label: "Vendor", icon: <FaUserTie /> },
           ]}
         />
+        <SidebarDropdown
+          label="Purchase"
+          icon={<BiImport />}
+          isOpen={isOpen}
+          items={[
+            { to: "/", label: "Purchase Dashboard", icon: <FaThLarge /> },
+            { to: "/requisition", label: "Requisition", icon: <FaFileAlt /> },
+            { to: "/vendor-assignment", label: "Vendor Assignment", icon: <FaUserTie /> },
+            { to: "/vendor-quotation", label: "Vendor Quotation", icon: <FaUserTie /> },
+            { to: "/purchase-order", label: "Purchase Order", icon: <BiSolidPurchaseTag /> },
 
-        <SidebarLink to="/sales" label="Sales" icon={<FaMoneyCheckAlt />} isOpen={isOpen} />
-        <SidebarLink to="/requisition" label="Requisition" icon={<FaFileAlt />} isOpen={isOpen} />
-        <SidebarLink to="/vendor-assignment" label="Vendor Assignment" icon={<FaFileAlt />} isOpen={isOpen} />
-        <SidebarLink to="/vendor-quotation" label="Vendor Quotation" icon={<FaFileAlt />} isOpen={isOpen} />
-        <SidebarLink to="/purchase-order" label="Purchase Order" icon={<FaFileAlt />} isOpen={isOpen} />
+          ]}
+        />
+
+        {/* <SidebarLink to="/sales" label="Sales" icon={<FaMoneyCheckAlt />} isOpen={isOpen} /> */}
+        {/* <SidebarLink to="/requisition" label="Requisition" icon={<FaFileAlt />} isOpen={isOpen} />
+        <SidebarLink to="/vendor-assignment" label="Vendor Assignment" icon={<HiUserAdd />} isOpen={isOpen} />
+        <SidebarLink to="/vendor-quotation" label="Vendor Quotation" icon={<HiDocumentText />} isOpen={isOpen} />
+        <SidebarLink to="/purchase-order" label="Purchase Order" icon={<BiSolidPurchaseTag />} isOpen={isOpen} /> */}
+        <SidebarDropdown
+          label="Sales"
+          icon={<FaMoneyCheckAlt />}
+          isOpen={isOpen}
+          items={[
+            { to: "/sales/dashboard", label: "Sales Dashboard", icon: <FaThLarge /> },
+            { to: "/sales/sales-statistics", label: "Sales Statistics", icon: <FaChartLine /> },
+            { to: "/sales/sales-performance", label: "Performance Report", icon: <FaTrophy /> },
+            { to: "/sales/sales-products", label: "Product Analysis", icon: <FaBoxOpen /> },
+            { to: "/sales/client-query", label: "Client Query", icon: <FaUserTie /> },
+            { to: "/sales/client-quotation", label: "Client Quotation", icon: <FaUserTie /> },
+          ]}
+        />
+        <SidebarLink to="/direct-purchase" label="Direct Purchase" icon={<BiSolidPurchaseTag />} isOpen={isOpen} />
       </nav>
 
       {/* FOOTER */}
@@ -139,9 +171,8 @@ function SidebarDropdown({ label, icon, isOpen, items }) {
           <>
             <span className="text-sm truncate">{label}</span>
             <span
-              className={`ml-auto transition-transform ${
-                expanded ? "rotate-180" : ""
-              }`}
+              className={`ml-auto transition-transform ${expanded ? "rotate-180" : ""
+                }`}
             >
               <FaChevronDown className="text-[10px]" />
             </span>

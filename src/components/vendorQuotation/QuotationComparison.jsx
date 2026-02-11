@@ -13,7 +13,7 @@ const QuotationComparison = () => {
     const [selectedRequisition, setSelectedRequisition] = useState("");
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [ error , setError] = useState(null);
+    const [error, setError] = useState(null);
 
     // State for Toast and Confirm
     const [toast, setToast] = useState({ open: false, type: "success", message: "" });
@@ -435,6 +435,9 @@ const QuotationComparison = () => {
                 loading={generating}
                 onCancel={() => setShowConfirm(false)}
                 onConfirm={processGeneratePO}
+                icon={FaFileInvoiceDollar}
+                confirmButtonClass="bg-emerald-600 hover:bg-emerald-700"
+                iconBgClass="bg-emerald-100 text-emerald-600"
             />
 
             <AlertToast

@@ -63,8 +63,11 @@ const VendorAssignment = () => {
   };
 
   useEffect(() => {
-    loadData();
-  }, []);
+    const timer = setTimeout(() => {
+      loadData(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchText]);
 
   const handleEdit = (row) => {
     setEditData(row);
@@ -138,25 +141,13 @@ const VendorAssignment = () => {
                 className="input"
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && loadData(1)}
               />
             </div>
 
             {/* Placeholder for alignment if needed */}
             <div className="w-1"></div>
 
-            {/* Search Button */}
-            <div className="w-32">
-              <label className="block text-xs font-semibold text-transparent mb-1">
-                Action
-              </label>
-              <button
-                onClick={() => loadData(1)}
-                className="w-full px-5 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-500"
-              >
-                Search
-              </button>
-            </div>
+
           </div>
         </div>
 

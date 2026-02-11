@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import ProductModal from "../components/products/ProductModal";
 import ProductViewModal from "../components/products/ProductViewModal";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import AlertToast from "../components/ui/AlertToast";
-import { getProducts, deleteProduct, getProduct, getInventoryReport } from "../services/productService";
+import { getProducts, deleteProduct, getProduct, getInventoryReport, getLowStockProducts } from "../services/productService";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { FaPlus, FaEdit, FaTrash, FaEye, FaFileExcel } from "react-icons/fa";
@@ -22,6 +23,15 @@ export default function Products() {
     const [editProduct, setEditProduct] = useState(null);
     const [searchText, setSearchText] = useState("");
     const [unitFilter, setUnitFilter] = useState("");
+    const [searchParams] = useSearchParams();
+    const [stockFilter, setStockFilter] = useState("all"); // "all" | "low_stock"
+
+    useEffect(() => {
+        const filter = searchParams.get("filter");
+        if (filter === "low_stock") {
+            setStockFilter("low_stock");
+        }
+    }, [searchParams]);
 
 
     const [setError] = useState("");
@@ -53,16 +63,32 @@ export default function Products() {
         try {
             setLoading(true);
 
-            const res = await getProducts({
-                url,
-                search: searchText,
-                unit: unitFilter,
-            });
-
-            setProducts(res.data.results);
-            setCount(res.data.count);
-            setNext(res.data.next);
-            setPrevious(res.data.previous);
+            if (stockFilter === "low_stock") {
+                const res = await getLowStockProducts();
+                // Handle different potential response structures (array or paginated)
+                const data = res.data;
+                if (Array.isArray(data)) {
+                    setProducts(data);
+                    setCount(data.length);
+                    setNext(null);
+                    setPrevious(null);
+                } else {
+                    setProducts(data.results || []);
+                    setCount(data.count || 0);
+                    setNext(data.next);
+                    setPrevious(data.previous);
+                }
+            } else {
+                const res = await getProducts({
+                    url,
+                    search: searchText,
+                    unit: unitFilter,
+                });
+                setProducts(res.data.results);
+                setCount(res.data.count);
+                setNext(res.data.next);
+                setPrevious(res.data.previous);
+            }
         } catch (err) {
             console.log(err);
             setError("Failed to load products");
@@ -74,8 +100,11 @@ export default function Products() {
 
 
     useEffect(() => {
-        fetchProducts();
-    }, []);
+        const timer = setTimeout(() => {
+            fetchProducts();
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchText, unitFilter, stockFilter]);
 
     /* =========================
        ACTION HANDLERS (UI ONLY)
@@ -295,9 +324,23 @@ export default function Products() {
 
                 </div>
 
-                {/* SEARCH & FILTER */}
                 <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
                     <div className="flex flex-wrap gap-4">
+
+                        {/* Stock Filter */}
+                        <div className="w-40">
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                Stock Status
+                            </label>
+                            <select
+                                value={stockFilter}
+                                onChange={(e) => setStockFilter(e.target.value)}
+                                className="input"
+                            >
+                                <option value="all">All Stock</option>
+                                <option value="low_stock">Low Stock</option>
+                            </select>
+                        </div>
 
                         {/* Search by Product Name */}
                         <div className="flex-1 min-w-55">
@@ -307,7 +350,6 @@ export default function Products() {
                             <input
                                 value={searchText}
                                 onChange={(e) => setSearchText(e.target.value)}
-                                onKeyDown={(e) => e.key === "Enter" && fetchProducts()}
                                 placeholder="Search by product name"
                                 className="input"
                             />
@@ -321,22 +363,13 @@ export default function Products() {
                             <input
                                 value={unitFilter}
                                 onChange={(e) => setUnitFilter(e.target.value)}
-                                onKeyDown={(e) => e.key === "Enter" && fetchProducts()}
                                 className="input"
                                 placeholder="e.g. pcs, kg"
                             />
 
                         </div>
 
-                        {/* Search Button */}
-                        <div className=" w-32 flex items-end">
-                            <button
-                                onClick={() => fetchProducts()}
-                                className="w-full px-5 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-500"
-                            >
-                                Search
-                            </button>
-                        </div>
+
 
                     </div>
                 </div>

@@ -4,7 +4,7 @@ import { getQuotationItems, createQuotation } from "../../services/vendorQuotati
 import RequisitionSelector from "../common/RequisitionSelector";
 import VendorSelector from "../common/VendorSelector";
 import { FaFileInvoiceDollar, FaUserTie, FaBoxOpen, FaClipboardList, FaCheckCircle, FaSearch, FaSave } from "react-icons/fa";
-
+import AlertToast from "../ui/AlertToast";
 
 const VendorQuotationDetails = () => {
   // State for the loaded context (header info)
@@ -14,9 +14,8 @@ const VendorQuotationDetails = () => {
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-  const [successMsg, setSuccessMsg] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [toast, setToast] = useState({ open: false, type: "success", message: "" });
 
   // Filters
   const [selectedRequisition, setSelectedRequisition] = useState(null);
@@ -25,13 +24,11 @@ const VendorQuotationDetails = () => {
   const handleSearch = async () => {
     // User flow: Select Requisition + Vendor -> GET /api/vendor-quotations/by_requisition_vendor
     if (!selectedRequisition || !selectedVendor) {
-      setError("Please select both Requisition and Vendor to search.");
+      setToast({ open: true, type: "error", message: "Please select both Requisition and Vendor to search" });
       return;
     }
 
     setLoading(true);
-    setError(null);
-    setSuccessMsg(null);
     setHasSearched(true);
     setContextData(null);
     setItems([]);
@@ -55,7 +52,7 @@ const VendorQuotationDetails = () => {
       }
     } catch (err) {
       console.error(err);
-      setError("Failed to load quotation details");
+      setToast({ open: true, type: "error", message: "Failed to load quotation details" });
     } finally {
       setLoading(false);
     }
@@ -71,8 +68,6 @@ const VendorQuotationDetails = () => {
     if (!contextData) return;
 
     setSubmitting(true);
-    setError(null);
-    setSuccessMsg(null);
 
     // Prepare Payload
     const payload = {
@@ -98,15 +93,23 @@ const VendorQuotationDetails = () => {
 
       // 2. Submit
       await createQuotation(payload);
-      setSuccessMsg("Quotation submitted successfully!");
+
+      setToast({ open: true, type: "success", message: "Quotation submitted successfully!" });
+
+      // Clear form after success
+      setItems([]);
+      setContextData(null);
+      setHasSearched(false);
+      setSelectedRequisition(null);
+      setSelectedVendor(null);
 
     } catch (err) {
       if (err instanceof z.ZodError) {
         console.warn("Validation failed:", err.errors);
-        setError("All items must have a valid quoted rate greater than 0.00.");
+        setToast({ open: true, type: "error", message: "All items must have a valid quoted rate greater than 0.00" });
       } else {
         console.error(err);
-        setError("Failed to submit quotation.");
+        setToast({ open: true, type: "error", message: "Failed to submit quotation" });
       }
     } finally {
       setSubmitting(false);
@@ -153,18 +156,6 @@ const VendorQuotationDetails = () => {
           </div>
         </div>
       </div>
-
-      {/* NOTIFICATIONS */}
-      {error && (
-        <div className="p-4 text-center text-red-600 bg-red-50 rounded-xl border border-red-100 animate-in fade-in">
-          {error}
-        </div>
-      )}
-      {successMsg && (
-        <div className="p-4 text-center text-green-600 bg-green-50 rounded-xl border border-green-100 animate-in fade-in">
-          {successMsg}
-        </div>
-      )}
 
       {/* CONTENT AREA */}
       {loading ? (
@@ -289,6 +280,13 @@ const VendorQuotationDetails = () => {
           </div>
         </div>
       )}
+
+      <AlertToast
+        open={toast.open}
+        type={toast.type}
+        message={toast.message}
+        onClose={() => setToast({ ...toast, open: false })}
+      />
     </div>
   );
 };

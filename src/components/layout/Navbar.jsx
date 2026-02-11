@@ -10,7 +10,8 @@ export default function Navbar({ toggleSidebar, isSidebarOpen }) {
   const getPageTitle = () => {
     const path = location.pathname;
 
-    if (path === "/") return "Dashboard";
+    if (path === "/") return "Purchase Dashboard";
+    if (path === "/sales/dashboard") return "Sales Dashboard";
 
     return path
       .split("/")
@@ -39,9 +40,8 @@ export default function Navbar({ toggleSidebar, isSidebarOpen }) {
           "
         >
           <FaBars
-            className={`text-lg transition-transform duration-300 ${
-              isSidebarOpen ? "rotate-90" : ""
-            }`}
+            className={`text-lg transition-transform duration-300 ${isSidebarOpen ? "rotate-90" : ""
+              }`}
           />
         </button>
 

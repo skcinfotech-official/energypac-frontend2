@@ -19,6 +19,12 @@ import Pending from "./Pages/pending.jsx";
 import Enquiry from "./Pages/Enquiry.jsx";
 import DirectPurchase from "./Pages/DirectPurchase.jsx";
 import ClientQuotation from "./Pages/ClientQuotation.jsx";
+import CreateWorkOrder from "./Pages/CreateWorkOrder.jsx";
+import WorkOrderList from "./Pages/WorkOrderList.jsx";
+import CreateBill from "./Pages/CreateBill.jsx";
+import BillList from "./Pages/BillList.jsx";
+import BillingDashboard from "./Pages/BillingDashboard.jsx";
+import BillingAnalytics from "./Pages/BillingAnalytics.jsx";
 
 export default function App() {
   return (
@@ -39,6 +45,13 @@ export default function App() {
               <Route path="/purchase-order" element={<PurchaseOrderList />} />
               <Route path="/sales/client-query" element={<Enquiry />} />
               <Route path="/sales/client-quotation" element={<ClientQuotation />} />
+              <Route path="/sales/create-work-order" element={<CreateWorkOrder />} />
+              <Route path="/sales/work-orders" element={<WorkOrderList />} />
+              <Route path="/sales/create-wo-bill" element={<CreateBill />} />
+              <Route path="/sales/wo-bills" element={<BillList />} />
+              <Route path="/sales/billing-dashboard" element={<BillingDashboard />} />
+              <Route path="/sales/billing-analytics" element={<BillingAnalytics />} />
+
               <Route path="/sales/sales-statistics" element={<SalesStatistics />} />
               <Route path="/sales/sales-performance" element={<SalesPerformance />} />
               <Route path="/sales/sales-products" element={<ProductSalesAnalysis />} />

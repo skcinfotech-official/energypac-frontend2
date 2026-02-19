@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { FaTimes, FaPlus, FaTrash, FaBoxOpen, FaLayerGroup } from "react-icons/fa";
 import { createClientQuotation, getClientQueries } from "../../services/salesService";
 import ProductSelector from "../common/ProductSelector";
+import ProductModal from "../products/ProductModal";
+import { toast } from "react-hot-toast";
 
 const ClientQuotationModal = ({ isOpen, onClose, onSuccess }) => {
     const [formData, setFormData] = useState({
@@ -21,6 +23,8 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess }) => {
     const [queries, setQueries] = useState([]);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
+    const [showProductModal, setShowProductModal] = useState(false);
+
 
     // Fetch Client Queries for Dropdown
     useEffect(() => {
@@ -42,25 +46,20 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess }) => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleAddItem = (type) => {
+    const handleAddItem = () => {
         const newItem = {
-            id: Date.now(), // Temporary ID for React key
-            type, // 'stock' or 'new'
+            id: Date.now(),
+            type: 'stock',
             quantity: 1,
             rate: 0,
             remarks: "",
-            // Stock specific
             product: null,
             product_details: null,
-            // New specific
-            item_code: "",
-            item_name: "",
-            description: "",
-            hsn_code: "",
-            unit: "",
         };
-        setItems([...items, newItem]);
+        setItems([newItem, ...items]);
     };
+
+
 
     const handleRemoveItem = (index) => {
         const newItems = [...items];
@@ -101,14 +100,10 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess }) => {
                             ...common
                         };
                     } else {
-                        // New Item
-                        if (!item.item_name) throw new Error("Item name missing for a new item");
+                        // Should not happen now
+                        if (!item.product) throw new Error("Product selection missing");
                         return {
-                            item_code: item.item_code,
-                            item_name: item.item_name,
-                            description: item.description,
-                            hsn_code: item.hsn_code,
-                            unit: item.unit,
+                            product: item.product,
                             ...common
                         };
                     }
@@ -194,13 +189,14 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess }) => {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">Validity Date</label>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">Validity Date *</label>
                                 <input
                                     type="date"
                                     name="validity_date"
                                     value={formData.validity_date}
                                     onChange={handleInputChange}
                                     className="input w-full"
+                                    required
                                 />
                             </div>
 
@@ -285,17 +281,17 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess }) => {
                                 <div className="flex gap-2">
                                     <button
                                         type="button"
-                                        onClick={() => handleAddItem('stock')}
+                                        onClick={handleAddItem}
                                         className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 text-xs font-bold rounded hover:bg-indigo-100 transition-colors"
                                     >
-                                        <FaBoxOpen /> Add Stock Item
+                                        <FaBoxOpen /> Add Item
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => handleAddItem('new')}
+                                        onClick={() => setShowProductModal(true)}
                                         className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 text-xs font-bold rounded hover:bg-emerald-100 transition-colors"
                                     >
-                                        <FaLayerGroup /> Add New Item
+                                        <FaLayerGroup /> Add New Product
                                     </button>
                                 </div>
                             </div>
@@ -324,101 +320,54 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess }) => {
                                         )}
                                         {items.map((item, index) => (
                                             <tr key={item.id} className="hover:bg-slate-50/50 group align-top">
-                                                <td className="px-3 py-3 text-slate-500 pt-5">{index + 1}</td>
+                                                <td className="px-3 py-3 text-slate-500 pt-5">{items.length - index}</td>
 
                                                 {/* ITEM DETAILS COLUMN */}
                                                 <td className="px-3 py-3">
-                                                    {item.type === 'stock' ? (
-                                                        <div className="space-y-2">
-                                                            <div className="w-full">
-                                                                <ProductSelector
-                                                                    value={item.product}
-                                                                    onChange={(val, productInfo) => {
-                                                                        const newItems = [...items];
-                                                                        newItems[index] = {
-                                                                            ...newItems[index],
-                                                                            product: val,
-                                                                            product_details: productInfo,
-                                                                            // Auto-fill rate if available?
-                                                                            rate: productInfo?.rate || newItems[index].rate
-                                                                        };
-                                                                        setItems(newItems);
-                                                                    }}
-                                                                    placeholder="Select Stock Product..."
-                                                                />
-                                                                {item.product_details && (
-                                                                    <div className="text-[10px] text-emerald-600 font-semibold mt-1 flex justify-between">
-                                                                        <span>Current Stock: {item.product_details.current_stock} {item.product_details.unit}</span>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            <input
-                                                                type="text"
-                                                                placeholder="Remarks (e.g. spec details)"
-                                                                className="input w-full text-xs"
-                                                                value={item.remarks}
-                                                                onChange={(e) => handleItemChange(index, "remarks", e.target.value)}
+                                                    <div className="space-y-2">
+                                                        <div className="w-full">
+                                                            <ProductSelector
+                                                                value={item.product}
+                                                                onChange={(val, productInfo) => {
+                                                                    const newItems = [...items];
+                                                                    newItems[index] = {
+                                                                        ...newItems[index],
+                                                                        product: val,
+                                                                        product_details: productInfo,
+                                                                        rate: productInfo?.rate || newItems[index].rate
+                                                                    };
+                                                                    setItems(newItems);
+                                                                }}
+                                                                placeholder="Select Stock Product..."
                                                             />
+                                                            {item.product_details && (
+                                                                <div className="text-[10px] text-emerald-600 font-semibold mt-1">
+                                                                    <span>Current Stock: {item.product_details.current_stock} {item.product_details.unit}</span>
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                    ) : (
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <input
-                                                                type="text"
-                                                                placeholder="Item Name *"
-                                                                className="input w-full text-xs"
-                                                                value={item.item_name}
-                                                                onChange={(e) => handleItemChange(index, "item_name", e.target.value)}
-                                                            />
-                                                            <input
-                                                                type="text"
-                                                                placeholder="Item Code"
-                                                                className="input w-full text-xs"
-                                                                value={item.item_code}
-                                                                onChange={(e) => handleItemChange(index, "item_code", e.target.value)}
-                                                            />
-                                                            <textarea
-                                                                placeholder="Description"
-                                                                className="input w-full text-xs col-span-2 h-14"
-                                                                value={item.description}
-                                                                onChange={(e) => handleItemChange(index, "description", e.target.value)}
-                                                            />
-                                                            <input
-                                                                type="text"
-                                                                placeholder="Remarks"
-                                                                className="input w-full text-xs col-span-2"
-                                                                value={item.remarks}
-                                                                onChange={(e) => handleItemChange(index, "remarks", e.target.value)}
-                                                            />
-                                                        </div>
-                                                    )}
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Remarks (e.g. spec details)"
+                                                            className="input w-full text-xs"
+                                                            value={item.remarks}
+                                                            onChange={(e) => handleItemChange(index, "remarks", e.target.value)}
+                                                        />
+                                                    </div>
                                                 </td>
 
                                                 {/* HSN */}
                                                 <td className="px-1 py-1 pt-4">
-                                                    {item.type === 'new' ? (
-                                                        <input
-                                                            type="text"
-                                                            className="input w-full text-xs"
-                                                            value={item.hsn_code}
-                                                            onChange={(e) => handleItemChange(index, "hsn_code", e.target.value)}
-                                                        />
-                                                    ) : (
-                                                        <span className="text-slate-500 text-xs block pt-2">{item.product_details?.hsn_code || '-'}</span>
-                                                    )}
+                                                    <span className="text-slate-500 text-xs block pt-2">
+                                                        {item.product_details?.hsn_code || '-'}
+                                                    </span>
                                                 </td>
 
                                                 {/* UNIT */}
                                                 <td className="px-1 py-1 pt-4">
-                                                    {item.type === 'new' ? (
-                                                        <input
-                                                            type="text"
-                                                            className="input w-full text-xs"
-                                                            value={item.unit}
-                                                            onChange={(e) => handleItemChange(index, "unit", e.target.value)}
-                                                        />
-                                                    ) : (
-                                                        <span className="text-slate-500 text-xs block pt-2">{item.product_details?.unit || '-'}</span>
-                                                    )}
+                                                    <span className="text-slate-500 text-xs block pt-2">
+                                                        {item.product_details?.unit || '-'}
+                                                    </span>
                                                 </td>
 
                                                 {/* QTY */}
@@ -498,6 +447,20 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess }) => {
                     </button>
                 </div>
             </div>
+
+            {/* Product Modal for creating new master products */}
+            {showProductModal && (
+                <ProductModal
+                    open={showProductModal}
+                    onClose={() => setShowProductModal(false)}
+                    onSuccess={() => {
+                        toast.success("Product created successfully! Select it from the list.");
+                        setShowProductModal(false);
+                    }}
+                    mode="add"
+                />
+            )}
+
         </div>
     );
 };

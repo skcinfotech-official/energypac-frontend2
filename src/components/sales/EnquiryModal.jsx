@@ -33,7 +33,12 @@ const EnquiryModal = ({ isOpen, onClose, onSuccess }) => {
         }
         if (!formData.address) newErrors.address = "Address is required";
         if (!formData.query_date) newErrors.query_date = "Query Date is required";
-        if (!formData.pdf_upload) newErrors.pdf_upload = "PDF File is required";
+
+        // Require at least one: PDF or Remarks
+        if (!formData.pdf_upload && !formData.remarks?.trim()) {
+            newErrors.pdf_upload = "Please upload a PDF or provide remarks";
+            newErrors.remarks = "Please provide remarks or upload a PDF";
+        }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -41,19 +46,38 @@ const EnquiryModal = ({ isOpen, onClose, onSuccess }) => {
 
     const handleChange = (e) => {
         const { name, value, files } = e.target;
+        let updatedValue = value;
+
         if (name === "pdf_upload") {
-            setFormData({ ...formData, pdf_upload: files[0] });
+            updatedValue = files[0];
+            setFormData(prev => ({ ...prev, pdf_upload: updatedValue }));
         } else if (name === "phone") {
-            // Only allow numeric input
-            const numericValue = value.replace(/\D/g, "");
-            setFormData({ ...formData, phone: numericValue });
+            updatedValue = value.replace(/\D/g, "");
+            setFormData(prev => ({ ...prev, phone: updatedValue }));
         } else {
-            setFormData({ ...formData, [name]: value });
+            setFormData(prev => ({ ...prev, [name]: value }));
         }
-        // Clear error when user types
-        if (errors[name]) {
-            setErrors({ ...errors, [name]: null });
-        }
+
+        // Clear error logic
+        setErrors(prevErrors => {
+            const newErrors = { ...prevErrors };
+
+            // If changing pdf_upload or remarks, check if we can clear both errors
+            if (name === "pdf_upload" || name === "remarks") {
+                const hasPdf = name === "pdf_upload" ? updatedValue : formData.pdf_upload;
+                const hasRemarks = name === "remarks" ? updatedValue : formData.remarks;
+
+                if (hasPdf || hasRemarks?.trim()) {
+                    delete newErrors.pdf_upload;
+                    delete newErrors.remarks;
+                }
+            } else {
+                // Standard field error clearing
+                if (newErrors[name]) delete newErrors[name];
+            }
+
+            return newErrors;
+        });
     };
 
     const handleSubmit = async (e) => {
@@ -95,7 +119,7 @@ const EnquiryModal = ({ isOpen, onClose, onSuccess }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                 <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                    <h3 className="text-xl font-bold text-slate-800">New Query</h3>
+                    <h3 className="text-xl font-bold text-slate-800">New Client Query</h3>
                     <button
                         onClick={onClose}
                         className="text-slate-400 hover:text-slate-600 transition-colors"
@@ -200,6 +224,7 @@ const EnquiryModal = ({ isOpen, onClose, onSuccess }) => {
                                     onChange={handleChange}
                                     className="hidden"
                                     id="pdf-upload"
+                                    required
                                 />
                                 <label
                                     htmlFor="pdf-upload"

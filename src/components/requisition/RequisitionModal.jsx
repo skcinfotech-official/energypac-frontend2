@@ -135,7 +135,7 @@ const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false
 
 
   const addItem = () => {
-    setForm({ ...form, items: [...form.items, { ...emptyItem }] });
+    setForm({ ...form, items: [{ ...emptyItem }, ...form.items] });
   };
 
   const removeItem = (index) => {
@@ -192,7 +192,7 @@ const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false
         onClick={(e) => e.stopPropagation()}
       >
         {/* MODAL HEADER */}
-        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center rounded-t-2xl">
           <div>
             <h2 className="text-xl font-bold text-slate-900">
               {editData ? "Edit Requisition" : "New Requisition"}
@@ -283,6 +283,11 @@ const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false
                   style={{ zIndex: form.items.length - i }}
                   className="group bg-slate-50/50 p-4 rounded-xl border border-slate-200 flex flex-col md:flex-row gap-4 items-start relative transition-all hover:border-blue-200 hover:bg-white hover:shadow-sm overflow-visible"
                 >
+                  {/* Item Number */}
+                  <div className="flex-none w-5  text-slate-900 self-center md:self-start pt-7 text-center text-sm">
+                    {form.items.length - i}
+                  </div>
+
                   <div className="flex-1 w-full space-y-1.5">
                     <label className="text-[11px] font-bold text-slate-500 uppercase">Product</label>
                     <div className={viewOnly ? "pointer-events-none opacity-90" : ""}>
@@ -361,7 +366,7 @@ const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false
         </form>
 
         {/* MODAL FOOTER */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200  flex justify-end gap-3">
+        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200  flex justify-end gap-3 rounded-b-2xl">
           <button
             type="button"
             onClick={onClose}

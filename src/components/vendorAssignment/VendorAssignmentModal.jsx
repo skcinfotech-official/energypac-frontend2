@@ -163,7 +163,7 @@ const VendorAssignmentModal = ({ open, onClose, editData, onSuccess, viewOnly = 
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center rounded-t-2xl">
           <div>
             <h2 className="text-xl font-bold text-slate-900">
               {viewOnly
@@ -286,7 +286,7 @@ const VendorAssignmentModal = ({ open, onClose, editData, onSuccess, viewOnly = 
         </form>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 rounded-b-2xl">
           <button
             type="button"
             className="bg-white hover:bg-slate-100 text-slate-700 font-bold py-2 px-4 rounded-lg border border-slate-300"

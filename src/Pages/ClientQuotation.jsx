@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { getClientQuotations, updateClientQuotationStatus, getClientQuotationById, getClientQuotationReport, getClientQuotationItemsReport } from "../services/salesService";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { FaPlus, FaSearch, FaEye, FaEdit, FaPaperPlane, FaCheck, FaFileExcel } from "react-icons/fa";
+import { FaPlus, FaSearch, FaEye, FaEdit, FaPaperPlane, FaCheck, FaFileExcel, FaTimes } from "react-icons/fa";
 import ClientQuotationModal from "../components/sales/ClientQuotationModal";
 import UpdateGstModal from "../components/sales/UpdateGstModal";
 import ClientQuotationDetailsModal from "../components/sales/ClientQuotationDetailsModal";
@@ -259,10 +259,10 @@ const ClientQuotation = () => {
     const handleStatusUpdate = (id, status) => {
         setConfirmMessage(`Are you sure you want to mark this quotation as ${status}?`);
         setConfirmConfig({
-            icon: status === 'SENT' ? FaPaperPlane : FaCheck,
-            confirmButtonClass: status === 'SENT' ? "bg-indigo-600 hover:bg-indigo-700" : "bg-green-600 hover:bg-green-700",
-            iconBgClass: status === 'SENT' ? "bg-indigo-100 text-indigo-600" : "bg-green-100 text-green-600",
-            confirmText: status === 'SENT' ? "Send Quotation" : "Accept Quotation"
+            icon: status === 'SENT' ? FaPaperPlane : (status === 'REJECTED' ? FaTimes : FaCheck),
+            confirmButtonClass: status === 'SENT' ? "bg-indigo-600 hover:bg-indigo-700" : (status === 'REJECTED' ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"),
+            iconBgClass: status === 'SENT' ? "bg-indigo-100 text-indigo-600" : (status === 'REJECTED' ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"),
+            confirmText: status === 'SENT' ? "Send Quotation" : (status === 'REJECTED' ? "Reject Quotation" : "Accept Quotation")
         });
 
         setConfirmAction(() => async () => {
@@ -345,7 +345,7 @@ const ClientQuotation = () => {
                                 <option value="DRAFT">Draft</option>
                                 <option value="SENT">Sent</option>
                                 <option value="ACCEPTED">Accepted</option>
-                                {/* <option value="REJECTED">Rejected</option> */}
+                                <option value="REJECTED">Rejected</option>
                             </select>
                         </div>
                         <div className="flex-1 min-w-55">
@@ -439,7 +439,7 @@ const ClientQuotation = () => {
                                                     onClick={() => handleStatusUpdate(item.id, 'SENT')}
                                                     disabled={item.status !== 'DRAFT'}
                                                     className="p-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-full transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                                                    title="Send Quotation"
+                                                    title="Quotation Send"
                                                 >
                                                     <FaPaperPlane />
                                                 </button>
@@ -447,9 +447,17 @@ const ClientQuotation = () => {
                                                     onClick={() => handleStatusUpdate(item.id, 'ACCEPTED')}
                                                     disabled={item.status !== 'SENT'}
                                                     className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-full transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                                                    title="Accept Quotation"
+                                                    title="Quotation Accepted"
                                                 >
                                                     <FaCheck />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleStatusUpdate(item.id, 'REJECTED')}
+                                                    disabled={item.status !== 'SENT'}
+                                                    className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                                    title="Quotation Rejected"
+                                                >
+                                                    <FaTimes />
                                                 </button>
                                             </div>
                                         </td>

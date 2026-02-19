@@ -11,6 +11,7 @@ import {
   FaChartLine,
   FaTrophy,
   FaBoxOpen,
+  FaList,
 } from "react-icons/fa";
 import { BiImport } from "react-icons/bi";
 import { RiCustomerService2Fill } from "react-icons/ri";
@@ -93,6 +94,27 @@ export default function Sidebar({ isOpen }) {
             { to: "/sales/sales-products", label: "Product Analysis", icon: <FaBoxOpen /> },
             { to: "/sales/client-query", label: "Client Query", icon: <FaUserTie /> },
             { to: "/sales/client-quotation", label: "Client Quotation", icon: <FaUserTie /> },
+            // Nested Group: Work Order
+            {
+              label: "Work Order",
+              icon: <FaFileAlt />,
+              items: [
+                { to: "/sales/create-work-order", label: "Create Work Order", icon: <BiSolidPurchaseTag /> },
+                { to: "/sales/work-orders", label: "Work Order List", icon: <FaList /> },
+                // You can add list view here later, e.g., { to: "/sales/work-orders", label: "Work Order List", icon: ... }
+              ]
+            },
+            {
+              label: "Work Order Bills",
+              icon: <FaFileAlt />,
+              items: [
+                { to: "/sales/billing-dashboard", label: "Billing Dashboard", icon: <BiSolidPurchaseTag /> },  
+                { to: "/sales/billing-analytics", label: "Billing Analytics", icon: <BiSolidPurchaseTag /> },  
+                { to: "/sales/create-wo-bill", label: "Create WO Bill", icon: <BiSolidPurchaseTag /> },
+                { to: "/sales/wo-bills", label: "WO Bills List", icon: <FaList /> },
+                // You can add list view here later, e.g., { to: "/sales/work-orders", label: "Work Order List", icon: ... }
+              ]
+            },
           ]}
         />
         <SidebarLink to="/direct-purchase" label="Direct Purchase" icon={<BiSolidPurchaseTag />} isOpen={isOpen} />
@@ -145,9 +167,15 @@ function SidebarDropdown({ label, icon, isOpen, items }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const location = useLocation();
 
-  const isAnyChildActive = items.some(
-    (item) => location.pathname === item.to
-  );
+  // Helper to check active state recursively
+  const checkActive = (navItems) => {
+    return navItems.some(item => {
+      if (item.items) return checkActive(item.items);
+      return location.pathname === item.to;
+    });
+  };
+
+  const isAnyChildActive = checkActive(items);
 
   // ✅ derived expansion — no effect, no warning
   const expanded = isOpen && isExpanded;
@@ -182,21 +210,36 @@ function SidebarDropdown({ label, icon, isOpen, items }) {
 
       {expanded && (
         <div className="ml-4 pl-3 border-l-2 border-slate-800 space-y-1">
-          {items.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all
-                ${isActive
-                  ? "bg-blue-600/10 text-blue-400 font-semibold"
-                  : "text-slate-400 hover:bg-slate-800 hover:text-white"}`
-              }
-            >
-              <span className="text-base opacity-70">{item.icon}</span>
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
+          {items.map((item, index) => {
+            // Check if it is a sub-section (nested items) - RECURSIVE RENDER
+            if (item.items) {
+              return (
+                <SidebarDropdown
+                  key={index}
+                  label={item.label}
+                  icon={item.icon}
+                  isOpen={isOpen}
+                  items={item.items}
+                />
+              );
+            }
+            // Standard Link
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all
+                    ${isActive
+                    ? "bg-blue-600/10 text-blue-400 font-semibold"
+                    : "text-slate-400 hover:bg-slate-800 hover:text-white"}`
+                }
+              >
+                <span className="text-base opacity-70">{item.icon}</span>
+                <span>{item.label}</span>
+              </NavLink>
+            );
+          })}
         </div>
       )}
     </div>

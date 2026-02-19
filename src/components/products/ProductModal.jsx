@@ -122,7 +122,7 @@ export default function ProductModal({
 
                         <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                Item Code
+                                Item Code *
                             </label>
                             <input
                                 name="item_code"
@@ -137,7 +137,7 @@ export default function ProductModal({
 
                         <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                Item Name
+                                Item Name *
                             </label>
                             <input
                                 name="item_name"

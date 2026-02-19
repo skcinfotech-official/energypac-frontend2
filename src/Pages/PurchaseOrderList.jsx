@@ -354,6 +354,7 @@ const PurchaseOrderList = () => {
                 open={modalOpen}
                 onClose={() => setModalOpen(false)}
                 data={selectedPO}
+                onShowAlert={(type, message) => setToast({ open: true, type, message })}
             />
             {/* REPORT MODAL */}
             {showReportModal && (

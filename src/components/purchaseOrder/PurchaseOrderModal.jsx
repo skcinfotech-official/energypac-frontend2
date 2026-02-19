@@ -1,10 +1,12 @@
 import { useRef, useEffect, useState } from "react";
-import { FaTimes, FaFileInvoice, FaBuilding, FaBoxOpen } from "react-icons/fa";
+import { FaTimes, FaFileInvoice, FaBuilding, FaBoxOpen, FaCheckCircle, FaFileAlt, FaPrint } from "react-icons/fa";
+import { pdf } from "@react-pdf/renderer";
+import PurchaseOrderPDF from "./PurchaseOrderPDF";
 import { markItemPurchased, getPurchaseOrder } from "../../services/purchaseOrderService";
 import AlertToast from "../ui/AlertToast";
 import ConfirmDialog from "../ui/ConfirmDialog";
 
-const PurchaseOrderModal = ({ open, onClose, data }) => {
+const PurchaseOrderModal = ({ open, onClose, data, onShowAlert }) => {
     const modalRef = useRef(null);
 
     // Close on escape key
@@ -22,9 +24,9 @@ const PurchaseOrderModal = ({ open, onClose, data }) => {
     const [items, setItems] = useState([]);
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [processing, setProcessing] = useState(false);
+    const [generatingPdf, setGeneratingPdf] = useState(false);
 
     // UI State
-    const [toast, setToast] = useState({ open: false, type: "success", message: "" });
     const [showConfirm, setShowConfirm] = useState(false);
 
     // ... imports
@@ -74,7 +76,7 @@ const PurchaseOrderModal = ({ open, onClose, data }) => {
 
     const handleProceed = () => {
         if (selectedIds.size === 0) {
-            setToast({ open: true, type: "error", message: "Select items to mark as received" });
+            onShowAlert("error", "Select items to mark as received");
             return;
         }
         setShowConfirm(true);
@@ -111,9 +113,24 @@ const PurchaseOrderModal = ({ open, onClose, data }) => {
         setShowConfirm(false);
 
         if (errors === 0) {
-            setToast({ open: true, type: "success", message: `${successCount} items marked as purchased successfully.` });
+            onShowAlert("success", `${successCount} items marked as purchased successfully.`);
         } else {
-            setToast({ open: true, type: "warning", message: `Marked ${successCount} items. Failed: ${errors}` });
+            onShowAlert("warning", `Marked ${successCount} items. Failed: ${errors}`);
+        }
+    };
+
+    const handlePrint = async () => {
+        if (!poData) return;
+        setGeneratingPdf(true);
+        try {
+            const blob = await pdf(<PurchaseOrderPDF details={poData} />).toBlob();
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+        } catch (error) {
+            console.error("Error generating PDF:", error);
+            if (onShowAlert) onShowAlert("error", "Failed to generate PDF");
+        } finally {
+            setGeneratingPdf(false);
         }
     };
 
@@ -139,12 +156,23 @@ const PurchaseOrderModal = ({ open, onClose, data }) => {
                             <p className="text-sm text-slate-500 font-mono">{poData?.po_number || data?.po_number}</p>
                         </div>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
-                    >
-                        <FaTimes />
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handlePrint}
+                            disabled={generatingPdf}
+                            className="flex items-center gap-2 px-3 py-1.5 text-slate-700 hover:text-blue-500 text-sm font-semibold rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50"
+                            title="Print / Preview PDF"
+                        >
+                            {generatingPdf ? <div className="animate-spin h-4 w-4 border-2 border-blue-600 rounded-full border-t-transparent"></div> : <FaPrint size={20} />}
+                            
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                        >
+                            <FaTimes />
+                        </button>
+                    </div>
                 </div>
 
                 {/* SCROLLABLE CONTENT */}
@@ -287,14 +315,12 @@ const PurchaseOrderModal = ({ open, onClose, data }) => {
                 loading={processing}
                 onCancel={() => setShowConfirm(false)}
                 onConfirm={processBatchPurchase}
+                icon={FaCheckCircle}
+                confirmButtonClass="bg-blue-600 hover:bg-blue-700"
+                iconBgClass="bg-blue-100 text-blue-600"
             />
 
-            <AlertToast
-                open={toast.open}
-                type={toast.type}
-                message={toast.message}
-                onClose={() => setToast({ ...toast, open: false })}
-            />
+
         </div>
     );
 };

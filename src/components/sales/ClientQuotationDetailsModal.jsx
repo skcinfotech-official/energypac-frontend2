@@ -2,12 +2,27 @@
 import { useState, useEffect } from "react";
 import { FaTimes, FaFileInvoiceDollar, FaPrint } from "react-icons/fa";
 import { getClientQuotationSummary } from "../../services/salesService";
-import { PDFDownloadLink } from "@react-pdf/renderer";
+import { pdf } from "@react-pdf/renderer";
 import ClientQuotationPDF from "./ClientQuotationPDF";
 
 const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
     const [details, setDetails] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [generatingPdf, setGeneratingPdf] = useState(false);
+
+    const handlePrint = async () => {
+        if (!details) return;
+        setGeneratingPdf(true);
+        try {
+            const blob = await pdf(<ClientQuotationPDF quotation={details} />).toBlob();
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+        } catch (error) {
+            console.error("Error generating PDF:", error);
+        } finally {
+            setGeneratingPdf(false);
+        }
+    };
 
     useEffect(() => {
         if (isOpen && quotation?.id) {
@@ -41,14 +56,14 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
                     </h2>
                     <div className="flex items-center gap-2">
                         {details && (
-                            <PDFDownloadLink
-                                document={<ClientQuotationPDF quotation={details} />}
-                                fileName={`Quotation_${details.quotation_number}.pdf`}
+                            <button
+                                onClick={handlePrint}
+                                disabled={generatingPdf}
                                 className="p-2 text-slate-500 hover:text-blue-600 hover:bg-white rounded-full transition-all"
-                                title="Download PDF"
+                                title="Print / Preview PDF"
                             >
-                                {({ loading }) => (loading ? <span className="text-xs">...</span> : <FaPrint />)}
-                            </PDFDownloadLink>
+                                {generatingPdf ? <div className="animate-spin h-4 w-4 border-2 border-blue-600 rounded-full border-t-transparent"></div> : <FaPrint />}
+                            </button>
                         )}
                         <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-full transition-all">
                             <FaTimes />
@@ -74,6 +89,10 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
                                         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Client</p>
                                         <p className="text-lg font-medium text-slate-900">{details.client_name}</p>
                                     </div>
+                                    <div className="mt-2">
+                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Address</p>
+                                        <p className="text-sm font-medium text-slate-700">{details.address}</p>
+                                    </div>
                                 </div>
                                 <div className="text-right">
                                     <div className={`inline-flex px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide mb-4 ${details.status === 'DRAFT' ? 'bg-gray-100 text-gray-600' :
@@ -84,7 +103,14 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
                                         {details.status}
                                     </div>
                                     <p className="text-sm text-slate-500">Valid until: <span className="font-semibold text-slate-700">{details.validity_date}</span></p>
-                                </div>
+                                    <div className="mt-10">
+                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Contact</p>
+                                        <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider">{details.contact_person}</p>
+                                        <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider">{details.phone}</p>
+                                        <p className="text-sm font-medium text-slate-700">{details.email}</p>
+                                    </div>
+                                </div>  
+                                
                             </div>
 
                             {/* Terms Grid */}
@@ -111,6 +137,7 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
                                         <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                                             <tr>
                                                 <th className="px-4 py-3">Item</th>
+                                                <th className="px-4 py-3 w-32 border-l border-slate-100">HSN Code</th>
                                                 <th className="px-4 py-3 w-32 border-l border-slate-100">Code</th>
                                                 <th className="px-4 py-3 w-24 text-right border-l border-slate-100">Qty</th>
                                                 <th className="px-4 py-3 w-32 text-right border-l border-slate-100">Rate</th>
@@ -124,6 +151,7 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
                                                         {item.item_name}
                                                         {item.from_stock && <span className="ml-2 text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100">STOCK</span>}
                                                     </td>
+                                                    <td className="px-4 py-3 text-slate-500 font-mono text-xs border-l border-slate-100">{item.hsn_code}</td>
                                                     <td className="px-4 py-3 text-slate-500 font-mono text-xs border-l border-slate-100">{item.item_code}</td>
                                                     <td className="px-4 py-3 text-right border-l border-slate-100">{item.quantity} {item.unit}</td>
                                                     <td className="px-4 py-3 text-right border-l border-slate-100">{Number(item.rate).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>

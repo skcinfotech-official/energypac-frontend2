@@ -13,188 +13,252 @@ Font.register({
 });
 
 const styles = StyleSheet.create({
-    page: { padding: 40, fontFamily: 'Roboto', fontSize: 10, color: '#333' },
-    header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, borderBottomWidth: 1, borderBottomColor: '#eee', paddingBottom: 20 },
-    companyDetails: { width: '50%' },
-    titleSection: { width: '40%', alignItems: 'flex-end' },
-    companyName: { fontSize: 24, fontWeight: 'bold', color: '#1a56db', marginBottom: 4 },
-    companySub: { fontSize: 10, color: '#666', marginBottom: 2 },
-    docTitle: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 10 },
-    row: { flexDirection: 'row', marginBottom: 4 },
-    label: { width: 80, color: '#666', textAlign: 'right', marginRight: 10 },
-    value: { fontWeight: 'bold', textAlign: 'right' },
-    sectionTitle: { fontSize: 12, fontWeight: 'bold', color: '#1a56db', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 },
-    clientInfo: { marginBottom: 20 },
-    table: { marginTop: 20, marginBottom: 20 },
-    tableHeader: { flexDirection: 'row', backgroundColor: '#F8FAFC', paddingVertical: 8, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: '#cbd5e1' },
-    tableRow: { flexDirection: 'row', paddingVertical: 8, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-    col1: { width: '5%' },
-    col2: { width: '40%' },
-    col3: { width: '15%', textAlign: 'right' },
-    col4: { width: '20%', textAlign: 'right' },
-    col5: { width: '20%', textAlign: 'right' },
-    headerCell: { fontSize: 9, fontWeight: 'bold', color: '#475569' },
-    cell: { fontSize: 9, color: '#334155' },
-    totals: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 },
-    totalBox: { width: '50%' },
-    totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-    grandTotal: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 2, borderTopColor: '#1a56db', marginTop: 4, paddingTop: 4, fontWeight: 'bold', color: '#1a56db', fontSize: 12 },
-    footer: { position: 'absolute', bottom: 40, left: 40, right: 40, textAlign: 'center', borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 20, color: '#94a3b8', fontSize: 8 },
-    remarksSection: {
-        marginTop: 20,
-        marginBottom: 20,
-        padding: 10,
-        backgroundColor: '#F8FAFC',
-        borderRadius: 4
-    }
+    page: { padding: 30, paddingBottom: 60, fontFamily: 'Roboto', fontSize: 9, color: '#000' },
+
+    // 1. Letterhead
+    headerCenter: { alignItems: 'center', marginBottom: 15, borderBottomWidth: 1, borderBottomColor: '#000', paddingBottom: 10 },
+    companyName: { fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
+    companySub: { fontSize: 9, marginBottom: 2 },
+    docTitle: { fontSize: 12, fontWeight: 'bold', textDecoration: 'underline', textAlign: 'center', marginBottom: 15 },
+
+    // 2. Top Info Sections
+    topSection: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
+    clientInfo: { width: '45%' },
+    detailsBox: { width: '50%', borderWidth: 1, borderColor: '#000' },
+    detailsRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000' },
+    detailsLabel: { width: '35%', padding: 4, fontWeight: 'bold', borderRightWidth: 1, borderRightColor: '#000' },
+    detailsValue: { width: '65%', padding: 4 },
+
+    // 3. Subject & Attention
+    textBlock: { marginBottom: 4, flexDirection: 'row' },
+    boldLabel: { fontWeight: 'bold', marginRight: 5 },
+
+    // 4. Table Structure
+    table: { marginTop: 15, borderWidth: 1, borderColor: '#000' },
+    tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', fontWeight: 'bold' },
+    tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000' },
+    col1: { width: '8%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
+    col2: { width: '40%', padding: 4, borderRightWidth: 1, borderRightColor: '#000' },
+    col3: { width: '12%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
+    col4: { width: '12%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
+    col5: { width: '12%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'right' },
+    col6: { width: '16%', padding: 4, textAlign: 'right' },
+
+    // 5. Totals Section
+    totalsRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000' },
+    totalsLabelBlock: { width: '84%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'right', fontWeight: 'bold' },
+    totalsValueBlock: { width: '16%', padding: 4, textAlign: 'right', fontWeight: 'bold' },
+
+    // 6. Extras
+    amountInWords: { marginTop: 10, fontWeight: 'bold', textTransform: 'uppercase' },
+    termsSection: { marginTop: 15 },
+    termsTitle: { fontWeight: 'bold', textDecoration: 'underline', marginBottom: 5 },
+    signatureSection: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 50 },
+    signatureBox: { alignItems: 'center' },
+    signatureLine: { width: 150, borderTopWidth: 1, borderTopColor: '#000', paddingTop: 5, textAlign: 'center', fontWeight: 'bold' },
+
+    pageFooter: {
+        position: 'absolute',
+        bottom: 16,
+        left: 30,
+        right: 30,
+        textAlign: 'center',
+        fontSize: 9,
+        fontWeight: 'bold',
+    },
+
+    watermarkContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    watermarkText: {
+        fontSize: 70,
+        fontWeight: 'bold',
+        color: '#75b4d1',
+        transform: 'rotate(-45deg)',
+        opacity: 0.35,
+        letterSpacing: 10,
+    },
 });
 
 const BillPDF = ({ details }) => {
     const formatCurrency = (val) => Number(val || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 });
-    const formatDate = (date) => date ? new Date(date).toLocaleDateString('en-GB') : '';
+    const formatDate = (date) => date ? new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.') : '';
 
     return (
         <Document>
             <Page size="A4" style={styles.page}>
-                <View style={styles.header}>
-                    <View style={styles.companyDetails}>
-                        <Text style={styles.companyName}>ENERGYPAC</Text>
-                        <Text style={styles.companySub}>Leading Energy Solutions Provider</Text>
-                        <Text style={styles.companySub}>GSTIN: 27ABCDE1234F1Z5</Text>
-                    </View>
-                    <View style={styles.titleSection}>
-                        <Text style={styles.docTitle}>INVOICE</Text>
-                        <View style={styles.row}>
-                            <Text style={styles.label}>Bill No:</Text>
-                            <Text style={styles.value}>{details.bill_number}</Text>
-                        </View>
-                        <View style={styles.row}>
-                            <Text style={styles.label}>Date:</Text>
-                            <Text style={styles.value}>{formatDate(details.bill_date)}</Text>
-                        </View>
-                        <View style={styles.row}>
-                            <Text style={styles.label}>WO Ref:</Text>
-                            <Text style={styles.value}>{details.wo_number}</Text>
-                        </View>
-                        <View style={styles.row}>
-                            <Text style={styles.label}>Type:</Text>
-                            <Text style={styles.value}>{details.bill_type || 'DOMESTIC'}</Text>
-                        </View>
-                    </View>
+
+                {/* DIAGONAL WATERMARK */}
+                <View style={styles.watermarkContainer} fixed>
+                    <Text style={styles.watermarkText}>ENERGYPAC</Text>
                 </View>
 
-                <View style={styles.clientInfo}>
-                    <Text style={styles.sectionTitle}>Bill To</Text>
-                    <Text style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 2 }}>{details.client_name}</Text>
-                    {details.contact_person && <Text style={styles.companySub}>{details.contact_person}</Text>}
-                    {details.email && <Text style={styles.companySub}>{details.email}</Text>}
-                    {details.phone && <Text style={styles.companySub}>{details.phone}</Text>}
-                    {details.address && <Text style={[styles.companySub, { marginTop: 4, width: '60%' }]}>{details.address}</Text>}
+                {/* 1. Letterhead */}
+                <View style={styles.headerCenter}>
+                    <Text style={styles.companyName}>ENERGYPAC ENGINEERING LTD.</Text>
+                    <Text style={styles.companySub}>KB-22, "Bhakta Tower", 4th Floor, Sector -III,</Text>
+                    <Text style={styles.companySub}>Salt Lake City, KOLKATA - 700 098, INDIA.</Text>
+                    <Text style={styles.companySub}>Tel.: 033 4006 5853 | GSTIN: 19AABCE4975G1ZE | FCRN: F06234</Text>
+                    <Text style={styles.companySub}>E-mail: energypackolkata@gmail.com | eel@energypacindia.in</Text>
                 </View>
 
-                <View style={styles.table}>
-                    <View style={styles.tableHeader}>
-                        <Text style={[styles.headerCell, styles.col1]}>#</Text>
-                        <Text style={[styles.headerCell, styles.col2]}>Item Description</Text>
-                        <Text style={[styles.headerCell, styles.col3]}>Qty</Text>
-                        <Text style={[styles.headerCell, styles.col4]}>Rate</Text>
-                        <Text style={[styles.headerCell, styles.col5]}>Amount</Text>
+                <Text style={styles.docTitle}>INVOICE</Text>
+
+                {/* 2. Client & Bill Details */}
+                <View style={styles.topSection}>
+                    <View style={styles.clientInfo}>
+                        <Text style={{ fontWeight: 'bold', marginBottom: 4 }}>To,</Text>
+                        <Text style={{ fontWeight: 'bold', fontSize: 10 }}>{details.client_name}</Text>
+                        <Text>{details.address}</Text>
+                        {details.phone && <Text>Ph: {details.phone}</Text>}
+                        {details.email && <Text>Email: {details.email}</Text>}
                     </View>
-                    {details.items?.map((item, index) => (
-                        <View key={index} style={styles.tableRow}>
-                            <Text style={[styles.cell, styles.col1]}>{index + 1}</Text>
-                            <View style={styles.col2}>
-                                <Text style={[styles.cell, { fontWeight: 'bold' }]}>{item.item_name}</Text>
-                                {item.item_code ? <Text style={[styles.cell, { fontSize: 8, color: '#64748B' }]}>{item.item_code}</Text> : null}
-                                {/* Include description if it's not the same as item name */}
-                                {item.description && item.description !== item.item_name && <Text style={[styles.cell, { fontSize: 8, color: '#64748B' }]}>{item.description}</Text>}
-                            </View>
-                            <Text style={[styles.cell, styles.col3]}>{item.delivered_quantity} {item.unit}</Text>
-                            <Text style={[styles.cell, styles.col4]}>{formatCurrency(item.rate)}</Text>
-                            <Text style={[styles.cell, styles.col5]}>{formatCurrency(item.amount)}</Text>
-                        </View>
-                    ))}
-                </View>
 
-                <View style={styles.totals}>
-                    <View style={styles.totalBox}>
-                        <View style={styles.totalRow}>
-                            <Text style={styles.companySub}>Subtotal</Text>
-                            <Text style={styles.value}>{formatCurrency(details.subtotal)}</Text>
+                    <View style={styles.detailsBox}>
+                        <View style={styles.detailsRow}>
+                            <Text style={styles.detailsLabel}>BILL NO:</Text>
+                            <Text style={styles.detailsValue}>{details.bill_number}</Text>
                         </View>
-
-                        {/* TAXES */}
-                        {parseFloat(details.cgst_amount) > 0 && (
-                            <View style={styles.totalRow}>
-                                <Text style={styles.companySub}>CGST ({details.cgst_percentage}%)</Text>
-                                <Text style={styles.value}>{formatCurrency(details.cgst_amount)}</Text>
-                            </View>
-                        )}
-                        {parseFloat(details.sgst_amount) > 0 && (
-                            <View style={styles.totalRow}>
-                                <Text style={styles.companySub}>SGST ({details.sgst_percentage}%)</Text>
-                                <Text style={styles.value}>{formatCurrency(details.sgst_amount)}</Text>
-                            </View>
-                        )}
-                        {parseFloat(details.igst_amount) > 0 && (
-                            <View style={styles.totalRow}>
-                                <Text style={styles.companySub}>IGST ({details.igst_percentage}%)</Text>
-                                <Text style={styles.value}>{formatCurrency(details.igst_amount)}</Text>
-                            </View>
-                        )}
-                        {/* Total Tax */}
-                        <View style={styles.totalRow}>
-                            <Text style={styles.companySub}>Total Tax</Text>
-                            <Text style={styles.value}>{formatCurrency(details.total_gst)}</Text>
+                        <View style={styles.detailsRow}>
+                            <Text style={styles.detailsLabel}>DATE:</Text>
+                            <Text style={styles.detailsValue}>{formatDate(details.bill_date)}</Text>
                         </View>
-
-                        {/* Total Amount */}
-                        <View style={styles.grandTotal}>
-                            <Text>Total Bill Amount</Text>
-                            <Text>{formatCurrency(details.total_amount)}</Text>
+                        <View style={styles.detailsRow}>
+                            <Text style={styles.detailsLabel}>W.O. REF:</Text>
+                            <Text style={styles.detailsValue}>{details.wo_number}</Text>
                         </View>
-
-                        <View style={styles.totalRow}>
-                            <Text style={styles.companySub}>Advance Deducted</Text>
-                            <Text style={styles.value}>{formatCurrency(details.advance_deducted)}</Text>
-                        </View>
-                        {parseFloat(details.freight_cost) > 0 && (
-                            <View style={styles.totalRow}>
-                                <Text style={styles.companySub}>Freight Cost</Text>
-                                <Text style={styles.value}>{formatCurrency(details.freight_cost)}</Text>
-                            </View>
-                        )}
-                        <View style={styles.totalRow}>
-                            <Text style={[styles.companySub, { fontWeight: 'bold', color: '#1a56db' }]}>Net Payable</Text>
-                            <Text style={[styles.value, { color: '#1a56db' }]}>{formatCurrency(details.net_payable)}</Text>
-                        </View>
-                        <View style={styles.totalRow}>
-                            <Text style={styles.companySub}>Amount Paid</Text>
-                            <Text style={styles.value}>{formatCurrency(details.amount_paid)}</Text>
-                        </View>
-                        <View style={styles.totalRow}>
-                            <Text style={[styles.companySub, { fontWeight: 'bold' }]}>Balance Due</Text>
-                            <Text style={[styles.value, { color: '#dc2626' }]}>{formatCurrency(details.balance)}</Text>
+                        <View style={[styles.detailsRow, { borderBottomWidth: 0 }]}>
+                            <Text style={styles.detailsLabel}>TYPE:</Text>
+                            <Text style={styles.detailsValue}>{details.bill_type || 'DOMESTIC'}</Text>
                         </View>
                     </View>
                 </View>
 
-
-                {/* Remarks */}
-                {details.remarks && (
-                    <View style={styles.remarksSection}>
-                        <Text style={styles.sectionTitle}>Remarks</Text>
-                        <Text style={styles.companySub}>{details.remarks}</Text>
+                {/* 3. Subject & Attention */}
+                {details.contact_person && (
+                    <View style={styles.textBlock}>
+                        <Text style={styles.boldLabel}>KIND ATTENTION:</Text>
+                        <Text>{details.contact_person}</Text>
                     </View>
                 )}
 
-                <View style={styles.footer}>
-                    <Text style={styles.footerText}>Thank you for your business!</Text>
-                    <Text style={styles.footerText}>Authorized Signatory</Text>
+                {/* 4. Items Table */}
+                <View style={styles.table}>
+                    <View style={styles.tableHeader}>
+                        <Text style={styles.col1}>SL NO</Text>
+                        <Text style={styles.col2}>PRODUCT / ITEM</Text>
+                        <Text style={styles.col3}>QTY</Text>
+                        <Text style={styles.col4}>RATE</Text>
+                        <Text style={styles.col5}>AMOUNT</Text>
+                        <Text style={styles.col6}>TOTAL</Text>
+                    </View>
+
+                    {details.items?.map((item, index) => (
+                        <View key={index} style={styles.tableRow}>
+                            <Text style={styles.col1}>{index + 1}</Text>
+                            <View style={styles.col2}>
+                                <Text style={{ fontWeight: 'bold' }}>{item.item_name}</Text>
+                                {item.item_code && <Text style={{ fontSize: 8, color: '#444' }}>{item.item_code}</Text>}
+                                {item.description && item.description !== item.item_name && <Text style={{ fontSize: 8, color: '#444' }}>{item.description}</Text>}
+                            </View>
+                            <Text style={styles.col3}>{item.delivered_quantity} {item.unit}</Text>
+                            <Text style={styles.col4}>{formatCurrency(item.rate)}</Text>
+                            <Text style={styles.col5}>{formatCurrency(item.amount)}</Text>
+                            <Text style={styles.col6}>{formatCurrency(item.amount)}</Text>
+                        </View>
+                    ))}
+
+                    {/* 5. Totals */}
+                    <View style={styles.totalsRow}>
+                        <Text style={styles.totalsLabelBlock}>SUB TOTAL</Text>
+                        <Text style={styles.totalsValueBlock}>{formatCurrency(details.subtotal)}</Text>
+                    </View>
+                    {parseFloat(details.cgst_amount) > 0 && (
+                        <View style={styles.totalsRow}>
+                            <Text style={styles.totalsLabelBlock}>CGST @ {details.cgst_percentage}%</Text>
+                            <Text style={styles.totalsValueBlock}>{formatCurrency(details.cgst_amount)}</Text>
+                        </View>
+                    )}
+                    {parseFloat(details.sgst_amount) > 0 && (
+                        <View style={styles.totalsRow}>
+                            <Text style={styles.totalsLabelBlock}>SGST @ {details.sgst_percentage}%</Text>
+                            <Text style={styles.totalsValueBlock}>{formatCurrency(details.sgst_amount)}</Text>
+                        </View>
+                    )}
+                    {parseFloat(details.igst_amount) > 0 && (
+                        <View style={styles.totalsRow}>
+                            <Text style={styles.totalsLabelBlock}>IGST @ {details.igst_percentage}%</Text>
+                            <Text style={styles.totalsValueBlock}>{formatCurrency(details.igst_amount)}</Text>
+                        </View>
+                    )}
+                    <View style={styles.totalsRow}>
+                        <Text style={styles.totalsLabelBlock}>TOTAL BILL AMOUNT</Text>
+                        <Text style={styles.totalsValueBlock}>{formatCurrency(details.total_amount)}</Text>
+                    </View>
+                    <View style={styles.totalsRow}>
+                        <Text style={styles.totalsLabelBlock}>ADVANCE DEDUCTED</Text>
+                        <Text style={styles.totalsValueBlock}>{formatCurrency(details.advance_deducted)}</Text>
+                    </View>
+                    {parseFloat(details.freight_cost) > 0 && (
+                        <View style={styles.totalsRow}>
+                            <Text style={styles.totalsLabelBlock}>FREIGHT COST</Text>
+                            <Text style={styles.totalsValueBlock}>{formatCurrency(details.freight_cost)}</Text>
+                        </View>
+                    )}
+                    <View style={styles.totalsRow}>
+                        <Text style={[styles.totalsLabelBlock, { color: '#1a56db' }]}>NET PAYABLE</Text>
+                        <Text style={[styles.totalsValueBlock, { color: '#1a56db' }]}>{formatCurrency(details.net_payable)}</Text>
+                    </View>
+                    <View style={styles.totalsRow}>
+                        <Text style={styles.totalsLabelBlock}>AMOUNT PAID</Text>
+                        <Text style={styles.totalsValueBlock}>{formatCurrency(details.amount_paid)}</Text>
+                    </View>
+                    <View style={[styles.totalsRow, { borderBottomWidth: 0 }]}>
+                        <Text style={[styles.totalsLabelBlock, { color: '#dc2626' }]}>BALANCE DUE</Text>
+                        <Text style={[styles.totalsValueBlock, { color: '#dc2626' }]}>{formatCurrency(details.balance)}</Text>
+                    </View>
                 </View>
+
+                {/* Amount in Words */}
+                {details.amount_in_words && (
+                    <Text style={styles.amountInWords}>AMOUNT IN WORDS: {details.amount_in_words}</Text>
+                )}
+
+                {/* Remarks */}
+                {details.remarks && (
+                    <View style={styles.termsSection}>
+                        <Text style={styles.termsTitle}>Remarks:-</Text>
+                        <Text style={{ fontSize: 9 }}>{details.remarks}</Text>
+                    </View>
+                )}
+
+                <Text style={{ marginTop: 20 }}>Thanking You,</Text>
+
+                {/* Signatures */}
+                <View style={styles.signatureSection}>
+                    <View style={styles.signatureBox}>
+                        <Text style={styles.signatureLine}>Checked By</Text>
+                    </View>
+                    <View style={[styles.signatureBox, { alignItems: 'flex-end' }]}>
+                        <Text style={{ marginBottom: 30 }}>For Energypac Engineering Limited.</Text>
+                        <Text style={styles.signatureLine}>(Authorized Signatory)</Text>
+                    </View>
+                </View>
+
+                <Text style={styles.pageFooter}>
+                    *** This is a Computer Generated Document. No Signature Required. ***
+                </Text>
+
             </Page>
         </Document>
     );
 };
 
 export default BillPDF;
+

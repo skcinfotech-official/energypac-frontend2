@@ -6,6 +6,7 @@ import VendorViewModal from "../components/vendors/VendorViewModal";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import AlertToast from "../components/ui/AlertToast";
 import { getVendors, deleteVendor, getVendor, getVendorPerformanceReport } from "../services/vendorService";
+import PasswordConfirmModal from "../components/ui/PasswordConfirmModal";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
@@ -23,6 +24,7 @@ export default function Vendors() {
     const [showConfirm, setShowConfirm] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [selectedVendor, setSelectedVendor] = useState(null);
+    const [passwordModal, setPasswordModal] = useState({ open: false, onConfirm: null, loading: false });
 
     // View Modal State
     const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -32,6 +34,9 @@ export default function Vendors() {
     const [searchText, setSearchText] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     // "" | "active" | "inactive"
+
+    // ✅ Page state — track current page number
+    const [page, setPage] = useState(1);
 
     /* =========================
        REPORT STATE
@@ -43,19 +48,24 @@ export default function Vendors() {
     const [allVendors, setAllVendors] = useState([]);
     const [downloading, setDownloading] = useState(false);
 
-
     const [toast, setToast] = useState({
         open: false,
         type: "success",
         message: "",
     });
 
-    const fetchVendors = async (url) => {
+    /* =========================
+       FETCH — accepts explicit pageNum
+       ========================= */
+    const fetchVendors = async (pageNum = 1) => {
         try {
             setLoading(true);
 
+            // Build URL with page number when not on page 1
+            const pageUrl = pageNum > 1 ? `/api/vendors?page=${pageNum}` : null;
+
             const res = await getVendors({
-                url,
+                url: pageUrl,
                 search: searchText,
                 isActive:
                     statusFilter === "active"
@@ -65,11 +75,13 @@ export default function Vendors() {
                             : null,
             });
 
-            // Result is already normalized in service
             setVendors(res.results);
             setCount(res.count);
             setNext(res.next);
             setPrevious(res.previous);
+
+            // ✅ always sync page state
+            setPage(pageNum);
         } catch (err) {
             console.log(err);
             setToast({
@@ -82,18 +94,27 @@ export default function Vendors() {
         }
     };
 
-
+    /* =========================
+       EFFECT: search/filter change → debounce + RESET to page 1
+       (page is intentionally NOT in the dependency array)
+       ========================= */
     useEffect(() => {
         const timer = setTimeout(() => {
-            fetchVendors();
+            fetchVendors(1); // ✅ always start from page 1 when filters change
         }, 500);
         return () => clearTimeout(timer);
     }, [searchText, statusFilter]);
 
     /* =========================
+       PAGINATION HANDLER
+       ========================= */
+    const handlePageChange = (newPage) => {
+        fetchVendors(newPage);
+    };
+
+    /* =========================
        ACTION HANDLERS
        ========================= */
-
     const handleAddVendor = () => {
         setEditVendor(null);
         setOpenModal(true);
@@ -129,11 +150,6 @@ export default function Vendors() {
         }
     };
 
-    const handleSearch = () => {
-        fetchVendors();
-    };
-
-
     const handleVendorSuccess = (mode) => {
         setToast({
             open: true,
@@ -143,34 +159,40 @@ export default function Vendors() {
                     ? "Vendor updated successfully"
                     : "Vendor added successfully",
         });
-
-        fetchVendors();
+        // ✅ stay on current page after edit, go to page 1 after add
+        fetchVendors(mode === "edit" ? page : 1);
     };
 
-    const confirmDelete = async () => {
-        try {
-            setDeleting(true);
-            await deleteVendor(selectedVendor.id);
-
-            setToast({
-                open: true,
-                type: "success",
-                message: "Vendor deleted successfully",
-            });
-
-            fetchVendors();
-        } catch (err) {
-            console.log(err);
-            setToast({
-                open: true,
-                type: "error",
-                message: "Failed to delete vendor",
-            });
-        } finally {
-            setDeleting(false);
-            setShowConfirm(false);
-            setSelectedVendor(null);
-        }
+    const confirmDelete = () => {
+        setShowConfirm(false);
+        setPasswordModal({
+            open: true,
+            loading: false,
+            onConfirm: async (password) => {
+                setPasswordModal(prev => ({ ...prev, loading: true }));
+                try {
+                    const res = await deleteVendor(selectedVendor.id, { confirm_password: password });
+                    setToast({
+                        open: true,
+                        type: "success",
+                        message: res.data?.message || res.message || "Vendor deleted successfully",
+                    });
+                    fetchVendors(1); // ✅ go to page 1 after delete
+                    setPasswordModal({ open: false });
+                } catch (err) {
+                    console.log(err);
+                    const errorMsg = err.response?.data?.message || err.response?.data?.detail || "Failed to delete vendor";
+                    setToast({
+                        open: true,
+                        type: "error",
+                        message: errorMsg,
+                    });
+                    setPasswordModal(prev => ({ ...prev, loading: false }));
+                } finally {
+                    setSelectedVendor(null);
+                }
+            }
+        });
     };
 
     const handleDownloadReport = async () => {
@@ -208,7 +230,6 @@ export default function Vendors() {
             const wb = XLSX.utils.book_new();
 
             const sheetData = [
-                // --- HEADER ---
                 [data.report_type || "Vendor Performance Report"],
                 ["Generated At:", data.generated_at ? new Date(data.generated_at).toLocaleString() : new Date().toLocaleString()],
                 ["Date Range:", `${data.date_range?.start_date} to ${data.date_range?.end_date}`],
@@ -216,7 +237,6 @@ export default function Vendors() {
                 ["SUMMARY"],
                 ["Total Vendors:", data.total_vendors || 0],
                 [],
-                // --- TABLE HEADERS ---
                 [
                     "Vendor Code", "Vendor Name", "Contact Person", "Phone", "Email",
                     "Quotations Submitted", "Quotations Selected", "Selection Rate (%)",
@@ -300,7 +320,6 @@ export default function Vendors() {
                 </div>
 
                 {/* SEARCH & FILTER */}
-                {/* SEARCH & FILTER */}
                 <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
                     <div className="flex flex-wrap gap-4 items-end">
 
@@ -332,11 +351,8 @@ export default function Vendors() {
                                 <option value="inactive">Inactive</option>
                             </select>
                         </div>
-
-
                     </div>
                 </div>
-
 
                 {/* TABLE */}
                 <div className="overflow-x-auto">
@@ -371,7 +387,7 @@ export default function Vendors() {
                             )}
 
                             {vendors.map((v) => (
-                                <tr key={v.id} className="odd:bg-slate-100 even:bg-white hover:bg-slate-200   transition">
+                                <tr key={v.id} className="odd:bg-slate-100 even:bg-white hover:bg-slate-200 transition">
                                     <td className="px-6 py-4 font-mono text-blue-600 font-semibold">
                                         {v.vendor_code}
                                     </td>
@@ -425,15 +441,17 @@ export default function Vendors() {
                 {/* PAGINATION */}
                 <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
                     <button
-                        onClick={() => previous && fetchVendors(previous)}
+                        onClick={() => previous && handlePageChange(page - 1)}
                         disabled={!previous}
                         className="text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40"
                     >
                         ← Previous
                     </button>
 
+                    <span className="text-xs text-slate-400">Page {page}</span>
+
                     <button
-                        onClick={() => next && fetchVendors(next)}
+                        onClick={() => next && handlePageChange(page + 1)}
                         disabled={!next}
                         className="text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40"
                     >
@@ -477,6 +495,16 @@ export default function Vendors() {
                 message={toast.message}
                 onClose={() => setToast({ ...toast, open: false })}
             />
+
+            <PasswordConfirmModal
+                open={passwordModal.open}
+                loading={passwordModal.loading}
+                title="Confirm Delete"
+                message={`Please enter your password to delete "${selectedVendor?.vendor_name}".`}
+                onConfirm={passwordModal.onConfirm}
+                onCancel={() => setPasswordModal({ open: false })}
+            />
+
             {/* REPORT MODAL */}
             {showReportModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
@@ -536,7 +564,6 @@ export default function Vendors() {
                                         checked={reportType === "vendor"}
                                         onChange={(e) => {
                                             setReportType(e.target.value);
-                                            // Ideally fetch all vendors here if list is incomplete
                                             if (allVendors.length === 0) {
                                                 getVendors({ isActive: true }).then(res => {
                                                     setAllVendors(res.results || []);

@@ -120,7 +120,7 @@ export default function ProductModal({
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-                        <div>
+                        {/* <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1">
                                 Item Code *
                             </label>
@@ -129,11 +129,11 @@ export default function ProductModal({
                                 value={form.item_code}
                                 placeholder="e.g. ITEM007"
                                 onChange={handleChange}
-                                required
+                                // required
                                 className="input"
                             />
 
-                        </div>
+                        </div> */}
 
                         <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1">

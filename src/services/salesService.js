@@ -477,9 +477,9 @@ export const markBillAsPaid = async (id, payload) => {
     }
 };
 
-export const cancelBill = async (id) => {
+export const cancelBill = async (id, payload = {}) => {
     try {
-        const response = await axiosSecure.post(`/api/bills/${id}/cancel`);
+        const response = await axiosSecure.post(`/api/bills/${id}/cancel`, payload);
         return response.data;
     } catch (error) {
         console.error("Error canceling bill:", error);

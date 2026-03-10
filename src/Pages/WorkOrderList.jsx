@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { FaSearch, FaEye, FaEdit, FaFileExcel } from "react-icons/fa";
 import WorkOrderDetailsModal from "../components/sales/WorkOrderDetailsModal";
@@ -31,14 +31,14 @@ const WorkOrderList = () => {
     // Report State
     const [showReportModal, setShowReportModal] = useState(false);
     const [downloading, setDownloading] = useState(false);
-    const [reportType, setReportType] = useState("work_order"); // "work_order", "delivery_analysis"
+    const [reportType, setReportType] = useState("work_order");
     const [reportParams, setReportParams] = useState({
         start_date: "",
         end_date: "",
         status: ""
     });
 
-    // Handle URL Params for deep linking mainly from Dashboard
+    // Handle URL Params for deep linking from Dashboard
     useEffect(() => {
         const id = searchParams.get("id");
         if (id) {
@@ -51,28 +51,55 @@ const WorkOrderList = () => {
         }
     }, [searchParams]);
 
-    useEffect(() => {
-        const timeoutId = setTimeout(() => {
-            fetchWorkOrders();
-        }, 500); // 500ms debounce
-
-        return () => clearTimeout(timeoutId);
-    }, [currentPage, searchQuery, statusFilter]);
-
-    const fetchWorkOrders = async () => {
+    /* =========================
+       FETCH — accepts explicit pageNum
+       ========================= */
+    const fetchWorkOrders = useCallback(async (pageNum = 1) => {
         setLoading(true);
         try {
-            const data = await getWorkOrders(currentPage, searchQuery, statusFilter);
+            const data = await getWorkOrders(pageNum, searchQuery, statusFilter);
             setWorkOrders(data.results || []);
             setTotalCount(data.count || 0);
             setNext(data.next);
             setPrevious(data.previous);
+            setCurrentPage(pageNum);
         } catch (error) {
             console.error("Failed to fetch work orders", error);
             toast.error("Failed to load work orders");
         } finally {
             setLoading(false);
         }
+    }, [searchQuery, statusFilter]);
+
+    /* =========================
+       EFFECT 1: search or filter changed
+       → debounce 500ms → reset to page 1
+       (currentPage is intentionally NOT in deps)
+       ========================= */
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            fetchWorkOrders(1); // ✅ always page 1 when filters change
+        }, 500);
+        return () => clearTimeout(timeoutId);
+    }, [searchQuery, statusFilter]);
+
+    /* =========================
+       EFFECT 2: page navigation
+       → immediate fetch, no debounce needed
+       Only fires when user explicitly clicks prev/next
+       ========================= */
+    useEffect(() => {
+        // Skip the initial render — effect 1 handles first load
+        // This only fires when currentPage changes via handlePageChange
+        fetchWorkOrders(currentPage);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentPage]);
+
+    /* =========================
+       PAGE NAVIGATION
+       ========================= */
+    const handlePageChange = (newPage) => {
+        setCurrentPage(newPage); // triggers effect 2
     };
 
     const handleViewDetails = async (id) => {
@@ -84,7 +111,7 @@ const WorkOrderList = () => {
         } catch (error) {
             console.error("Failed to fetch work order details", error);
             toast.error("Failed to load work order details");
-            setSelectedWorkOrderId(null); // Clear ID on error
+            setSelectedWorkOrderId(null);
         } finally {
             setDetailsLoading(false);
         }
@@ -101,8 +128,7 @@ const WorkOrderList = () => {
     };
 
     const handleAdvanceUpdateSuccess = () => {
-        fetchWorkOrders(); // Refresh list to reflect new advance? Or maybe UI doesn't need to change unless advance is shown.
-        // It's good practice to refresh data.
+        fetchWorkOrders(currentPage);
         setAdvanceModalOpen(false);
         setSelectedWorkOrderForAdvance(null);
     };
@@ -129,21 +155,16 @@ const WorkOrderList = () => {
                 const details = data.work_order_details || [];
 
                 finalSheetData = [
-                    // --- HEADER ---
                     [data.report_type || "Work Order Delivery Analysis"],
                     ["Generated At:", data.generated_at ? new Date(data.generated_at).toLocaleString() : new Date().toLocaleString()],
                     ["Date Range:", `${data.date_range?.start_date || "N/A"} to ${data.date_range?.end_date || "N/A"}`],
                     [],
-
-                    // --- OVERALL SUMMARY ---
                     ["OVERALL SUMMARY"],
                     ["Total Work Orders:", overall.total_work_orders || 0],
                     ["Completed WOs:", overall.completed_wos || 0],
                     ["Partially Delivered WOs:", overall.partially_delivered_wos || 0],
                     ["Pending WOs:", overall.pending_wos || 0],
                     [],
-
-                    // --- ITEM SUMMARY ---
                     ["ITEM SUMMARY"],
                     ["Total Items:", itemSummary.total_items || 0],
                     ["Fully Delivered Items:", itemSummary.fully_delivered_items || 0],
@@ -151,47 +172,27 @@ const WorkOrderList = () => {
                     ["Pending Items:", itemSummary.pending_items || 0],
                     ["Delivery Rate:", (itemSummary.delivery_rate || 0) + "%"],
                     [],
-
-                    // --- STOCK ANALYSIS ---
                     ["STOCK ANALYSIS"],
                     ["In Stock Pending Items:", stock.in_stock_pending_items || 0],
                     ["Out of Stock Pending Items:", stock.out_of_stock_pending_items || 0],
                     [],
-
-                    // --- DETAILS TABLE ---
-                    [
-                        "WO Number", "Client Name", "Total Items",
-                        "Fully Delivered", "Partially Delivered", "Pending",
-                        "Completion %", "Status"
-                    ]
+                    ["WO Number", "Client Name", "Total Items", "Fully Delivered", "Partially Delivered", "Pending", "Completion %", "Status"]
                 ];
 
                 details.forEach(row => {
                     finalSheetData.push([
-                        row.wo_number,
-                        row.client_name,
-                        row.total_items,
-                        row.fully_delivered,
-                        row.partially_delivered,
-                        row.pending,
-                        row.completion_percentage,
-                        row.status
+                        row.wo_number, row.client_name, row.total_items,
+                        row.fully_delivered, row.partially_delivered,
+                        row.pending, row.completion_percentage, row.status
                     ]);
                 });
 
                 wscols = [
-                    { wch: 15 }, // WO Number
-                    { wch: 25 }, // Client Name
-                    { wch: 12 }, // Total Items
-                    { wch: 15 }, // Fully Del
-                    { wch: 15 }, // Partial Del
-                    { wch: 12 }, // Pending
-                    { wch: 15 }, // Completion %
-                    { wch: 15 }, // Status
+                    { wch: 15 }, { wch: 25 }, { wch: 12 }, { wch: 15 },
+                    { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 15 },
                 ];
 
             } else {
-                // DEFAULT: Work Order Report
                 if (reportParams.status) params.status = reportParams.status;
                 data = await getWorkOrderReport(params);
                 filename = `WorkOrder_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
@@ -200,14 +201,11 @@ const WorkOrderList = () => {
                 const workOrders = data.work_orders || [];
 
                 finalSheetData = [
-                    // --- HEADER ---
                     [data.report_type || "Work Order Report"],
                     ["Generated At:", data.generated_at ? new Date(data.generated_at).toLocaleString() : new Date().toLocaleString()],
                     ["Generated By:", data.generated_by || "System"],
                     ["Date Range:", `${data.date_range?.start_date || "N/A"} to ${data.date_range?.end_date || "N/A"}`],
                     [],
-
-                    // --- SUMMARY ---
                     ["SUMMARY"],
                     ["Total Work Orders:", summary.total_work_orders || 0],
                     ["Total Value:", summary.total_value || 0],
@@ -218,8 +216,6 @@ const WorkOrderList = () => {
                     ["Completed WOs:", summary.completed_wos || 0],
                     ["Cancelled WOs:", summary.cancelled_wos || 0],
                     [],
-
-                    // --- DATA TABLE HEADERS ---
                     [
                         "WO Number", "Date", "Quotation No", "Client Name", "Contact Person", "Phone",
                         "Total Items", "Total Amount", "Advance Amount", "Advance Remaining",
@@ -229,53 +225,28 @@ const WorkOrderList = () => {
 
                 workOrders.forEach(wo => {
                     finalSheetData.push([
-                        wo.wo_number,
-                        wo.wo_date,
-                        wo.quotation_number,
-                        wo.client_name,
-                        wo.contact_person,
-                        wo.phone,
-                        wo.total_items,
-                        wo.total_amount,
-                        wo.advance_amount,
-                        wo.advance_remaining,
-                        wo.total_delivered_value,
-                        wo.completion_percentage,
-                        wo.status,
-                        wo.created_by,
+                        wo.wo_number, wo.wo_date, wo.quotation_number, wo.client_name,
+                        wo.contact_person, wo.phone, wo.total_items, wo.total_amount,
+                        wo.advance_amount, wo.advance_remaining, wo.total_delivered_value,
+                        wo.completion_percentage, wo.status, wo.created_by,
                         wo.created_at ? new Date(wo.created_at).toLocaleString() : ""
                     ]);
                 });
 
                 wscols = [
-                    { wch: 15 }, // WO Number
-                    { wch: 12 }, // Date
-                    { wch: 15 }, // Quotation No
-                    { wch: 25 }, // Client Name
-                    { wch: 20 }, // Contact Person
-                    { wch: 15 }, // Phone
-                    { wch: 12 }, // Total Items
-                    { wch: 15 }, // Total Amount
-                    { wch: 15 }, // Advance Amount
-                    { wch: 18 }, // Advance Remaining
-                    { wch: 15 }, // Delivered Value
-                    { wch: 15 }, // Completion %
-                    { wch: 15 }, // Status
-                    { wch: 20 }, // Created By
-                    { wch: 20 }, // Created At
+                    { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 25 }, { wch: 20 },
+                    { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 18 },
+                    { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 20 },
                 ];
             }
 
             const wb = XLSX.utils.book_new();
             const worksheet = XLSX.utils.aoa_to_sheet(finalSheetData);
             worksheet['!cols'] = wscols;
-
             XLSX.utils.book_append_sheet(wb, worksheet, "Report");
 
-            // Generate Buffer
             const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
             const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
-
             saveAs(blob, filename);
 
             setShowReportModal(false);
@@ -302,7 +273,6 @@ const WorkOrderList = () => {
                     </div>
                     <button
                         onClick={() => {
-                            // Set defaults for date range (current month)
                             const today = new Date().toISOString().split('T')[0];
                             const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
                             setReportParams({ start_date: firstDay, end_date: today, status: "" });
@@ -325,10 +295,7 @@ const WorkOrderList = () => {
                             </label>
                             <select
                                 value={statusFilter}
-                                onChange={(e) => {
-                                    setStatusFilter(e.target.value);
-                                    setCurrentPage(1);
-                                }}
+                                onChange={(e) => setStatusFilter(e.target.value)}
                                 className="input w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                             >
                                 <option value="">All Status</option>
@@ -345,10 +312,7 @@ const WorkOrderList = () => {
                                     type="text"
                                     placeholder="Search by WO Number, Client..."
                                     value={searchQuery}
-                                    onChange={(e) => {
-                                        setSearchQuery(e.target.value);
-                                        setCurrentPage(1);
-                                    }}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
                                     className="w-full pl-10 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                                 />
                                 <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -384,7 +348,7 @@ const WorkOrderList = () => {
                                 </tr>
                             ) : (
                                 workOrders.map((wo) => (
-                                    <tr key={wo.id} className="odd:bg-slate-100 even:bg-white hover:bg-slate-200   transition-colors">
+                                    <tr key={wo.id} className="odd:bg-slate-100 even:bg-white hover:bg-slate-200 transition-colors">
                                         <td className="px-6 py-4 font-mono text-blue-600 font-semibold">
                                             {wo.wo_number}
                                             <div className="text-xs text-slate-400 mt-0.5">{wo.quotation_number}</div>
@@ -433,9 +397,9 @@ const WorkOrderList = () => {
                 {/* PAGINATION */}
                 <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
                     <button
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        onClick={() => previous && handlePageChange(currentPage - 1)}
                         disabled={!previous}
-                        className="text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40 disabled:hover:text-slate-600 cursor-pointer disabled:cursor-not-allowed"
+                        className="text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                     >
                         ← Previous
                     </button>
@@ -443,9 +407,9 @@ const WorkOrderList = () => {
                     <span className="text-xs text-slate-400">Page {currentPage}</span>
 
                     <button
-                        onClick={() => setCurrentPage(prev => prev + 1)}
+                        onClick={() => next && handlePageChange(currentPage + 1)}
                         disabled={!next}
-                        className="text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40 disabled:hover:text-slate-600 cursor-pointer disabled:cursor-not-allowed"
+                        className="text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                     >
                         Next →
                     </button>
@@ -453,16 +417,14 @@ const WorkOrderList = () => {
             </div>
 
             {/* Work Order Details Modal */}
-            {
-                selectedWorkOrderId && (
-                    <WorkOrderDetailsModal
-                        isOpen={!!selectedWorkOrderId}
-                        onClose={closeDetailsModal}
-                        loading={detailsLoading}
-                        details={workOrderDetails}
-                    />
-                )
-            }
+            {selectedWorkOrderId && (
+                <WorkOrderDetailsModal
+                    isOpen={!!selectedWorkOrderId}
+                    onClose={closeDetailsModal}
+                    loading={detailsLoading}
+                    details={workOrderDetails}
+                />
+            )}
 
             {/* Update Advance Modal */}
             {advanceModalOpen && selectedWorkOrderForAdvance && (
@@ -490,7 +452,6 @@ const WorkOrderList = () => {
                             <p className="text-sm text-slate-600 font-medium">Select Report Type:</p>
 
                             <div className="space-y-3">
-                                {/* Work Order List Report Option */}
                                 <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition">
                                     <input
                                         type="radio"
@@ -541,7 +502,6 @@ const WorkOrderList = () => {
                                     </div>
                                 )}
 
-                                {/* Delivery Analysis Option */}
                                 <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition">
                                     <input
                                         type="radio"

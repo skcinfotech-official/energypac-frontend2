@@ -34,8 +34,8 @@ export const updateProduct = (id, data) => {
 };
 
 // DELETE
-export const deleteProduct = (id) => {
-    return axiosSecure.delete(`/api/products/${id}`);
+export const deleteProduct = (id, payload = {}) => {
+    return axiosSecure.delete(`/api/products/${id}`, { data: payload });
 };
 
 // LOW STOCK
@@ -46,4 +46,19 @@ export const getLowStockProducts = () => {
 export const getInventoryReport = (status = "") => {
     const params = status ? { status } : {};
     return axiosSecure.get(`/api/reports/inventory/stock`, { params });
+};
+
+// BULK UPLOAD
+export const getBulkUploadTemplate = () => {
+    return axiosSecure.get("/api/products/bulk-upload-template", {
+        responseType: 'blob'
+    });
+};
+
+export const bulkUploadProducts = (formData) => {
+    return axiosSecure.post("/api/products/bulk-upload", formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
 };

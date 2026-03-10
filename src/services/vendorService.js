@@ -49,8 +49,8 @@ export const createVendor = (data) =>
 export const updateVendor = (id, data) =>
   axiosSecure.put(`/api/vendors/${id}`, data);
 
-export const deleteVendor = (id) =>
-  axiosSecure.delete(`/api/vendors/${id}`);
+export const deleteVendor = (id, payload = {}) =>
+  axiosSecure.delete(`/api/vendors/${id}`, { data: payload });
 
 export const getVendorPerformanceReport = (params) =>
   axiosSecure.get("/api/reports/vendors/performance", { params });

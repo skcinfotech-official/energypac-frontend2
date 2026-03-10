@@ -14,8 +14,8 @@ export const createRequisition = (data) =>
 export const updateRequisition = (id, data) =>
   axiosSecure.patch(`/api/requisitions/${id}`, data);
 
-export const deleteRequisition = (id) =>
-  axiosSecure.delete(`/api/requisitions/${id}`);
+export const deleteRequisition = (id, payload = {}) =>
+  axiosSecure.delete(`/api/requisitions/${id}`, { data: payload });
 
 export const getRequisition = (id) =>
   axiosSecure.get(`/api/requisitions/${id}`);

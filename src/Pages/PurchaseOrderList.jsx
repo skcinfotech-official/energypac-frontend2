@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { fetchPurchaseOrders, getPurchaseOrderReport, cancelPurchaseOrder } from "../services/purchaseOrderService";
-import { FaEye, FaFileExcel, FaTimes } from "react-icons/fa";
+import { FaEye, FaFileExcel, FaTimes, FaSearch } from "react-icons/fa";
 import AlertToast from "../components/ui/AlertToast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import PurchaseOrderModal from "../components/purchaseOrder/PurchaseOrderModal";
 import VendorSelector from "../components/common/VendorSelector";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import PasswordConfirmModal from "../components/ui/PasswordConfirmModal";
 
 const PurchaseOrderList = () => {
     const [list, setList] = useState([]);
@@ -22,8 +23,10 @@ const PurchaseOrderList = () => {
     const [selectedPO, setSelectedPO] = useState(null);
     const [page, setPage] = useState(1);
     const [confirm, setConfirm] = useState({ open: false, action: null });
+    const [passwordModal, setPasswordModal] = useState({ open: false, onConfirm: null, loading: false });
 
-
+    // ✅ Search state
+    const [searchText, setSearchText] = useState("");
 
     /* =========================
        REPORT STATE
@@ -37,7 +40,6 @@ const PurchaseOrderList = () => {
         vendor_name: ""
     });
 
-    // Vendor list state removed as VendorSelector handles it internally
     const [downloading, setDownloading] = useState(false);
 
     const [toast, setToast] = useState({
@@ -46,11 +48,13 @@ const PurchaseOrderList = () => {
         message: "",
     });
 
+    /* =========================
+       FETCH — accepts explicit pageNum
+       ========================= */
     const loadData = async (pageNum = 1) => {
         setLoading(true);
         try {
-            const res = await fetchPurchaseOrders(pageNum);
-            // Check if response has data property (standard axios) or is direct data
+            const res = await fetchPurchaseOrders(pageNum, searchText);
             const data = res.data ? res.data : res;
 
             if (data && data.results) {
@@ -82,20 +86,23 @@ const PurchaseOrderList = () => {
         }
     };
 
+    /* =========================
+       EFFECT: search change → debounce + RESET to page 1
+       (page is intentionally NOT in the dependency array)
+       ========================= */
     useEffect(() => {
-        loadData();
-    }, []);
+        const timer = setTimeout(() => {
+            loadData(1); // ✅ always page 1 when search changes
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchText]);
 
-    // Check for view_id query param
+    // Check for view_id query param (deep linking from Dashboard)
     useEffect(() => {
         const viewId = searchParams.get("view_id");
-        if (viewId && viewId.length === 36) { // basic UUID check
+        if (viewId && viewId.length === 36) {
             setSelectedPO({ id: viewId });
             setModalOpen(true);
-
-            // Optional: clear param so refresh doesn't reopen? 
-            // setSearchParams({}, { replace: true });
-            // Keeping it might be useful for sharing links.
         }
     }, [searchParams]);
 
@@ -129,7 +136,6 @@ const PurchaseOrderList = () => {
                     return;
                 }
                 params.vendor = reportParams.vendor_id;
-                // Find vendor name for filename
                 const vName = reportParams.vendor_name || "Vendor";
                 filenamePrefix = `PO_Report_${vName.replace(/\s+/g, '_')}`;
             }
@@ -138,21 +144,12 @@ const PurchaseOrderList = () => {
             const data = res.data;
             const reportData = data.purchase_orders || [];
 
-            if (reportData.length === 0) {
-                // Even if empty, let's download the empty structure or just warn? 
-                // Per previous request style, let's download with summary.
-                console.log("No records found, downloading empty report.");
-            }
-
             const wb = XLSX.utils.book_new();
 
             const finalSheetData = [
-                // --- HEADER ---
                 [data.report_type || "Purchase Order Report"],
                 ["Generated At:", data.generated_at ? new Date(data.generated_at).toLocaleString() : new Date().toLocaleString()],
                 [],
-
-                // --- SUMMARY ---
                 ["SUMMARY"],
                 ["Total POs:", data.summary?.total_purchase_orders || 0],
                 ["Total Value:", data.summary?.total_value || 0],
@@ -160,8 +157,6 @@ const PurchaseOrderList = () => {
                 ["Partially Received:", data.summary?.partially_received_pos || 0],
                 ["Completed POs:", data.summary?.completed_pos || 0],
                 [],
-
-                // --- DATA TABLE HEADERS ---
                 ["PO Number", "Date", "Vendor Name", "Vendor Code", "Req No", "Total Amount", "Status", "Item Code", "Item Name", "Quantity", "Rate", "Amount", "Purchased"]
             ];
 
@@ -169,31 +164,16 @@ const PurchaseOrderList = () => {
                 if (po.items && po.items.length > 0) {
                     po.items.forEach(item => {
                         finalSheetData.push([
-                            po.po_number,
-                            po.po_date,
-                            po.vendor_name,
-                            po.vendor_code,
-                            po.requisition_number,
-                            po.total_amount,
-                            po.status,
-                            item.product_code,
-                            item.product_name,
-                            item.quantity,
-                            item.rate,
-                            item.amount,
-                            item.is_received ? "Yes" : "No"
+                            po.po_number, po.po_date, po.vendor_name, po.vendor_code,
+                            po.requisition_number, po.total_amount, po.status,
+                            item.product_code, item.product_name, item.quantity,
+                            item.rate, item.amount, item.is_received ? "Yes" : "No"
                         ]);
                     });
                 } else {
-                    // PO with no items (rare but possible)
                     finalSheetData.push([
-                        po.po_number,
-                        po.po_date,
-                        po.vendor_name,
-                        po.vendor_code,
-                        po.requisition_number,
-                        po.total_amount,
-                        po.status,
+                        po.po_number, po.po_date, po.vendor_name, po.vendor_code,
+                        po.requisition_number, po.total_amount, po.status,
                         "-", "-", "-", "-", "-", "-"
                     ]);
                 }
@@ -202,10 +182,8 @@ const PurchaseOrderList = () => {
             const worksheet = XLSX.utils.aoa_to_sheet(finalSheetData);
             XLSX.utils.book_append_sheet(wb, worksheet, "PO Report");
 
-            // Generate Buffer
             const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
             const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
-
             saveAs(blob, `${filenamePrefix}.xlsx`);
 
             setShowReportModal(false);
@@ -217,7 +195,7 @@ const PurchaseOrderList = () => {
         } finally {
             setDownloading(false);
         }
-    }
+    };
 
     const handleView = (row) => {
         setSelectedPO(row);
@@ -225,21 +203,35 @@ const PurchaseOrderList = () => {
     };
 
     const handleCancelPO = (poId) => {
+        const po = list.find(p => p.id === poId);
         setConfirm({
             open: true,
             title: "Cancel Purchase Order?",
-            description: "Are you sure you want to cancel this Purchase Order? This action cannot be undone.",
-            action: async () => {
-                try {
-                    await cancelPurchaseOrder(poId);
-                    setToast({ open: true, type: "success", message: "Purchase Order cancelled successfully" });
-                    loadData(page);
-                } catch (error) {
-                    console.error("Failed to cancel PO", error);
-                    setToast({ open: true, type: "error", message: "Failed to cancel Purchase Order" });
-                } finally {
-                    setConfirm({ ...confirm, open: false });
-                }
+            description: `Are you sure you want to cancel Purchase Order "${po?.po_number}"? This action cannot be undone.`,
+            action: () => {
+                setConfirm(prev => ({ ...prev, open: false }));
+                setPasswordModal({
+                    open: true,
+                    loading: false,
+                    onConfirm: async (password) => {
+                        setPasswordModal(prev => ({ ...prev, loading: true }));
+                        try {
+                            const res = await cancelPurchaseOrder(poId, { confirm_password: password });
+                            setToast({
+                                open: true,
+                                type: "success",
+                                message: res.data?.message || res.message || "Purchase Order cancelled successfully",
+                            });
+                            loadData(page);
+                            setPasswordModal({ open: false });
+                        } catch (err) {
+                            console.error(err);
+                            const errorMsg = err.response?.data?.message || err.response?.data?.detail || "Failed to cancel Purchase Order";
+                            setToast({ open: true, type: "error", message: errorMsg });
+                            setPasswordModal(prev => ({ ...prev, loading: false }));
+                        }
+                    }
+                });
             }
         });
     };
@@ -256,10 +248,8 @@ const PurchaseOrderList = () => {
                         </span>
                     </div>
 
-                    {/* EXPORT BUTTON */}
                     <button
                         onClick={() => {
-                            // Defaults
                             const today = new Date().toISOString().split('T')[0];
                             const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
                             setReportParams(prev => ({ ...prev, start_date: firstDay, end_date: today }));
@@ -270,6 +260,26 @@ const PurchaseOrderList = () => {
                         <FaFileExcel className="text-sm" />
                         Download Report
                     </button>
+                </div>
+
+                {/* ✅ SEARCH BAR */}
+                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
+                    <div className="flex flex-wrap gap-4 items-end">
+                        <div className="flex-1 min-w-55">
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                Search Purchase Order
+                            </label>
+                            <div className="relative">
+                                <input
+                                    value={searchText}
+                                    onChange={(e) => setSearchText(e.target.value)}
+                                    placeholder="Search by PO number, vendor..."
+                                    className="w-full pl-10 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                />
+                                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -294,7 +304,7 @@ const PurchaseOrderList = () => {
                                 </tr>
                             ) : list.length > 0 ? (
                                 list.map((row) => (
-                                    <tr key={row.id} className="odd:bg-slate-100 even:bg-white hover:bg-slate-200   transition">
+                                    <tr key={row.id} className="odd:bg-slate-100 even:bg-white hover:bg-slate-200 transition">
                                         <td className="px-6 py-4">
                                             <span className="font-mono text-blue-600 font-semibold cursor-pointer hover:underline" onClick={() => handleView(row)}>
                                                 {row.po_number}
@@ -305,7 +315,6 @@ const PurchaseOrderList = () => {
                                         </td>
                                         <td className="px-6 py-4 text-slate-700">
                                             <div className="font-medium">{row.vendor_name}</div>
-                                            {/* <div className="text-xs text-slate-400">Code: {row.vendor}</div> */}
                                         </td>
                                         <td className="px-6 py-4 text-slate-600 font-semibold">
                                             {new Date(row.po_date).toLocaleDateString()}
@@ -319,11 +328,8 @@ const PurchaseOrderList = () => {
                                                 const someReceived = row.items && row.items.length > 0 && row.items.some(i => i.is_received);
 
                                                 let displayStatus = row.status;
-                                                if (allReceived) {
-                                                    displayStatus = 'COMPLETED';
-                                                } else if (someReceived) {
-                                                    displayStatus = 'PARTIALLY_RECEIVED';
-                                                }
+                                                if (allReceived) displayStatus = 'COMPLETED';
+                                                else if (someReceived) displayStatus = 'PARTIALLY_RECEIVED';
 
                                                 let statusText = displayStatus;
                                                 if (displayStatus === 'PENDING') statusText = 'Pending';
@@ -386,6 +392,8 @@ const PurchaseOrderList = () => {
                         ← Previous
                     </button>
 
+                    <span className="text-xs text-slate-400">Page {page}</span>
+
                     <button
                         onClick={() => next && loadData(page + 1)}
                         disabled={!next}
@@ -412,6 +420,15 @@ const PurchaseOrderList = () => {
                 onCancel={() => setConfirm({ ...confirm, open: false })}
             />
 
+            <PasswordConfirmModal
+                open={passwordModal.open}
+                loading={passwordModal.loading}
+                title="Confirm Cancellation"
+                message={`Please enter your password to cancel this Purchase Order.`}
+                onConfirm={passwordModal.onConfirm}
+                onCancel={() => setPasswordModal({ open: false })}
+            />
+
             <PurchaseOrderModal
                 open={modalOpen}
                 onClose={() => setModalOpen(false)}
@@ -419,6 +436,7 @@ const PurchaseOrderList = () => {
                 onShowAlert={(type, message) => setToast({ open: true, type, message })}
                 onUpdate={() => loadData(page)}
             />
+
             {/* REPORT MODAL */}
             {showReportModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">

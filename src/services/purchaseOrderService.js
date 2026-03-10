@@ -27,7 +27,7 @@ export const getPurchaseOrder = async (id) => {
     return res.data;
 };
 
-export const cancelPurchaseOrder = async (id) => {
-    const res = await axiosSecure.post(`/api/purchase-orders/${id}/cancel`);
+export const cancelPurchaseOrder = async (id, payload = {}) => {
+    const res = await axiosSecure.post(`/api/purchase-orders/${id}/cancel`, payload);
     return res.data;
 };

@@ -192,6 +192,7 @@ const PurchaseOrderModal = ({ open, onClose, data, onShowAlert, onUpdate }) => {
                                         <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Vendor</span>
                                     </div>
                                     <div className="font-semibold text-slate-800">{poData.vendor_name}</div>
+                                
                                 </div>
 
                                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">

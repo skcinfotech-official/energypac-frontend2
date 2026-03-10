@@ -111,7 +111,7 @@ const ProductSelector = ({ value, onChange, placeholder = "Search product...", d
     useEffect(() => {
         if (!isOpen) return;
         const fetchItems = async () => {
-            setLoading(true);
+            if (products.length === 0) setLoading(true);
             try {
                 const res = await getProducts({ search });
                 const data = res.data.results || res.data;
@@ -122,15 +122,20 @@ const ProductSelector = ({ value, onChange, placeholder = "Search product...", d
                 setLoading(false);
             }
         };
-        const timeoutId = setTimeout(fetchItems, 300);
-        return () => clearTimeout(timeoutId);
+
+        if (search === "" && products.length === 0) {
+            fetchItems();
+        } else {
+            const timeoutId = setTimeout(fetchItems, 300);
+            return () => clearTimeout(timeoutId);
+        }
     }, [search, isOpen]);
 
     const foundProduct = products.find((p) => String(p.id) === String(value) || p.uuid === value);
     const selectedProduct = foundProduct || defaultItem;
 
     // Dropdown Content
-    const dropdownContent = isOpen && (
+    const dropdownContent = isOpen && coords.width > 0 && (
         <div
             className="product-selector-portal fixed z-[9999] bg-white border border-slate-200 rounded-lg shadow-xl flex flex-col"
             style={{

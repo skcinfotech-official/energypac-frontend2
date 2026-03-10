@@ -3,14 +3,14 @@ import { useSearchParams } from "react-router-dom";
 
 import ProductModal from "../components/products/ProductModal";
 import ProductViewModal from "../components/products/ProductViewModal";
+import BulkProductModal from "../components/products/BulkProductModal";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import AlertToast from "../components/ui/AlertToast";
 import { getProducts, deleteProduct, getProduct, getInventoryReport, getLowStockProducts } from "../services/productService";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { FaPlus, FaEdit, FaTrash, FaEye, FaFileExcel } from "react-icons/fa";
-
-
+import { FaPlus, FaEdit, FaTrash, FaEye, FaFileExcel, FaFileUpload } from "react-icons/fa";
+import PasswordConfirmModal from "../components/ui/PasswordConfirmModal";
 
 
 export default function Products() {
@@ -26,6 +26,9 @@ export default function Products() {
     const [searchParams] = useSearchParams();
     const [stockFilter, setStockFilter] = useState("all"); // "all" | "low_stock"
 
+    // ✅ Page state — track current page number
+    const [page, setPage] = useState(1);
+
     useEffect(() => {
         const filter = searchParams.get("filter");
         if (filter === "low_stock") {
@@ -33,12 +36,10 @@ export default function Products() {
         }
     }, [searchParams]);
 
-
-    const [setError] = useState("");
-
     const [showConfirm, setShowConfirm] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState(null);
+    const [passwordModal, setPasswordModal] = useState({ open: false, onConfirm: null, loading: false });
 
     // View Modal State
     const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -49,6 +50,7 @@ export default function Products() {
        REPORT STATE
        ========================= */
     const [showReportModal, setShowReportModal] = useState(false);
+    const [showBulkModal, setShowBulkModal] = useState(false);
     const [reportType, setReportType] = useState("current"); // current, low, out
     const [downloading, setDownloading] = useState(false);
 
@@ -58,14 +60,15 @@ export default function Products() {
         message: "",
     });
 
-
-    const fetchProducts = async (url) => {
+    /* =========================
+       FETCH — accepts explicit pageNum
+       ========================= */
+    const fetchProducts = async (pageNum = 1) => {
         try {
             setLoading(true);
 
             if (stockFilter === "low_stock") {
                 const res = await getLowStockProducts();
-                // Handle different potential response structures (array or paginated)
                 const data = res.data;
                 if (Array.isArray(data)) {
                     setProducts(data);
@@ -80,31 +83,45 @@ export default function Products() {
                 }
             } else {
                 const res = await getProducts({
-                    url,
                     search: searchText,
                     unit: unitFilter,
+                    // ✅ pass page as query param
+                    url: pageNum > 1
+                        ? `/api/products?page=${pageNum}${searchText ? `&search=${encodeURIComponent(searchText)}` : ""}${unitFilter ? `&unit=${encodeURIComponent(unitFilter)}` : ""}`
+                        : undefined,
                 });
                 setProducts(res.data.results);
                 setCount(res.data.count);
                 setNext(res.data.next);
                 setPrevious(res.data.previous);
             }
+
+            // ✅ always sync page state to what was actually fetched
+            setPage(pageNum);
         } catch (err) {
             console.log(err);
-            setError("Failed to load products");
         } finally {
             setLoading(false);
         }
     };
 
-
-
+    /* =========================
+       EFFECT: search/filter change → debounce + RESET to page 1
+       (page is intentionally NOT in the dependency array)
+       ========================= */
     useEffect(() => {
         const timer = setTimeout(() => {
-            fetchProducts();
+            fetchProducts(1); // ✅ always start from page 1 when filters change
         }, 500);
         return () => clearTimeout(timer);
     }, [searchText, unitFilter, stockFilter]);
+
+    /* =========================
+       PAGINATION HANDLER
+       ========================= */
+    const handlePageChange = (newPage) => {
+        fetchProducts(newPage);
+    };
 
     /* =========================
        ACTION HANDLERS (UI ONLY)
@@ -113,7 +130,6 @@ export default function Products() {
         setEditProduct(null);
         setOpenModal(true);
     };
-
 
     const handleEdit = (item) => {
         setEditProduct(item);
@@ -139,7 +155,7 @@ export default function Products() {
                 type: "error",
                 message: "Failed to load product details",
             });
-            setViewModalOpen(false); // Close if failed? Or keep open with error? Keeping generic error toast. 
+            setViewModalOpen(false);
         } finally {
             setViewLoading(false);
         }
@@ -154,36 +170,40 @@ export default function Products() {
                     ? "Product updated successfully"
                     : "Product added successfully",
         });
-
-        fetchProducts();
+        // ✅ stay on current page after edit, go to page 1 after add
+        fetchProducts(mode === "edit" ? page : 1);
     };
 
-
-    const confirmDelete = async () => {
-        try {
-            setDeleting(true);
-
-            await deleteProduct(selectedProduct.id);
-
-            setToast({
-                open: true,
-                type: "success",
-                message: "Product deleted successfully",
-            });
-
-            fetchProducts();
-        } catch (err) {
-            console.log(err);
-            setToast({
-                open: true,
-                type: "error",
-                message: "Failed to delete product",
-            });
-        } finally {
-            setDeleting(false);
-            setShowConfirm(false);
-            setSelectedProduct(null);
-        }
+    const confirmDelete = () => {
+        setShowConfirm(false);
+        setPasswordModal({
+            open: true,
+            loading: false,
+            onConfirm: async (password) => {
+                setPasswordModal(prev => ({ ...prev, loading: true }));
+                try {
+                    const res = await deleteProduct(selectedProduct.id, { confirm_password: password });
+                    setToast({
+                        open: true,
+                        type: "success",
+                        message: res.data?.message || res.message || "Product deleted successfully",
+                    });
+                    fetchProducts(1); // ✅ go to page 1 after delete
+                    setPasswordModal({ open: false });
+                } catch (err) {
+                    console.log(err);
+                    const errorMsg = err.response?.data?.message || err.response?.data?.detail || "Failed to delete product";
+                    setToast({
+                        open: true,
+                        type: "error",
+                        message: errorMsg,
+                    });
+                    setPasswordModal(prev => ({ ...prev, loading: false }));
+                } finally {
+                    setSelectedProduct(null);
+                }
+            }
+        });
     };
 
     /* =========================
@@ -191,9 +211,7 @@ export default function Products() {
        ========================= */
     const handleDownloadReport = async () => {
         setDownloading(true);
-        console.log("Starting report download...");
         try {
-            // Map reportType to API status param
             let statusParam = "";
             let reportTitle = "Inventory Stock Report";
 
@@ -207,35 +225,19 @@ export default function Products() {
                 reportTitle = "Current Stock Report";
             }
 
-            console.log(`Fetching report for type: ${reportType}, status: ${statusParam}`);
             const res = await getInventoryReport(statusParam);
-            console.log("API Response:", res);
-
             const data = res.data;
-            if (!data) {
-                throw new Error("No data received from API");
-            }
+            if (!data) throw new Error("No data received from API");
 
-            // Use the products directly from API - they are already filtered by the backend
             let filteredProducts = data.products || [];
-            console.log(`Filtered products count: ${filteredProducts.length}`);
-
-            if (filteredProducts.length === 0) {
-                // setToast({ open: true, type: "info", message: "No records found for the selected criteria" });
-                // Still download the report even if empty, just with summary and empty table
-                console.log("No records found, downloading empty report with summary.");
-            }
 
             const wb = XLSX.utils.book_new();
 
             const finalSheetData = [
-                // --- HEADER ---
                 [data.report_type || "INVENTORY REPORT"],
                 ["Purpose:", reportTitle],
                 ["Generated At:", data.generated_at ? new Date(data.generated_at).toLocaleString() : new Date().toLocaleString()],
                 [],
-
-                // --- SUMMARY (Main report summary, might not reflect filtered subset accurately if we don't recalc, but let's show main summary) ---
                 ["OVERALL SUMMARY"],
                 ["Total Products:", data.summary?.total_products || 0],
                 ["Total Value:", data.summary?.total_inventory_value || 0],
@@ -243,13 +245,10 @@ export default function Products() {
                 ["Low Stock:", data.summary?.low_stock || 0],
                 ["Out of Stock:", data.summary?.out_of_stock || 0],
                 [],
-
-                // --- TABLE HEADERS ---
                 ["Item Code", "Item Name", "Current Stock", "Reorder Level", "Unit", "Rate", "Stock Value", "Status", "HSN Code"]
             ];
 
             filteredProducts.forEach(p => {
-                // Determine status label if we calculated it manually or use API's
                 let status = p.stock_status || "Healthy";
                 if (p.current_stock <= 0) status = "Out of Stock";
                 else if (p.current_stock <= p.reorder_level) status = "Low Stock";
@@ -270,10 +269,8 @@ export default function Products() {
             const worksheet = XLSX.utils.aoa_to_sheet(finalSheetData);
             XLSX.utils.book_append_sheet(wb, worksheet, "Stock Report");
 
-            // Generate Buffer
             const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
             const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
-
             saveAs(blob, `Inventory_${reportType}_${new Date().toISOString().split('T')[0]}.xlsx`);
 
             setShowReportModal(false);
@@ -288,7 +285,6 @@ export default function Products() {
     };
 
 
-
     return (
         <div>
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -301,9 +297,6 @@ export default function Products() {
                         </span>
                     </div>
 
-
-                    {/* ADD PRODUCT BUTTON */}
-
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => setShowReportModal(true)}
@@ -313,6 +306,13 @@ export default function Products() {
                             Export Excel
                         </button>
                         <button
+                            onClick={() => setShowBulkModal(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-500"
+                        >
+                            <FaFileUpload className="text-sm" />
+                            Bulk Entry
+                        </button>
+                        <button
                             onClick={handleAddProduct}
                             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-500"
                         >
@@ -320,10 +320,9 @@ export default function Products() {
                             Add Product
                         </button>
                     </div>
-
-
                 </div>
 
+                {/* SEARCH & FILTER */}
                 <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
                     <div className="flex flex-wrap gap-4">
 
@@ -366,14 +365,9 @@ export default function Products() {
                                 className="input"
                                 placeholder="e.g. pcs, kg"
                             />
-
                         </div>
-
-
-
                     </div>
                 </div>
-
 
                 {/* TABLE */}
                 <div className="overflow-x-auto">
@@ -412,7 +406,7 @@ export default function Products() {
                             {products.map((item) => (
                                 <tr
                                     key={item.id}
-                                    className="odd:bg-slate-100 even:bg-white hover:bg-slate-200   transition"
+                                    className="odd:bg-slate-100 even:bg-white hover:bg-slate-200 transition"
                                 >
                                     <td className="px-6 py-4 font-mono text-blue-600 font-semibold whitespace-nowrap">
                                         {item.item_code}
@@ -474,15 +468,17 @@ export default function Products() {
                 {/* PAGINATION */}
                 <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
                     <button
-                        onClick={() => previous && fetchProducts(previous)}
+                        onClick={() => previous && handlePageChange(page - 1)}
                         disabled={!previous}
                         className="text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40"
                     >
                         ← Previous
                     </button>
 
+                    <span className="text-xs text-slate-400">Page {page}</span>
+
                     <button
-                        onClick={() => next && fetchProducts(next)}
+                        onClick={() => next && handlePageChange(page + 1)}
                         disabled={!next}
                         className="text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40"
                     >
@@ -490,18 +486,18 @@ export default function Products() {
                     </button>
                 </div>
             </div>
+
             <ProductModal
                 key={editProduct ? editProduct.id : "add"}
                 open={openModal}
                 onClose={() => {
                     setOpenModal(false);
-                    setEditProduct(null);   // 🔥 THIS LINE FIXES IT
+                    setEditProduct(null);
                 }}
                 onSuccess={handleProductSuccess}
                 mode={editProduct ? "edit" : "add"}
                 product={editProduct}
             />
-
 
             <ProductViewModal
                 open={viewModalOpen}
@@ -510,6 +506,11 @@ export default function Products() {
                 loading={viewLoading}
             />
 
+            <BulkProductModal
+                open={showBulkModal}
+                onClose={() => setShowBulkModal(false)}
+                onSuccess={() => fetchProducts(1)}
+            />
 
             <ConfirmDialog
                 open={showConfirm}
@@ -528,7 +529,14 @@ export default function Products() {
                 onClose={() => setToast({ ...toast, open: false })}
             />
 
-
+            <PasswordConfirmModal
+                open={passwordModal.open}
+                loading={passwordModal.loading}
+                title="Confirm Delete"
+                message={`Please enter your password to delete "${selectedProduct?.item_name}".`}
+                onConfirm={passwordModal.onConfirm}
+                onCancel={() => setPasswordModal({ open: false })}
+            />
 
             {/* REPORT MODAL */}
             {showReportModal && (
@@ -598,9 +606,6 @@ export default function Products() {
                     </div>
                 </div>
             )}
-
         </div>
-
     );
 }
-

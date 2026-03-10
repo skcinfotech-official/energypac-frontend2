@@ -54,11 +54,10 @@ const VendorSelector = ({
   useEffect(() => {
     if (!open) return;
 
-    const fetch = async () => {
-      setLoading(true);
+    const fetchItems = async () => {
+      if (vendors.length === 0) setLoading(true);
       try {
         const res = await getVendors({ search });
-        // getVendors returns the data object directly (normalized), not the axios response
         setVendors(res.results || res || []);
       } catch (e) {
         console.error("Failed to load vendors", e);
@@ -67,8 +66,12 @@ const VendorSelector = ({
       }
     };
 
-    const t = setTimeout(fetch, 300);
-    return () => clearTimeout(t);
+    if (search === "" && vendors.length === 0) {
+      fetchItems();
+    } else {
+      const t = setTimeout(fetchItems, 300);
+      return () => clearTimeout(t);
+    }
   }, [search, open]);
 
   const selected =
@@ -153,7 +156,7 @@ const VendorSelector = ({
         )}
       </div>
 
-      {open && createPortal(dropdown, document.body)}
+      {open && coords.width > 0 && createPortal(dropdown, document.body)}
     </div>
   );
 };

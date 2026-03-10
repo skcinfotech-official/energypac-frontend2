@@ -49,8 +49,8 @@ const RequisitionSelector = ({
   useEffect(() => {
     if (!open) return;
 
-    const fetch = async () => {
-      setLoading(true);
+    const fetchItems = async () => {
+      if (requisitions.length === 0) setLoading(true);
       try {
         const res = await fetchRequisitions(1, search);
         setRequisitions(res.data.results || []);
@@ -61,8 +61,12 @@ const RequisitionSelector = ({
       }
     };
 
-    const t = setTimeout(fetch, 300);
-    return () => clearTimeout(t);
+    if (search === "" && requisitions.length === 0) {
+      fetchItems();
+    } else {
+      const t = setTimeout(fetchItems, 300);
+      return () => clearTimeout(t);
+    }
   }, [search, open]);
 
   const selected =
@@ -123,9 +127,8 @@ const RequisitionSelector = ({
   return (
     <div ref={inputRef} className="relative w-full">
       <div
-        className={`input flex items-center justify-between ${
-          disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
-        }`}
+        className={`input flex items-center justify-between ${disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
+          }`}
         onClick={() => !disabled && setOpen(true)}
       >
         <span className={selected ? "text-slate-800" : "text-slate-400"}>
@@ -144,7 +147,7 @@ const RequisitionSelector = ({
         )}
       </div>
 
-      {open && !disabled && createPortal(dropdown, document.body)}
+      {open && !disabled && coords.width > 0 && createPortal(dropdown, document.body)}
     </div>
   );
 };

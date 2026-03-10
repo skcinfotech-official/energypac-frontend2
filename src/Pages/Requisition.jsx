@@ -12,6 +12,7 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 import AlertToast from "../components/ui/AlertToast";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import PasswordConfirmModal from "../components/ui/PasswordConfirmModal";
 
 const Requisition = () => {
   const [list, setList] = useState([]);
@@ -42,6 +43,7 @@ const Requisition = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [passwordModal, setPasswordModal] = useState({ open: false, onConfirm: null, loading: false });
 
   /* =========================
      REPORT STATE
@@ -135,28 +137,36 @@ const Requisition = () => {
   //   setShowConfirm(true);
   // };
 
-  const confirmDelete = async () => {
-    try {
-      setDeleting(true);
-      await deleteRequisition(selectedItem.id);
-      setToast({
-        open: true,
-        type: "success",
-        message: "Requisition deleted successfully",
-      });
-      loadData(page);
-    } catch (err) {
-      setToast({
-        open: true,
-        type: "error",
-        message: "Failed to delete requisition" + err.message,
-
-      });
-    } finally {
-      setDeleting(false);
-      setShowConfirm(false);
-      setSelectedItem(null);
-    }
+  const confirmDelete = () => {
+    setShowConfirm(false);
+    setPasswordModal({
+      open: true,
+      loading: false,
+      onConfirm: async (password) => {
+        setPasswordModal(prev => ({ ...prev, loading: true }));
+        try {
+          const res = await deleteRequisition(selectedItem.id, { confirm_password: password });
+          setToast({
+            open: true,
+            type: "success",
+            message: res.data?.message || res.message || "Requisition deleted successfully",
+          });
+          loadData(page);
+          setPasswordModal({ open: false });
+        } catch (err) {
+          console.error(err);
+          const errorMsg = err.response?.data?.message || err.response?.data?.detail || "Failed to delete requisition";
+          setToast({
+            open: true,
+            type: "error",
+            message: errorMsg,
+          });
+          setPasswordModal(prev => ({ ...prev, loading: false }));
+        } finally {
+          setSelectedItem(null);
+        }
+      }
+    });
   };
 
   const handleSuccess = () => {
@@ -593,6 +603,15 @@ const Requisition = () => {
         type={toast.type}
         message={toast.message}
         onClose={() => setToast({ ...toast, open: false })}
+      />
+
+      <PasswordConfirmModal
+        open={passwordModal.open}
+        loading={passwordModal.loading}
+        title="Confirm Delete"
+        message={`Please enter your password to delete "${selectedItem?.requisition_number}".`}
+        onConfirm={passwordModal.onConfirm}
+        onCancel={() => setPasswordModal({ open: false })}
       />
       {/* REPORT MODAL */}
       {showReportModal && (

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import AlertToast from "../components/ui/AlertToast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
-import { getActiveWorkOrders, getWorkOrderById, createBill, validateBillStock } from "../services/salesService";
+import { getWorkOrderById, createBill, validateBillStock, getActiveWorkOrders } from "../services/salesService";
 import { getProduct } from "../services/productService";
 import { FaCheckCircle } from 'react-icons/fa';
+import WorkOrderSelector from "../components/common/WorkOrderSelector";
 
 const CreateBill = () => {
-    const [workOrders, setWorkOrders] = useState([]);
     const [selectedWoId, setSelectedWoId] = useState("");
     const [woDetails, setWoDetails] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -26,24 +26,7 @@ const CreateBill = () => {
     const [alert, setAlert] = useState({ open: false, type: "success", message: "" });
     const [confirm, setConfirm] = useState({ open: false, action: null });
 
-    useEffect(() => {
-        const fetchWOs = async () => {
-            try {
-                // Fetch ONLY Active Work Orders
-                const data = await getActiveWorkOrders();
-                const wos = Array.isArray(data) ? data : data.results || [];
-                const activeWOs = wos.filter(wo => wo.status !== 'COMPLETED');
-                setWorkOrders(activeWOs);
-            } catch (error) {
-                console.error("Failed to fetch work orders", error);
-                setAlert({ open: true, type: "error", message: "Failed to load work orders" });
-            }
-        };
-        fetchWOs();
-    }, []);
-
-    const handleWoChange = async (e) => {
-        const id = e.target.value;
+    const handleWoChange = async (id) => {
         setSelectedWoId(id);
         setWoDetails(null);
         setFormData(prev => ({ ...prev, items: [], remarks: "", bill_type: "DOMESTIC", freight_cost: 0 }));
@@ -214,12 +197,6 @@ const CreateBill = () => {
                     setSelectedWoId("");
                     setWoDetails(null);
                     setFormData({ ...formData, items: [], remarks: "", bill_type: "DOMESTIC", freight_cost: 0 });
-
-                    // Re-fetch WOs
-                    const data = await getActiveWorkOrders(); // Using correct function directly for simplicity
-                    const wos = Array.isArray(data) ? data : data.results || [];
-                    const activeWOs = wos.filter(wo => wo.status !== 'COMPLETED');
-                    setWorkOrders(activeWOs);
                 } catch (error) {
                     console.error("Bill creation failed", error);
                     setAlert({ open: true, type: "error", message: "Failed to create bill" });
@@ -242,21 +219,12 @@ const CreateBill = () => {
                     <label className="block text-sm font-semibold text-slate-700 mb-2">
                         Select Work Order
                     </label>
-                    <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-                        <select
+                    <div className="w-full md:w-1/2">
+                        <WorkOrderSelector
                             value={selectedWoId}
-                            onChange={handleWoChange}
-                            className="w-full md:w-1/2 p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
-                        >
-                            <option value="">-- Select Work Order --</option>
-                            {workOrders.map(wo => (
-                                <option key={wo.id} value={wo.id}>
-                                    {wo.wo_number} - {wo.client_name}
-                                </option>
-                            ))}
-                        </select>
-
-
+                            onChange={(id) => handleWoChange(id)}
+                            status="ACTIVE"
+                        />
                     </div>
                 </div>
 

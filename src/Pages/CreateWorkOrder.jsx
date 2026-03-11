@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-    getClientQuotations,
     getWorkOrderByQuotation,
     getClientQuotationById,
     createWorkOrder
@@ -8,9 +7,9 @@ import {
 import AlertToast from "../components/ui/AlertToast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { FaCheckCircle } from 'react-icons/fa';
+import QuotationSelector from "../components/common/QuotationSelector";
 
 const CreateWorkOrder = () => {
-    const [quotations, setQuotations] = useState([]);
     const [selectedQuotation, setSelectedQuotation] = useState("");
     const [loading, setLoading] = useState(false);
     const [checking, setChecking] = useState(false);
@@ -30,25 +29,7 @@ const CreateWorkOrder = () => {
     const [alert, setAlert] = useState({ open: false, type: "success", message: "" });
     const [confirm, setConfirm] = useState({ open: false, action: null });
 
-    useEffect(() => {
-        // Fetch all client quotations for the dropdown
-        const fetchQuotations = async () => {
-            try {
-                // Fetching all quotations - you might want to increase limit or implement search
-                const data = await getClientQuotations(1, "", "ACCEPTED");
-                if (data && data.results) {
-                    setQuotations(data.results);
-                }
-            } catch (error) {
-                console.error("Error fetching quotations", error);
-                setAlert({ open: true, type: "error", message: "Failed to load quotations" });
-            }
-        };
-        fetchQuotations();
-    }, []);
-
-    const handleQuotationChange = async (e) => {
-        const quotationId = e.target.value;
+    const handleQuotationChange = async (quotationId) => {
         setSelectedQuotation(quotationId);
         setExistingWorkOrder(null);
         setFormData(prev => ({ ...prev, items: [], advance_amount: "", remarks: "" }));
@@ -189,19 +170,13 @@ const CreateWorkOrder = () => {
                 <label className="block text-xs font-semibold text-slate-700 mb-2">
                     Select Client Quotation <span className="text-slate-500">( Showing quotations which are accepted )</span>
                 </label>
-                <select
-                    value={selectedQuotation}
-                    onChange={handleQuotationChange}
-                    className="w-full md:w-1/2 p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    disabled={checking}
-                >
-                    <option value="">-- Select Quotation --</option>
-                    {quotations.map((q) => (
-                        <option key={q.id} value={q.id}>
-                            {q.quotation_number} - {q.client_name} ({q.quotation_date})
-                        </option>
-                    ))}
-                </select>
+                <div className="w-full md:w-1/2">
+                    <QuotationSelector
+                        value={selectedQuotation}
+                        onChange={(id) => handleQuotationChange(id)}
+                        status="ACCEPTED"
+                    />
+                </div>
                 {checking && <p className="text-sm text-blue-600 mt-2">Checking work order status...</p>}
             </div>
 

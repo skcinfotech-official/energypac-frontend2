@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import AlertToast from "../components/ui/AlertToast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import BillDetailsModal from "../components/sales/BillDetailsModal";
-import { getBills, getBillsByWorkOrder, getAllWorkOrders, getBillById, markBillAsPaid, cancelBill, getBillReport, getOutstandingReport, getBillPaymentHistory } from "../services/salesService";
+import { getBills, getBillsByWorkOrder, getBillById, markBillAsPaid, cancelBill, getBillReport, getOutstandingReport, getBillPaymentHistory } from "../services/salesService";
 import PasswordConfirmModal from "../components/ui/PasswordConfirmModal";
+import WorkOrderSelector from "../components/common/WorkOrderSelector";
 import { FaSearch, FaFilter, FaEye, FaMoneyBillWave, FaTimes, FaFileExcel, FaHistory } from "react-icons/fa";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -32,8 +33,7 @@ const BillList = () => {
     const [paymentSubmitting, setPaymentSubmitting] = useState(false);
     const [passwordModal, setPasswordModal] = useState({ open: false, onConfirm: null, title: "", message: "", loading: false });
 
-    // Dropdown Data
-    const [workOrders, setWorkOrders] = useState([]);
+
 
     // Details Modal State
     const [selectedBillId, setSelectedBillId] = useState(null);
@@ -62,20 +62,6 @@ const BillList = () => {
             handleViewDetails(id);
         }
     }, [searchParams]);
-
-    // Fetch All Work Orders for Filter dropdown
-    useEffect(() => {
-        const fetchFilters = async () => {
-            try {
-                const data = await getAllWorkOrders();
-                const woList = Array.isArray(data) ? data : (data.results || []);
-                setWorkOrders(woList);
-            } catch (err) {
-                console.error("Failed to fetch work orders for filter", err);
-            }
-        };
-        fetchFilters();
-    }, []);
 
     /* =========================
        FETCH — accepts explicit pageNum
@@ -396,23 +382,15 @@ const BillList = () => {
                             <label className="block text-xs font-semibold text-slate-600 mb-1">
                                 Filter by Work Order
                             </label>
-                            <div className="relative">
-                                <select
+                            <div className="w-full">
+                                <WorkOrderSelector
                                     value={filterWorkOrder}
-                                    onChange={(e) => setFilterWorkOrder(e.target.value)}
-                                    className="w-full pl-3 pr-8 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
-                                >
-                                    <option value="">All Work Orders</option>
-                                    {workOrders.map(wo => (
-                                        <option key={wo.id} value={wo.id}>
-                                            {wo.wo_number} - {wo.client_name}
-                                        </option>
-                                    ))}
-                                </select>
-                                <FaFilter className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                    onChange={(id) => setFilterWorkOrder(id)}
+                                    placeholder="All Work Orders"
+                                    status="" // All WOs for filter
+                                />
                             </div>
                         </div>
-
                         {/* Search — only shown when no WO filter active */}
                         {!filterWorkOrder && (
                             <div className="flex-1 min-w-50">

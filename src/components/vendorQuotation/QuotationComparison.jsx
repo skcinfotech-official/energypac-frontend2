@@ -110,6 +110,7 @@ const QuotationComparison = () => {
 
         try {
             await generatePOFromComparison(payload);
+            console.log(payload);
             setToast({
                 open: true,
                 type: "success",

@@ -107,7 +107,7 @@ const ClientQuotationPDF = ({ quotation }) => {
           <Text style={styles.companySub}>E-mail: energypackolkata@gmail.com | eel@energypacindia.in</Text>
         </View>
 
-        <Text style={styles.docTitle}>QUOTATION</Text>
+        <Text style={styles.docTitle}>Seller Note Sheet</Text>
 
         {/* 2. Client & Quotation Details */}
         <View style={styles.topSection}>

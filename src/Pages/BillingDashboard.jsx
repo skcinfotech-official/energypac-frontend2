@@ -25,7 +25,7 @@ const BillingDashboard = () => {
         // Bill Details
         if (apiLink.match(/^\/bills\/[a-f0-9-]+$/)) {
             const id = apiLink.split('/').pop();
-            return `/sales/wo-bills?id=${id}`;
+            return `/finance/wo-bills?id=${id}`;
         }
 
         // Work Order List with filter
@@ -35,7 +35,7 @@ const BillingDashboard = () => {
 
         // Bill List with filter
         if (apiLink.includes("/bills")) {
-            return apiLink.replace("/bills", "/sales/wo-bills");
+            return apiLink.replace("/bills", "/finance/wo-bills");
         }
 
         // Inventory
@@ -151,7 +151,7 @@ const BillingDashboard = () => {
                         <h3 className="font-bold text-slate-700 flex items-center gap-2">
                             <FaFileInvoiceDollar className="text-emerald-500" /> Billing & Payments
                         </h3>
-                        <Link to="/sales/wo-bills" className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+                        <Link to="/finance/wo-bills" className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
                             View All Bills <FaArrowRight size={10} />
                         </Link>
                     </div>

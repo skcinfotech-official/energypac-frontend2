@@ -18,6 +18,7 @@ import { RiCustomerService2Fill } from "react-icons/ri";
 import { BiSolidPurchaseTag } from "react-icons/bi";
 import { HiUserAdd } from "react-icons/hi";
 import { HiDocumentText } from "react-icons/hi";
+import { FaMoneyBillTrendUp } from "react-icons/fa6";
 import { useAuth } from "../../context/AuthContext";
 
 export default function Sidebar({ isOpen }) {
@@ -111,10 +112,18 @@ export default function Sidebar({ isOpen }) {
                 { to: "/sales/billing-dashboard", label: "Billing Dashboard", icon: <BiSolidPurchaseTag /> },  
                 { to: "/sales/billing-analytics", label: "Billing Analytics", icon: <BiSolidPurchaseTag /> },  
                 { to: "/sales/create-wo-bill", label: "Create WO Bill", icon: <BiSolidPurchaseTag /> },
-                { to: "/sales/wo-bills", label: "WO Bills List", icon: <FaList /> },
-                // You can add list view here later, e.g., { to: "/sales/work-orders", label: "Work Order List", icon: ... }
               ]
             },
+          ]}
+        />
+        <SidebarDropdown
+          label="Finance"
+          icon={<FaMoneyBillTrendUp />}
+          isOpen={isOpen}
+          items={[
+            { to: "/finance/dashboard", label: "Finance Dashboard", icon: <FaThLarge /> },
+            { to: "/finance/purchase-orders", label: "PO List", icon: <BiSolidPurchaseTag /> },
+            { to: "/finance/wo-bills", label: "WO Bills List", icon: <FaList /> },
           ]}
         />
         <SidebarLink to="/direct-purchase" label="Direct Purchase" icon={<BiSolidPurchaseTag />} isOpen={isOpen} />

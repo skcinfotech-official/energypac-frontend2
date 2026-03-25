@@ -282,6 +282,43 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                 </div>
                             </div>
 
+                            {/* Shipping Info Grid */}
+                            <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
+                                <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4 border-b border-slate-200 pb-2 flex items-center gap-2">
+                                    <FaInfoCircle className="text-slate-400" /> Shipping & Delivery Information
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-sm">
+                                    <div className="md:col-span-2 lg:col-span-2">
+                                        <p className="text-xs text-slate-500 uppercase font-bold">Importer Address</p>
+                                        <p className="text-slate-700 italic border-l-2 border-slate-300 pl-3 mt-1 py-1 bg-white rounded shadow-sm min-h-12">{details.importer_address || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-500 uppercase font-bold">Port of Loading</p>
+                                        <p className="font-medium text-slate-800 bg-white p-2 rounded shadow-sm border border-slate-100">{details.port_of_loading || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-500 uppercase font-bold">Port of Discharge</p>
+                                        <p className="font-medium text-slate-800 bg-white p-2 rounded shadow-sm border border-slate-100">{details.port_of_discharge || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-500 uppercase font-bold">Final Destination</p>
+                                        <p className="font-medium text-slate-800 bg-white p-2 rounded shadow-sm border border-slate-100">{details.final_destination || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-500 uppercase font-bold">Pre-carriage By</p>
+                                        <p className="font-medium text-slate-800 bg-white p-2 rounded shadow-sm border border-slate-100">{details.pre_carriage_by || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-500 uppercase font-bold">Vessel / Flight No</p>
+                                        <p className="font-medium text-slate-800 bg-white p-2 rounded shadow-sm border border-slate-100">{details.vessel_flight_no || 'N/A'}</p>
+                                    </div>
+                                    <div className="md:col-span-2 lg:col-span-1">
+                                        <p className="text-xs text-slate-500 uppercase font-bold">Terms of Delivery & Payment</p>
+                                        <p className="font-medium text-slate-800 bg-white p-2 rounded shadow-sm border border-slate-100">{details.terms_of_delivery_payment || 'N/A'}</p>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Items Table */}
                             <div>
                                 <h3 className="text-lg font-bold text-slate-800 mb-4">Bill Items</h3>

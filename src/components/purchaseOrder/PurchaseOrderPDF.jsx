@@ -104,6 +104,12 @@ const styles = StyleSheet.create({
 const PurchaseOrderPDF = ({ details }) => {
     const formatCurrency = (val) => Number(val || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 });
     const formatDate = (date) => date ? new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.') : '';
+    const renderMultiLineText = (text) => {
+        if (!text) return null;
+        return text.toString().split('\n').map((line, i) => (
+            <Text key={i}>{line}</Text>
+        ));
+    };
 
     return (
         <Document>
@@ -128,7 +134,7 @@ const PurchaseOrderPDF = ({ details }) => {
                     <View style={styles.addressBox}>
                         <Text style={styles.addressTitle}>Bill To</Text>
                         <Text style={{ fontWeight: 'bold' }}>{details.bill_to_name || "ENERGYPAC ENGINEERING LIMITED."}</Text>
-                        <Text>{details.bill_to_address || "KB-22, BHAKTA TOWER, 4TH FLOOR, SEC-3\nSALT LAKE, KOLKATA-700106 WEST BENGAL, INDIA."}</Text>
+                        <View>{renderMultiLineText(details.bill_to_address || "KB-22, BHAKTA TOWER, 4TH FLOOR, SEC-3\nSALT LAKE, KOLKATA-700106 WEST BENGAL, INDIA.")}</View>
                         <Text>GST NO. {details.bill_to_gstin || "19AABCE4975GIZE"}</Text>
                     </View>
                     {/* <View style={styles.addressBox}>
@@ -138,35 +144,53 @@ const PurchaseOrderPDF = ({ details }) => {
                     </View> */}
                 </View>
 
-                <Text style={styles.docTitle}>PURCHASE ORDER</Text>
+                <Text style={styles.docTitle}>Purchase Note Sheet</Text>
 
                 {/* 2. Vendor & PO Details */}
                 <View style={styles.topSection}>
                     <View style={styles.vendorInfo}>
                         <Text style={{ fontWeight: 'bold', marginBottom: 4 }}>To,</Text>
                         <Text style={{ fontWeight: 'bold', fontSize: 10 }}>{details.vendor_name}</Text>
-                        <Text>{details.vendor_details.address}</Text>
-                        {details.vendor_details.phone && <Text>Ph: {details.vendor_details.phone}</Text>}
-                        {details.vendor_details.email && <Text>Email: {details.vendor_details.email}</Text>}
-                        {details.vendor_details.gst_number && <Text>GST NO: {details.vendor_details.gst_number}</Text>}
+                        {details.vendor_details && (
+                            <>
+                                <View>{renderMultiLineText(details.vendor_details.address)}</View>
+                                {details.vendor_details.phone && <Text>Ph: {details.vendor_details.phone}</Text>}
+                                {details.vendor_details.email && <Text>Email: {details.vendor_details.email}</Text>}
+                                {details.vendor_details.gst_number && <Text>GST NO: {details.vendor_details.gst_number}</Text>}
+                                {details.vendor_details.bank_name && <Text>BANK NAME: {details.vendor_details.bank_name}</Text>}
+                                {details.vendor_details.account_name && <Text>A/C NAME: {details.vendor_details.account_name}</Text>}
+                                {details.vendor_details.bank_account_number && <Text>A/C NO: {details.vendor_details.bank_account_number}</Text>}
+                                {details.vendor_details.ifsc_code && <Text>IFSC CODE: {details.vendor_details.ifsc_code}</Text>}
+                                {details.vendor_details.swift_code && <Text>SWIFT CODE: {details.vendor_details.swift_code}</Text>}
+                            </>
+                        )}
                     </View>
 
-                    <View style={styles.poDetailsBox}>
-                        <View style={styles.poDetailsRow}>
-                            <Text style={styles.poDetailsLabel}>P.O. NO:</Text>
-                            <Text style={styles.poDetailsValue}>{details.po_number}</Text>
-                        </View>
+                    <View style={styles.poDetailsBox} wrap={false}>
+                        
                         <View style={styles.poDetailsRow}>
                             <Text style={styles.poDetailsLabel}>DATE:</Text>
                             <Text style={styles.poDetailsValue}>{formatDate(details.created_at)}</Text>
                         </View>
                         <View style={styles.poDetailsRow}>
-                            <Text style={styles.poDetailsLabel}>REQ REF:</Text>
-                            <Text style={styles.poDetailsValue}>{details.requisition_number}</Text>
+                            <Text style={styles.poDetailsLabel}>A/C NAME:</Text>
+                            <Text style={styles.poDetailsValue}>{details.vendor_details?.account_name || details.vendor?.account_name || '-'}</Text>
+                        </View>
+                        <View style={styles.poDetailsRow}>
+                            <Text style={styles.poDetailsLabel}>BANK NAME:</Text>
+                            <Text style={styles.poDetailsValue}>{details.vendor_details?.bank_name || details.vendor?.bank_name || '-'}</Text>
+                        </View>
+                        <View style={styles.poDetailsRow}>
+                            <Text style={styles.poDetailsLabel}>A/C NO:</Text>
+                            <Text style={styles.poDetailsValue}>{details.vendor_details?.bank_account_number || details.vendor?.bank_account_number || '-'}</Text>
+                        </View>
+                        <View style={styles.poDetailsRow}>
+                            <Text style={styles.poDetailsLabel}>IFSC CODE:</Text>
+                            <Text style={styles.poDetailsValue}>{details.vendor_details?.ifsc_code || details.vendor?.ifsc_code || '-'}</Text>
                         </View>
                         <View style={[styles.poDetailsRow, { borderBottomWidth: 0 }]}>
-                            <Text style={styles.poDetailsLabel}>STATUS:</Text>
-                            <Text style={styles.poDetailsValue}>{details.status}</Text>
+                            <Text style={styles.poDetailsLabel}>SWIFT CODE:</Text>
+                            <Text style={styles.poDetailsValue}>{details.vendor_details?.swift_code || details.vendor?.swift_code || '-'}</Text>
                         </View>
                     </View>
                 </View>
@@ -255,7 +279,7 @@ const PurchaseOrderPDF = ({ details }) => {
                 {details.remarks && (
                     <View style={styles.termsSection}>
                         <Text style={styles.termsTitle}>Remarks / Terms & Conditions:-</Text>
-                        <Text style={{ fontSize: 9 }}>{details.remarks}</Text>
+                        <View style={{ fontSize: 9 }}>{renderMultiLineText(details.remarks)}</View>
                     </View>
                 )}
 

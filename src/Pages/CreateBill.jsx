@@ -20,6 +20,13 @@ const CreateBill = () => {
         bill_type: "DOMESTIC",
         freight_cost: 0,
         remarks: "",
+        importer_address: "",
+        port_of_loading: "",
+        port_of_discharge: "",
+        final_destination: "",
+        pre_carriage_by: "",
+        terms_of_delivery_payment: "",
+        vessel_flight_no: "",
         items: []
     });
 
@@ -177,6 +184,13 @@ const CreateBill = () => {
             bill_type: formData.bill_type,
             freight_cost: parseFloat(formData.freight_cost || 0),
             remarks: formData.remarks,
+            importer_address: formData.importer_address,
+            port_of_loading: formData.port_of_loading,
+            port_of_discharge: formData.port_of_discharge,
+            final_destination: formData.final_destination,
+            pre_carriage_by: formData.pre_carriage_by,
+            terms_of_delivery_payment: formData.terms_of_delivery_payment,
+            vessel_flight_no: formData.vessel_flight_no,
             items: itemsToBill
         };
 
@@ -196,7 +210,20 @@ const CreateBill = () => {
                     // Reset and refresh
                     setSelectedWoId("");
                     setWoDetails(null);
-                    setFormData({ ...formData, items: [], remarks: "", bill_type: "DOMESTIC", freight_cost: 0 });
+                    setFormData({
+                        bill_date: new Date().toISOString().split("T")[0],
+                        bill_type: "DOMESTIC",
+                        freight_cost: 0,
+                        remarks: "",
+                        importer_address: "",
+                        port_of_loading: "PETRAPOLE LCS (INDIA)",
+                        port_of_discharge: "BENAPOLE LAND PORT, BANGLADESH",
+                        final_destination: "DHAKA, BANGLADESH",
+                        pre_carriage_by: "BY ROAD",
+                        terms_of_delivery_payment: "",
+                        vessel_flight_no: "BY ROAD",
+                        items: []
+                    });
                 } catch (error) {
                     console.error("Bill creation failed", error);
                     setAlert({ open: true, type: "error", message: "Failed to create bill" });
@@ -298,6 +325,94 @@ const CreateBill = () => {
                                         value={formData.remarks}
                                         onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
                                         placeholder="Optional remarks"
+                                        className="w-full p-2.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Shipping Details */}
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4 border-b border-slate-200 pb-2">
+                                Shipping & Delivery Details
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <div className="md:col-span-2 lg:col-span-3">
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                        Importer Address
+                                    </label>
+                                    <textarea
+                                        value={formData.importer_address}
+                                        onChange={(e) => setFormData({ ...formData, importer_address: e.target.value })}
+                                        placeholder="Enter importer address"
+                                        rows={2}
+                                        className="w-full p-2.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                        Port of Loading
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.port_of_loading}
+                                        onChange={(e) => setFormData({ ...formData, port_of_loading: e.target.value })}
+                                        className="w-full p-2.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                        Port of Discharge
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.port_of_discharge}
+                                        onChange={(e) => setFormData({ ...formData, port_of_discharge: e.target.value })}
+                                        className="w-full p-2.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                        Final Destination
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.final_destination}
+                                        onChange={(e) => setFormData({ ...formData, final_destination: e.target.value })}
+                                        className="w-full p-2.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                        Pre-carriage By
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.pre_carriage_by}
+                                        onChange={(e) => setFormData({ ...formData, pre_carriage_by: e.target.value })}
+                                        className="w-full p-2.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                        Vessel / Flight No
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.vessel_flight_no}
+                                        onChange={(e) => setFormData({ ...formData, vessel_flight_no: e.target.value })}
+                                        className="w-full p-2.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
+                                    />
+                                </div>
+                                <div className="md:col-span-2 lg:col-span-1">
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                        Terms of Delivery & Payment
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.terms_of_delivery_payment}
+                                        onChange={(e) => setFormData({ ...formData, terms_of_delivery_payment: e.target.value })}
+                                        placeholder="e.g. CPT Benapole by Road"
                                         className="w-full p-2.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
                                     />
                                 </div>

@@ -25,6 +25,9 @@ import CreateBill from "./Pages/CreateBill.jsx";
 import BillList from "./Pages/BillList.jsx";
 import BillingDashboard from "./Pages/BillingDashboard.jsx";
 import BillingAnalytics from "./Pages/BillingAnalytics.jsx";
+import FinancePOList from "./Pages/FinancePOList.jsx";
+import FinanceDashboard from "./Pages/FinanceDashboard.jsx";
+
 
 export default function App() {
   return (
@@ -48,7 +51,7 @@ export default function App() {
               <Route path="/sales/create-work-order" element={<CreateWorkOrder />} />
               <Route path="/sales/work-orders" element={<WorkOrderList />} />
               <Route path="/sales/create-wo-bill" element={<CreateBill />} />
-              <Route path="/sales/wo-bills" element={<BillList />} />
+              <Route path="/finance/wo-bills" element={<BillList />} />
               <Route path="/sales/billing-dashboard" element={<BillingDashboard />} />
               <Route path="/sales/billing-analytics" element={<BillingAnalytics />} />
 
@@ -59,6 +62,9 @@ export default function App() {
               {/* <Route path="/export-data" element={<Pending />} />
               <Route path="/export-log" element={<Pending />} /> */}
               <Route path="/HSN" element={<Pending />} />
+              <Route path="/finance/dashboard" element={<FinanceDashboard />} />
+              <Route path="/finance/purchase-orders" element={<FinancePOList />} />
+
             </Route>
           </Route>
         </Routes>

@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { FaLock } from "react-icons/fa";
+import { FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 
 const PasswordConfirmModal = ({ open, title = "Confirm Password", message = "Please enter your password to confirm this action.", onConfirm, onCancel, loading = false }) => {
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
 
     if (!open) return null;
 
@@ -32,15 +33,24 @@ const PasswordConfirmModal = ({ open, title = "Confirm Password", message = "Ple
                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
                                 Password
                             </label>
-                            <input
-                                autoFocus
-                                type="password"
-                                required
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="••••••••"
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all placeholder:text-slate-300"
-                            />
+                            <div className="relative">
+                                <input
+                                    autoFocus
+                                    type={showPassword ? "text" : "password"}
+                                    required
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                    className="w-full p-3 pr-12 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all placeholder:text-slate-300 text-slate-800"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                                >
+                                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                                </button>
+                            </div>
                         </div>
 
                         <div className="flex gap-3 pt-2">

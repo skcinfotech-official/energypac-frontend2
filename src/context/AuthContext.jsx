@@ -48,6 +48,7 @@ export const AuthProvider = ({ children }) => {
 
       setUser(userData);
       setIsAuthenticated(true);
+      return userData;
     } catch (error) {
       throw new Error(
         error.response?.data?.detail || "Invalid credentials"

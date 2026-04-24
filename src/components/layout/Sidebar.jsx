@@ -23,6 +23,14 @@ import { useAuth } from "../../context/AuthContext";
 
 export default function Sidebar({ isOpen }) {
   const { user } = useAuth();
+  
+  const hasPermission = (moduleName) => {
+    // Admins have access to everything
+    if (user?.role === "ADMIN") return true;
+    if (!user || !user.permissions) return false;
+    const perm = user.permissions.find(p => p.module === moduleName);
+    return perm ? perm.can_read : false;
+  };
 
   return (
     <aside
@@ -55,78 +63,83 @@ export default function Sidebar({ isOpen }) {
 
         {/* <SidebarLink to="/" label="Dashboard" icon={<FaThLarge />} isOpen={isOpen} /> */}
 
-        <SidebarDropdown
-          label="Master"
-          icon={<BiImport />}
-          isOpen={isOpen}
-          items={[
-            { to: "/HSN", label: "HSN Code", icon: <FaBarcode /> },
-            { to: "/master/item", label: "Item", icon: <FaCube /> },
-            { to: "/master/vendor", label: "Vendor", icon: <FaUserTie /> },
-          ]}
-        />
-        <SidebarDropdown
-          label="Purchase"
-          icon={<BiImport />}
-          isOpen={isOpen}
-          items={[
-            { to: "/", label: "Purchase Dashboard", icon: <FaThLarge /> },
-            { to: "/requisition", label: "Requisition", icon: <FaFileAlt /> },
-            { to: "/vendor-assignment", label: "Vendor Assignment", icon: <FaUserTie /> },
-            { to: "/vendor-quotation", label: "Vendor Quotation", icon: <FaUserTie /> },
-            { to: "/purchase-order", label: "Purchase Order", icon: <BiSolidPurchaseTag /> },
+        {hasPermission("MASTER") && (
+          <SidebarDropdown
+            label="Master"
+            icon={<BiImport />}
+            isOpen={isOpen}
+            items={[
+              { to: "/HSN", label: "HSN Code", icon: <FaBarcode /> },
+              { to: "/master/item", label: "Item", icon: <FaCube /> },
+              { to: "/master/vendor", label: "Vendor", icon: <FaUserTie /> },
+            ]}
+          />
+        )}
 
-          ]}
-        />
+        {hasPermission("PURCHASE") && (
+          <SidebarDropdown
+            label="Purchase"
+            icon={<BiImport />}
+            isOpen={isOpen}
+            items={[
+              { to: "/", label: "Purchase Dashboard", icon: <FaThLarge /> },
+              { to: "/requisition", label: "Requisition", icon: <FaFileAlt /> },
+              { to: "/vendor-assignment", label: "Vendor Assignment", icon: <FaUserTie /> },
+              { to: "/vendor-quotation", label: "Vendor Quotation", icon: <FaUserTie /> },
+              { to: "/purchase-order", label: "Purchase Order", icon: <BiSolidPurchaseTag /> },
+            ]}
+          />
+        )}
 
-        {/* <SidebarLink to="/sales" label="Sales" icon={<FaMoneyCheckAlt />} isOpen={isOpen} /> */}
-        {/* <SidebarLink to="/requisition" label="Requisition" icon={<FaFileAlt />} isOpen={isOpen} />
-        <SidebarLink to="/vendor-assignment" label="Vendor Assignment" icon={<HiUserAdd />} isOpen={isOpen} />
-        <SidebarLink to="/vendor-quotation" label="Vendor Quotation" icon={<HiDocumentText />} isOpen={isOpen} />
-        <SidebarLink to="/purchase-order" label="Purchase Order" icon={<BiSolidPurchaseTag />} isOpen={isOpen} /> */}
-        <SidebarDropdown
-          label="Sales"
-          icon={<FaMoneyCheckAlt />}
-          isOpen={isOpen}
-          items={[
-            { to: "/sales/dashboard", label: "Sales Dashboard", icon: <FaThLarge /> },
-            { to: "/sales/sales-statistics", label: "Sales Statistics", icon: <FaChartLine /> },
-            { to: "/sales/sales-performance", label: "Performance Report", icon: <FaTrophy /> },
-            { to: "/sales/sales-products", label: "Product Analysis", icon: <FaBoxOpen /> },
-            { to: "/sales/client-query", label: "Client Query", icon: <FaUserTie /> },
-            { to: "/sales/client-quotation", label: "Client Quotation", icon: <FaUserTie /> },
-            // Nested Group: Work Order
-            {
-              label: "Work Order",
-              icon: <FaFileAlt />,
-              items: [
-                { to: "/sales/create-work-order", label: "Create Work Order", icon: <BiSolidPurchaseTag /> },
-                { to: "/sales/work-orders", label: "Work Order List", icon: <FaList /> },
-                // You can add list view here later, e.g., { to: "/sales/work-orders", label: "Work Order List", icon: ... }
-              ]
-            },
-            {
-              label: "Work Order Bills",
-              icon: <FaFileAlt />,
-              items: [
-                { to: "/sales/billing-dashboard", label: "Billing Dashboard", icon: <BiSolidPurchaseTag /> },  
-                { to: "/sales/billing-analytics", label: "Billing Analytics", icon: <BiSolidPurchaseTag /> },  
-                { to: "/sales/create-wo-bill", label: "Create WO Bill", icon: <BiSolidPurchaseTag /> },
-              ]
-            },
-          ]}
-        />
-        <SidebarDropdown
-          label="Finance"
-          icon={<FaMoneyBillTrendUp />}
-          isOpen={isOpen}
-          items={[
-            { to: "/finance/dashboard", label: "Finance Dashboard", icon: <FaThLarge /> },
-            { to: "/finance/purchase-orders", label: "PO List", icon: <BiSolidPurchaseTag /> },
-            { to: "/finance/wo-bills", label: "WO Bills List", icon: <FaList /> },
-          ]}
-        />
-        <SidebarLink to="/direct-purchase" label="Direct Purchase" icon={<BiSolidPurchaseTag />} isOpen={isOpen} />
+        {hasPermission("SALES") && (
+          <SidebarDropdown
+            label="Sales"
+            icon={<FaMoneyCheckAlt />}
+            isOpen={isOpen}
+            items={[
+              { to: "/sales/dashboard", label: "Sales Dashboard", icon: <FaThLarge /> },
+              { to: "/sales/sales-statistics", label: "Sales Statistics", icon: <FaChartLine /> },
+              { to: "/sales/sales-performance", label: "Performance Report", icon: <FaTrophy /> },
+              { to: "/sales/sales-products", label: "Product Analysis", icon: <FaBoxOpen /> },
+              { to: "/sales/client-query", label: "Client Query", icon: <FaUserTie /> },
+              { to: "/sales/client-quotation", label: "Client Quotation", icon: <FaUserTie /> },
+              {
+                label: "Work Order",
+                icon: <FaFileAlt />,
+                items: [
+                  { to: "/sales/create-work-order", label: "Create Work Order", icon: <BiSolidPurchaseTag /> },
+                  { to: "/sales/work-orders", label: "Work Order List", icon: <FaList /> },
+                ]
+              },
+              {
+                label: "Work Order Bills",
+                icon: <FaFileAlt />,
+                items: [
+                  { to: "/sales/billing-dashboard", label: "Billing Dashboard", icon: <BiSolidPurchaseTag /> },  
+                  { to: "/sales/billing-analytics", label: "Billing Analytics", icon: <BiSolidPurchaseTag /> },  
+                  { to: "/sales/create-wo-bill", label: "Create WO Bill", icon: <BiSolidPurchaseTag /> },
+                ]
+              },
+            ]}
+          />
+        )}
+
+        {hasPermission("FINANCE") && (
+          <SidebarDropdown
+            label="Finance"
+            icon={<FaMoneyBillTrendUp />}
+            isOpen={isOpen}
+            items={[
+              { to: "/finance/dashboard", label: "Finance Dashboard", icon: <FaThLarge /> },
+              { to: "/finance/purchase-orders", label: "PO List", icon: <BiSolidPurchaseTag /> },
+              { to: "/finance/wo-bills", label: "WO Bills List", icon: <FaList /> },
+            ]}
+          />
+        )}
+
+        {hasPermission("PURCHASE") && (
+          <SidebarLink to="/direct-purchase" label="Direct Purchase" icon={<BiSolidPurchaseTag />} isOpen={isOpen} />
+        )}
       </nav>
 
       {/* FOOTER */}

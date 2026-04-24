@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaUser, FaLock, FaChevronRight, FaEye, FaEyeSlash } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
@@ -14,7 +14,17 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
 
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const { login, isAuthenticated, user, authChecked } = useAuth();
+
+    useEffect(() => {
+        if (authChecked && isAuthenticated) {
+            if (user?.role === "ADMIN") {
+                navigate("/admin/dashboard", { replace: true });
+            } else {
+                navigate("/", { replace: true });
+            }
+        }
+    }, [isAuthenticated, authChecked, user, navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -22,8 +32,13 @@ export default function Login() {
 
         try {
             setLoading(true);
-            await login(employeeCode, password);
-            navigate("/", { replace: true });
+            const user = await login(employeeCode, password);
+            
+            if (user?.role === "ADMIN") {
+                navigate("/admin/dashboard", { replace: true });
+            } else {
+                navigate("/", { replace: true });
+            }
         } catch (err) {
             setError(err.message);
         } finally {

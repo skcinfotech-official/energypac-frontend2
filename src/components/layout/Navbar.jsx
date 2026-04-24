@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { FaSignOutAlt, FaBars } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
 import { useLocation } from "react-router-dom";
+import ConfirmDialog from "../ui/ConfirmDialog";
 
 export default function Navbar({ toggleSidebar, isSidebarOpen }) {
   const { logout } = useAuth();
   const location = useLocation();
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
   // Convert path to readable title
   const getPageTitle = () => {
@@ -21,6 +24,7 @@ export default function Navbar({ toggleSidebar, isSidebarOpen }) {
   };
 
   return (
+    <>
     <header
       className="
         sticky top-0 z-10
@@ -55,10 +59,8 @@ export default function Navbar({ toggleSidebar, isSidebarOpen }) {
 
       {/* RIGHT SECTION */}
       <div className="flex items-center gap-6">
-        <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
-
         <button
-          onClick={logout}
+          onClick={() => setIsLogoutDialogOpen(true)}
           className="
             flex items-center gap-2.5 px-4 py-2 rounded-lg transition-all duration-200
             bg-slate-50 text-slate-600 font-medium text-sm
@@ -70,5 +72,15 @@ export default function Navbar({ toggleSidebar, isSidebarOpen }) {
         </button>
       </div>
     </header>
+    <ConfirmDialog 
+      open={isLogoutDialogOpen}
+      title="Confirm Logout"
+      message="Are you sure you want to log out from your account?"
+      confirmText="Logout"
+      onConfirm={logout}
+      onCancel={() => setIsLogoutDialogOpen(false)}
+      icon={FaSignOutAlt}
+    />
+    </>
   );
 }

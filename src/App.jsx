@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Layout from "./components/Layout.jsx";
+import AdminLayout from "./components/AdminLayout.jsx";
 
 import Dashboard from "./Pages/Dashboard.jsx"
 import SalesDashboard from "./Pages/SalesDashboard.jsx";
@@ -27,6 +28,8 @@ import BillingDashboard from "./Pages/BillingDashboard.jsx";
 import BillingAnalytics from "./Pages/BillingAnalytics.jsx";
 import FinancePOList from "./Pages/FinancePOList.jsx";
 import FinanceDashboard from "./Pages/FinanceDashboard.jsx";
+import AdminDashboard from "./Pages/AdminDashboard.jsx";
+import ManageUsers from "./Pages/ManageUsers.jsx";
 
 
 export default function App() {
@@ -65,6 +68,20 @@ export default function App() {
               <Route path="/finance/dashboard" element={<FinanceDashboard />} />
               <Route path="/finance/purchase-orders" element={<FinancePOList />} />
 
+            </Route>
+          </Route>
+
+          {/* ADMIN ROUTES */}
+          <Route element={<ProtectedRoute requiredRole="ADMIN" />}>
+            <Route element={<AdminLayout />}>
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/users" element={<ManageUsers />} />
+              <Route path="/admin/roles" element={<AdminDashboard />} />
+              <Route path="/admin/access-logs" element={<AdminDashboard />} />
+              <Route path="/admin/modules" element={<AdminDashboard />} />
+              <Route path="/admin/audit-trail" element={<AdminDashboard />} />
+              <Route path="/admin/security" element={<AdminDashboard />} />
+              <Route path="/admin/settings" element={<AdminDashboard />} />
             </Route>
           </Route>
         </Routes>

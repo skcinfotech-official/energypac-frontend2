@@ -114,7 +114,8 @@ export default function ManageUsers() {
       // If Admin, auto-set all permissions to true. If Employee, keep existing or reset.
       permissions: newRole === "ADMIN" 
         ? MODULES.map(m => ({ module: m.id, can_read: true, can_write: true }))
-        : MODULES.map(m => ({ module: m.id, can_read: true, can_write: false }))
+        : MODULES.map(m => ({ module: m.id, can_read: false, can_write: false }))
+
     }));
   };
 
@@ -131,7 +132,8 @@ export default function ManageUsers() {
       department: "",
       role: "EMPLOYEE",
       password: "",
-      permissions: MODULES.map(m => ({ module: m.id, can_read: true, can_write: false }))
+      permissions: MODULES.map(m => ({ module: m.id, can_read: false, can_write: false }))
+
     });
     setIsModalOpen(true);
   };
@@ -154,7 +156,8 @@ export default function ManageUsers() {
         password: "", // Password is optional on update
         permissions: userData.permissions && userData.permissions.length > 0 
           ? userData.permissions 
-          : MODULES.map(m => ({ module: m.id, can_read: true, can_write: false }))
+          : MODULES.map(m => ({ module: m.id, can_read: false, can_write: false }))
+
       });
       setIsModalOpen(true);
     } catch (error) {
@@ -276,9 +279,10 @@ export default function ManageUsers() {
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-white tracking-tight">User Management</h2>
-          <p className="text-slate-400">Manage system access, roles, and module permissions.</p>
+          <h2 className="text-3xl font-bold text-slate-800 tracking-tight">User Management</h2>
+          <p className="text-slate-500">Manage system access, roles, and module permissions.</p>
         </div>
+
         <button 
           onClick={openCreateModal}
           className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-2xl shadow-lg shadow-indigo-500/20 transition-all font-semibold"
@@ -295,27 +299,30 @@ export default function ManageUsers() {
           <input 
             type="text" 
             placeholder="Search by code, name, email..."
-            className="w-full pl-12 pr-4 py-3 bg-slate-900/50 border border-slate-800 rounded-2xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
+            className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm shadow-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+
         </div>
 
         <select 
-          className="bg-slate-900/50 border border-slate-800 rounded-2xl text-slate-300 px-4 py-3 text-sm focus:border-indigo-500 outline-none"
+          className="bg-white border border-slate-200 rounded-2xl text-slate-600 px-4 py-3 text-sm focus:border-indigo-500 outline-none shadow-sm"
           value={filters.role}
           onChange={(e) => setFilters({...filters, role: e.target.value, page: 1})}
         >
+
           <option value="">All Roles</option>
           <option value="ADMIN">Admin</option>
           <option value="EMPLOYEE">Employee</option>
         </select>
 
         <select 
-          className="bg-slate-900/50 border border-slate-800 rounded-2xl text-slate-300 px-4 py-3 text-sm focus:border-indigo-500 outline-none"
+          className="bg-white border border-slate-200 rounded-2xl text-slate-600 px-4 py-3 text-sm focus:border-indigo-500 outline-none shadow-sm"
           value={filters.department}
           onChange={(e) => setFilters({...filters, department: e.target.value, page: 1})}
         >
+
           <option value="">All Departments</option>
           <option value="Purchase">Purchase</option>
           <option value="Sales">Sales</option>
@@ -325,10 +332,11 @@ export default function ManageUsers() {
         </select>
 
         <select 
-          className="bg-slate-900/50 border border-slate-800 rounded-2xl text-slate-300 px-4 py-3 text-sm focus:border-indigo-500 outline-none"
+          className="bg-white border border-slate-200 rounded-2xl text-slate-600 px-4 py-3 text-sm focus:border-indigo-500 outline-none shadow-sm"
           value={filters.is_active}
           onChange={(e) => setFilters({...filters, is_active: e.target.value, page: 1})}
         >
+
           <option value="">All Status</option>
           <option value="true">Active</option>
           <option value="false">Inactive</option>
@@ -339,19 +347,21 @@ export default function ManageUsers() {
             setSearchTerm("");
             setFilters({ role: "", is_active: "", department: "", ordering: "", page: 1 });
           }}
-          className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-900/50 border border-slate-800 rounded-2xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all text-sm"
+          className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-slate-200 rounded-2xl text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all text-sm shadow-sm"
         >
+
           <FaTimes className="text-xs" />
           <span>Reset</span>
         </button>
       </div>
 
       {/* USERS TABLE */}
-      <div className="bg-slate-900/50 border border-slate-800 rounded-3xl overflow-hidden backdrop-blur-sm">
+      <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-slate-800 bg-slate-900/50">
+              <tr className="border-b border-slate-200 bg-slate-50">
+
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">User Details</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Department</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Role</th>
@@ -378,32 +388,36 @@ export default function ManageUsers() {
                 </tr>
               ) : (
                 Array.isArray(users) && users.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-800/30 transition-colors group">
+                  <tr key={user.id} className="hover:bg-slate-50/80 transition-colors group">
+
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-4">
                         <div className="h-10 w-10 rounded-xl bg-indigo-600/10 flex items-center justify-center text-indigo-400 font-bold border border-indigo-500/20">
                           {user.first_name[0]}{user.last_name[0]}
                         </div>
                         <div>
-                          <p className="text-white font-semibold text-sm group-hover:text-indigo-400 transition-colors">{user.full_name}</p>
-                          <p className="text-slate-500 text-xs">{user.employee_code} • {user.email}</p>
+                          <p className="text-slate-800 font-bold text-sm group-hover:text-indigo-600 transition-colors">{user.full_name}</p>
+                          <p className="text-slate-500 text-xs font-medium">{user.employee_code} • {user.email}</p>
                         </div>
+
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-slate-300 text-sm">
-                        <FaBriefcase className="text-slate-500 text-xs" />
+                      <div className="flex items-center gap-2 text-slate-700 text-sm font-medium">
+                        <FaBriefcase className="text-slate-400 text-xs" />
                         <span>{user.department || "N/A"}</span>
                       </div>
+
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter ${
                         user.role === 'ADMIN' 
-                          ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
-                          : 'bg-slate-800 text-slate-400 border border-slate-700'
+                          ? 'bg-indigo-100 text-indigo-600 border border-indigo-200' 
+                          : 'bg-blue-100 text-blue-600 border border-blue-200'
                       }`}>
                         {user.role}
                       </span>
+
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1.5">
@@ -463,26 +477,29 @@ export default function ManageUsers() {
       {/* CREATE USER MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setIsModalOpen(false)}></div>
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}></div>
           
-          <div className="relative w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+          <div className="relative w-full max-w-4xl bg-white border border-slate-200 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
             {/* MODAL HEADER */}
-            <div className="px-8 py-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/50 sticky top-0">
+            <div className="px-8 py-6 border-b border-slate-200 flex items-center justify-between bg-white sticky top-0 z-10">
+
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-indigo-600 rounded-2xl text-white shadow-lg shadow-indigo-500/20">
                   {isEditMode ? <FaUserCog className="text-xl" /> : <FaUserPlus className="text-xl" />}
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white">{isEditMode ? "Update User Profile" : "Initialize New Employee"}</h3>
+                  <h3 className="text-xl font-bold text-slate-800">{isEditMode ? "Update User Profile" : "Initialize New Employee"}</h3>
                   <p className="text-slate-500 text-xs uppercase tracking-widest mt-0.5">{isEditMode ? "Modify Account Settings" : "System Access Configuration"}</p>
                 </div>
+
               </div>
               <button 
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-xl transition-all"
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
               >
                 <FaTimes />
               </button>
+
             </div>
 
             {/* MODAL BODY */}
@@ -501,20 +518,24 @@ export default function ManageUsers() {
                       <input 
                         type="text" 
                         required
-                        className="w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-white text-sm focus:border-indigo-500 outline-none"
+                        className="w-full px-4 py-3 bg-blue-50/50 border border-blue-100 rounded-xl text-slate-800 text-sm focus:border-blue-500 outline-none transition-all"
                         value={formData.first_name}
                         onChange={(e) => setFormData({...formData, first_name: e.target.value})}
                       />
+
+
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-slate-500 text-[10px] font-bold uppercase ml-1">Last Name <span className="text-red-500">*</span></label>
                       <input 
                         type="text" 
                         required
-                        className="w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-white text-sm focus:border-indigo-500 outline-none"
+                        className="w-full px-4 py-3 bg-blue-50/50 border border-blue-100 rounded-xl text-slate-800 text-sm focus:border-blue-500 outline-none transition-all"
                         value={formData.last_name}
                         onChange={(e) => setFormData({...formData, last_name: e.target.value})}
                       />
+
+
                     </div>
                   </div>
 
@@ -525,10 +546,11 @@ export default function ManageUsers() {
                       <input 
                         type="email" 
                         required
-                        className="w-full pl-11 pr-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-white text-sm focus:border-indigo-500 outline-none"
+                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:border-indigo-500 outline-none transition-all"
                         value={formData.email}
                         onChange={(e) => setFormData({...formData, email: e.target.value})}
                       />
+
                     </div>
                   </div>
 
@@ -539,10 +561,11 @@ export default function ManageUsers() {
                       <input 
                         type="tel" 
                         required
-                        className="w-full pl-11 pr-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-white text-sm focus:border-indigo-500 outline-none"
+                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:border-indigo-500 outline-none transition-all"
                         value={formData.phone}
                         onChange={(e) => setFormData({...formData, phone: e.target.value})}
                       />
+
                     </div>
                   </div>
                 </div>
@@ -560,7 +583,8 @@ export default function ManageUsers() {
                       <input 
                         type="text" 
                         required
-                        className="w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-white text-sm focus:border-indigo-500 outline-none"
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:border-indigo-500 outline-none transition-all"
+
                         value={formData.username}
                         onChange={(e) => setFormData({...formData, username: e.target.value})}
                       />
@@ -570,7 +594,8 @@ export default function ManageUsers() {
                       <input 
                         type="text" 
                         required
-                        className="w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-white text-sm focus:border-indigo-500 outline-none"
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:border-indigo-500 outline-none transition-all"
+
                         value={formData.employee_code}
                         onChange={(e) => setFormData({...formData, employee_code: e.target.value})}
                       />
@@ -581,17 +606,18 @@ export default function ManageUsers() {
                     <label className="text-slate-500 text-[10px] font-bold uppercase ml-1">Department <span className="text-red-500">*</span></label>
                     <select 
                       required
-                      className="w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-white text-sm focus:border-indigo-500 outline-none"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:border-indigo-500 outline-none transition-all"
                       value={formData.department}
                       onChange={(e) => setFormData({...formData, department: e.target.value})}
                     >
-                      <option value="" className="bg-slate-900">Select Dept</option>
-                      <option value="Purchase" className="bg-slate-900">Purchase</option>
-                      <option value="Sales" className="bg-slate-900">Sales</option>
-                      <option value="Finance" className="bg-slate-900">Finance</option>
-                      <option value="Master" className="bg-slate-900">Master</option>
-                      <option value="Management" className="bg-slate-900">Management</option>
+                      <option value="" className="bg-white">Select Dept</option>
+                      <option value="Purchase" className="bg-white">Purchase</option>
+                      <option value="Sales" className="bg-white">Sales</option>
+                      <option value="Finance" className="bg-white">Finance</option>
+                      <option value="Master" className="bg-white">Master</option>
+                      <option value="Management" className="bg-white">Management</option>
                     </select>
+
                   </div>
 
                   <div className="space-y-1.5">
@@ -603,7 +629,8 @@ export default function ManageUsers() {
                         className={`py-3 rounded-xl border text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                           formData.role === "EMPLOYEE" 
                             ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20" 
-                            : "bg-slate-950/50 border-slate-800 text-slate-500 hover:border-slate-600"
+                            : "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300"
+
                         }`}
                       >
                         <FaUserCog />
@@ -615,7 +642,8 @@ export default function ManageUsers() {
                         className={`py-3 rounded-xl border text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                           formData.role === "ADMIN" 
                             ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20" 
-                            : "bg-slate-950/50 border-slate-800 text-slate-500 hover:border-slate-600"
+                            : "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300"
+
                         }`}
                       >
                         <FaShieldAlt />
@@ -623,28 +651,29 @@ export default function ManageUsers() {
                       </button>
                     </div>
                   </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-slate-500 text-[10px] font-bold uppercase ml-1">Access Password {!isEditMode && <span className="text-red-500">*</span>}</label>
-                    <div className="relative">
-                      <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
-                      <input 
-                        type={showPassword ? "text" : "password"} 
-                        required={!isEditMode}
-                        placeholder={isEditMode ? "Leave blank to keep current" : "••••••••"}
-                        className="w-full pl-11 pr-12 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-white text-sm focus:border-indigo-500 outline-none"
-                        value={formData.password}
-                        onChange={(e) => setFormData({...formData, password: e.target.value})}
-                      />
-                      <button 
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
-                      >
-                        {showPassword ? <FaEyeSlash /> : <FaEye />}
-                      </button>
+                  {!isEditMode && (
+                    <div className="space-y-1.5">
+                      <label className="text-slate-500 text-[10px] font-bold uppercase ml-1">Access Password <span className="text-red-500">*</span></label>
+                      <div className="relative">
+                        <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
+                        <input 
+                          type={showPassword ? "text" : "password"} 
+                          required
+                          placeholder="••••••••"
+                          className="w-full pl-11 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:border-indigo-500 outline-none transition-all"
+                          value={formData.password}
+                          onChange={(e) => setFormData({...formData, password: e.target.value})}
+                        />
+                        <button 
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-800 transition-colors"
+                        >
+                          {showPassword ? <FaEyeSlash /> : <FaEye />}
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
@@ -664,21 +693,25 @@ export default function ManageUsers() {
                     return (
                       <div key={module.id} className={`p-4 border rounded-2xl transition-all ${
                         formData.role === "ADMIN" 
-                          ? "bg-indigo-600/5 border-indigo-500/20" 
-                          : "bg-slate-950/50 border-slate-800"
+                          ? "bg-indigo-50 border-indigo-200" 
+                          : "bg-slate-50 border-slate-200"
+
                       }`}>
-                        <p className="text-white text-sm font-bold mb-4">{module.label}</p>
+                        <p className="text-slate-800 text-sm font-bold mb-4">{module.label}</p>
+
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] uppercase font-bold text-slate-500">Access Control</span>
                           <label className="relative inline-flex items-center cursor-pointer group">
                             <input 
                               type="checkbox"
                               disabled={formData.role === "ADMIN"}
-                              checked={perm?.can_read && perm?.can_write}
+                              checked={perm?.can_read}
+
                               onChange={() => handlePermissionChange(module.id)}
                               className="sr-only peer"
                             />
-                            <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
+                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
+
                           </label>
                         </div>
                       </div>
@@ -688,7 +721,8 @@ export default function ManageUsers() {
               </div>
 
               {/* ACTION BUTTONS */}
-              <div className="mt-12 pt-8 border-t border-slate-800 flex justify-end gap-4">
+              <div className="mt-12 pt-8 border-t border-slate-200 flex justify-end gap-4">
+
                 <button 
                   type="button"
                   onClick={() => setIsModalOpen(false)}
@@ -715,25 +749,27 @@ export default function ManageUsers() {
       {/* RESET PASSWORD MODAL */}
       {isResetPasswordModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setIsResetPasswordModalOpen(false)}></div>
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsResetPasswordModalOpen(false)}></div>
           
-          <div className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="px-8 py-6 border-b border-slate-800 flex items-center justify-between">
+          <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="px-8 py-6 border-b border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-amber-600 rounded-2xl text-white shadow-lg shadow-amber-500/20">
                   <FaKey className="text-xl" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white">Reset Password</h3>
+                  <h3 className="text-xl font-bold text-slate-800">Reset Password</h3>
                   <p className="text-slate-500 text-xs uppercase tracking-widest mt-0.5">Secure Credentials Update</p>
                 </div>
               </div>
+
               <button 
                 onClick={() => setIsResetPasswordModalOpen(false)}
-                className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-xl transition-all"
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
               >
                 <FaTimes />
               </button>
+
             </div>
 
             <form onSubmit={handleResetPasswordSubmit} className="p-8 space-y-6">
@@ -745,14 +781,15 @@ export default function ManageUsers() {
                     type={showPassword ? "text" : "password"} 
                     required
                     placeholder="Minimum 6 characters"
-                    className="w-full pl-11 pr-12 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-white text-sm focus:border-indigo-500 outline-none"
+                    className="w-full pl-11 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:border-indigo-500 outline-none transition-all"
                     value={resetPasswordData.new_password}
                     onChange={(e) => setResetPasswordData({ new_password: e.target.value })}
                   />
+
                   <button 
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-800 transition-colors"
                   >
                     {showPassword ? <FaEyeSlash /> : <FaEye />}
                   </button>

@@ -50,42 +50,45 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col gap-2">
-        <h2 className="text-3xl font-bold text-white tracking-tight">Admin Dashboard</h2>
-        <p className="text-slate-400">System overview and administrative controls.</p>
+        <h2 className="text-3xl font-bold text-slate-800 tracking-tight">Admin Dashboard</h2>
+        <p className="text-slate-500">System overview and administrative controls.</p>
       </div>
+
 
       {/* STATS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {loading ? (
           [1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-slate-900/50 border border-slate-800 p-6 rounded-3xl animate-pulse h-32"></div>
+            <div key={i} className="bg-white border border-slate-200 p-6 rounded-3xl animate-pulse h-32"></div>
           ))
+
         ) : (
           stats.map((stat, idx) => (
-            <div key={idx} className="bg-slate-900/50 border border-slate-800 p-6 rounded-3xl hover:border-indigo-500/50 transition-all group">
+            <div key={idx} className="bg-white border border-slate-200 p-6 rounded-3xl hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-500/10 transition-all group">
               <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-2xl ${stat.color} bg-opacity-10 text-white group-hover:scale-110 transition-transform`}>
+                <div className={`p-3 rounded-2xl ${stat.color} bg-opacity-10 transition-transform group-hover:scale-110`}>
                   <span className={`text-xl ${stat.color.replace('bg-', 'text-')}`}>{stat.icon}</span>
                 </div>
               </div>
-              <h3 className="text-slate-400 text-sm font-medium uppercase tracking-wider">{stat.label}</h3>
-              <p className="text-3xl font-bold text-white mt-1">{stat.value}</p>
+              <h3 className="text-slate-500 text-sm font-bold uppercase tracking-wider">{stat.label}</h3>
+              <p className="text-3xl font-bold text-slate-800 mt-1">{stat.value}</p>
             </div>
           ))
+
         )}
       </div>
 
       {/* RECENT ACTIVITY MOCKUP */}
-      <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-8">
-        <h3 className="text-xl font-bold text-white mb-6">Recent System Activity</h3>
+      <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm">
+        <h3 className="text-xl font-bold text-slate-800 mb-6">Recent System Activity</h3>
         <div className="space-y-6">
           {[1, 2, 3].map((_, i) => (
-            <div key={i} className="flex items-center gap-4 p-4 rounded-2xl hover:bg-slate-800/50 transition-colors border border-transparent hover:border-slate-700">
-              <div className="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center text-indigo-400">
+            <div key={i} className="flex items-center gap-4 p-4 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
+              <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-indigo-600">
                 <FaKey />
               </div>
               <div className="flex-1">
-                <p className="text-slate-200 font-medium">User Login Detected</p>
+                <p className="text-slate-700 font-bold">User Login Detected</p>
                 <p className="text-slate-500 text-sm">System integrity check performed</p>
               </div>
               <div className="text-right">
@@ -96,6 +99,7 @@ export default function AdminDashboard() {
           ))}
         </div>
       </div>
+
     </div>
   );
 }

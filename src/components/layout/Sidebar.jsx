@@ -36,27 +36,28 @@ export default function Sidebar({ isOpen }) {
     <aside
       className={`
         relative h-screen flex flex-col transition-all duration-300 ease-in-out
-        border-r border-slate-800 shadow-xl overflow-hidden z-20
+        border-r border-slate-200 shadow-xl overflow-hidden z-20
         ${isOpen ? "w-64" : "w-16"}
-        bg-slate-900 text-slate-300
+        bg-white text-slate-600
+
       `}
     >
       {/* BRAND */}
-      <div className="flex items-center gap-3 px-4 py-6 border-b h-16 border-slate-800/50">
-        <div className="flex items-center justify-center h-8 w-8 bg-blue-600 rounded-lg text-white font-bold">
-          E
-        </div>
-        {isOpen && (
-          <span className="text-lg font-bold text-white truncate">
-            Energypac <span className="text-blue-500">ERP</span>
-          </span>
+      <div className={`flex items-center ${isOpen ? "px-6" : "justify-center px-0"} border-b h-16 border-slate-200 bg-white shadow-sm`}>
+        {!isOpen ? (
+          <div className="flex items-center justify-center h-8 w-8 bg-blue-600 rounded-lg text-white font-bold shrink-0 shadow-lg shadow-blue-500/20">
+            E
+          </div>
+        ) : (
+          <img src="/main_logo.png" alt="Energypac" className="h-8 w-auto object-contain" />
         )}
       </div>
 
       <nav className="flex-1 px-2 py-6 space-y-1.5 overflow-y-auto no-scrollbar">
         <div
           className={`px-3 mb-3 text-[10px] font-bold uppercase tracking-widest ${!isOpen && "text-center"
-            } text-slate-400`}
+            } text-slate-500`}
+
         >
           {isOpen ? "Management Console" : "•••"}
         </div>
@@ -137,20 +138,20 @@ export default function Sidebar({ isOpen }) {
           />
         )}
 
-        {hasPermission("PURCHASE") && (
+        {/* {hasPermission("PURCHASE") && (
           <SidebarLink to="/direct-purchase" label="Direct Purchase" icon={<BiSolidPurchaseTag />} isOpen={isOpen} />
-        )}
+        )} */}
       </nav>
 
       {/* FOOTER */}
-      <div className="p-4 border-t border-slate-800/50">
+      <div className="p-4 border-t border-slate-200 bg-slate-50/50">
         <div className={`flex items-center ${isOpen ? "gap-3" : "justify-center"}`}>
-          <div className="h-8 w-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-semibold text-white">
+          <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-semibold text-slate-600">
             {user?.full_name?.[0]?.toUpperCase() || "U"}
           </div>
           {isOpen && (
             <div className="truncate">
-              <p className="text-xs font-semibold text-white truncate">
+              <p className="text-xs font-bold text-slate-800 truncate">
                 {user?.full_name || "User"}
               </p>
               <p className="text-[10px] text-slate-500 uppercase font-bold">
@@ -160,6 +161,7 @@ export default function Sidebar({ isOpen }) {
           )}
         </div>
       </div>
+
     </aside>
   );
 }
@@ -173,8 +175,9 @@ function SidebarLink({ to, label, icon, isOpen }) {
         `
         flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all
         ${isActive
-          ? "bg-blue-600/10 text-blue-400 font-semibold"
-          : "text-slate-400 hover:bg-slate-800 hover:text-white"}
+          ? "bg-blue-50 text-blue-600 font-bold"
+          : "text-slate-500 hover:bg-slate-50 hover:text-blue-600"}
+
         ${!isOpen ? "justify-center px-0 mx-2" : ""}
         `
       }
@@ -210,8 +213,9 @@ function SidebarDropdown({ label, icon, isOpen, items }) {
         className={`
           w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all
           ${isAnyChildActive
-            ? "bg-slate-800/50 text-white"
-            : "text-slate-400 hover:bg-slate-800 hover:text-white"}
+            ? "bg-slate-100 text-slate-900 font-bold"
+            : "text-slate-500 hover:bg-slate-50 hover:text-blue-600"}
+
           ${!isOpen ? "justify-center px-0 mx-2" : ""}
         `}
       >
@@ -231,7 +235,8 @@ function SidebarDropdown({ label, icon, isOpen, items }) {
       </button>
 
       {expanded && (
-        <div className="ml-4 pl-3 border-l-2 border-slate-800 space-y-1">
+        <div className="ml-4 pl-3 border-l-2 border-slate-100 space-y-1">
+
           {items.map((item, index) => {
             // Check if it is a sub-section (nested items) - RECURSIVE RENDER
             if (item.items) {
@@ -253,8 +258,9 @@ function SidebarDropdown({ label, icon, isOpen, items }) {
                 className={({ isActive }) =>
                   `flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all
                     ${isActive
-                    ? "bg-blue-600/10 text-blue-400 font-semibold"
-                    : "text-slate-400 hover:bg-slate-800 hover:text-white"}`
+                    ? "bg-blue-50 text-blue-600 font-bold"
+                    : "text-slate-500 hover:bg-slate-50 hover:text-blue-600"}`
+
                 }
               >
                 <span className="text-base opacity-70">{item.icon}</span>

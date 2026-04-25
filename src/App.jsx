@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Layout from "./components/Layout.jsx";
@@ -35,7 +37,9 @@ import ManageUsers from "./Pages/ManageUsers.jsx";
 export default function App() {
   return (
     <AuthProvider>
+      <Toaster position="top-right" reverseOrder={false} />
       <BrowserRouter>
+
         <Routes>
           <Route path="/login" element={<Login />} />
 

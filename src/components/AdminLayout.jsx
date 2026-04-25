@@ -9,7 +9,8 @@ export default function AdminLayout() {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-slate-50">
+
       <div className="h-screen flex overflow-hidden">
         {/* LEFT SIDEBAR */}
         <AdminSidebar isOpen={isSidebarOpen} />
@@ -24,7 +25,8 @@ export default function AdminLayout() {
           />
 
           {/* MAIN CONTENT AREA */}
-          <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950">
+          <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50">
+
             <div className="max-w-7xl mx-auto">
               <Outlet />
             </div>

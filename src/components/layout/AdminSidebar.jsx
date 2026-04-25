@@ -21,27 +21,29 @@ export default function AdminSidebar({ isOpen }) {
     <aside
       className={`
         relative h-screen flex flex-col transition-all duration-300 ease-in-out
-        border-r border-slate-800 shadow-2xl overflow-hidden z-20
+        border-r border-slate-200 shadow-2xl overflow-hidden z-20
         ${isOpen ? "w-64" : "w-16"}
-        bg-slate-950 text-slate-300
+        bg-white text-slate-600
+
       `}
     >
       {/* BRAND */}
-      <div className="flex items-center gap-3 px-4 py-6 border-b h-16 border-slate-800/50 bg-slate-900/50">
-        <div className="flex items-center justify-center h-8 w-8 bg-indigo-600 rounded-lg text-white font-bold shadow-lg shadow-indigo-500/20">
-          A
-        </div>
-        {isOpen && (
-          <span className="text-lg font-bold text-white truncate tracking-tight">
-            Admin <span className="text-indigo-500">Console</span>
-          </span>
+      <div className={`flex items-center ${isOpen ? "px-6" : "justify-center px-0"} border-b h-16 border-slate-200 bg-white shadow-sm`}>
+
+        {!isOpen ? (
+          <div className="flex items-center justify-center h-8 w-8 bg-indigo-600 rounded-lg text-white font-bold shadow-lg shadow-indigo-500/20 shrink-0">
+            A
+          </div>
+        ) : (
+          <img src="/main_logo.png" alt="Admin" className="h-8 w-auto object-contain" />
         )}
       </div>
 
       <nav className="flex-1 px-2 py-6 space-y-1.5 overflow-y-auto no-scrollbar">
         <div
           className={`px-3 mb-3 text-[10px] font-bold uppercase tracking-widest ${!isOpen && "text-center"
-            } text-indigo-400/60`}
+            } text-indigo-500`}
+
         >
           {isOpen ? "System Administration" : "•••"}
         </div>
@@ -74,16 +76,19 @@ export default function AdminSidebar({ isOpen }) {
       </nav>
 
       {/* FOOTER */}
-      <div className="p-4 border-t border-slate-800/50 bg-slate-900/30">
+      <div className="p-4 border-t border-slate-200 bg-indigo-50/30">
+
         <div className={`flex items-center ${isOpen ? "gap-3" : "justify-center"}`}>
-          <div className="h-9 w-9 rounded-xl bg-indigo-600 flex items-center justify-center text-xs font-semibold text-white shadow-lg shadow-indigo-500/10">
+          <div className="h-9 w-9 rounded-xl bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-600 shadow-sm border border-indigo-200">
             {user?.full_name?.[0]?.toUpperCase() || "A"}
           </div>
+
           {isOpen && (
             <div className="truncate">
-              <p className="text-xs font-semibold text-white truncate">
+              <p className="text-xs font-bold text-slate-800 truncate">
                 {user?.full_name || "Admin User"}
               </p>
+
               <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
                 <p className="text-[10px] text-indigo-400 uppercase font-bold tracking-tighter">
@@ -107,8 +112,9 @@ function AdminSidebarLink({ to, label, icon, isOpen }) {
         `
         flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200
         ${isActive
-          ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 font-medium"
-          : "text-slate-400 hover:bg-slate-900 hover:text-white"}
+          ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 font-bold"
+          : "text-slate-500 hover:bg-indigo-50 hover:text-indigo-600"}
+
         ${!isOpen ? "justify-center px-0 mx-2" : ""}
         `
       }
@@ -141,8 +147,9 @@ function AdminSidebarDropdown({ label, icon, isOpen, items }) {
         className={`
           w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200
           ${isAnyChildActive
-            ? "bg-slate-900 text-white border border-slate-800"
-            : "text-slate-400 hover:bg-slate-900 hover:text-white"}
+            ? "bg-slate-50 text-slate-900 border border-slate-100 font-bold"
+            : "text-slate-500 hover:bg-indigo-50 hover:text-indigo-600"}
+
           ${!isOpen ? "justify-center px-0 mx-2" : ""}
         `}
       >
@@ -162,7 +169,8 @@ function AdminSidebarDropdown({ label, icon, isOpen, items }) {
       </button>
 
       {expanded && (
-        <div className="ml-4 pl-3 border-l border-indigo-500/30 space-y-1 mt-1">
+        <div className="ml-4 pl-3 border-l border-indigo-100 space-y-1 mt-1">
+
           {items.map((item, index) => (
             <NavLink
               key={item.to}
@@ -170,8 +178,8 @@ function AdminSidebarDropdown({ label, icon, isOpen, items }) {
               className={({ isActive }) =>
                 `flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all duration-200
                   ${isActive
-                  ? "text-indigo-400 font-semibold bg-indigo-500/5"
-                  : "text-slate-500 hover:text-slate-200 hover:bg-slate-900"}`
+                  ? "text-indigo-600 font-bold bg-indigo-50"
+                  : "text-slate-500 hover:text-indigo-600 hover:bg-indigo-50/50"}`
               }
             >
               <span className="text-sm opacity-70">{item.icon}</span>

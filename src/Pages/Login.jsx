@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate , Link  } from "react-router-dom";
 import { FaUser, FaLock, FaChevronRight, FaEye, FaEyeSlash } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 import ForgotPasswordModal from "../components/common/ForgotPasswordModal";
@@ -69,7 +69,7 @@ export default function Login() {
                         className="h-20 mx-auto mb-4 drop-shadow-2xl" 
                     />
                     <h1 className="text-3xl font-bold text-slate-800">
-                        Energypac <span className="text-blue-600">ERP</span>
+                        Developed By <Link to="https://skcinfotech.in/" target="_blank"><span className="text-blue-600">SKC INFOTECH</span></Link>
                     </h1>
 
 

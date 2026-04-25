@@ -11,6 +11,8 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+
 
   if (!isOpen) return null;
 
@@ -20,10 +22,12 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
     try {
       await forgotPassword(email);
       toast.success("OTP sent to your email address.");
+      setError("");
       setStep(2);
-    } catch (error) {
-      toast.error(error);
+    } catch (err) {
+      setError(err);
     } finally {
+
       setLoading(false);
     }
   };
@@ -34,22 +38,25 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
     try {
       await verifyOtp(email, otp);
       toast.success("OTP verified successfully.");
+      setError("");
       setStep(3);
-    } catch (error) {
-      toast.error(error);
+    } catch (err) {
+      setError(err);
     } finally {
+
       setLoading(false);
     }
   };
 
   const handleResetSubmit = async (e) => {
     e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      toast.error("Passwords do not match.");
-      return;
-    }
     setLoading(true);
     try {
+      if (newPassword !== confirmPassword) {
+        setError("Passwords do not match.");
+        setLoading(false);
+        return;
+      }
       await resetPassword({
         email,
         otp,
@@ -57,6 +64,7 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
         confirm_password: confirmPassword
       });
       toast.success("Password reset successfully. You can now login.");
+      setError("");
       onClose();
       // Reset state for next time
       setStep(1);
@@ -64,9 +72,10 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
       setOtp("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (error) {
-      toast.error(error);
+    } catch (err) {
+      setError(err);
     } finally {
+
       setLoading(false);
     }
   };
@@ -87,17 +96,22 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
                   className="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-800 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
 
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError("");
+                  }}
                 />
               </div>
-              <p className="text-slate-500 text-[10px] italic ml-1">We'll send a 6-digit verification code to this email.</p>
+              {error && step === 1 && <p className="text-red-500 text-[10px] mt-1 ml-1 font-bold animate-in fade-in duration-300">{error}</p>}
+              {!error && <p className="text-slate-500 text-[10px] italic ml-1">We'll send a 6-digit verification code to this email.</p>}
             </div>
+
             <button
               type="submit"
               disabled={loading}
               className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
             >
-              {loading ? "Sending..." : "Send Reset Link"}
+              {loading ? "Sending..." : "Send OTP"}
             </button>
           </form>
         );
@@ -115,12 +129,17 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
                   className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-800 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all tracking-[0.5em] font-mono text-center font-bold"
 
                   value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
+                  onChange={(e) => {
+                    setOtp(e.target.value);
+                    setError("");
+                  }}
                   maxLength={6}
                 />
               </div>
+              {error && step === 2 && <p className="text-red-500 text-[10px] mt-1 ml-1 font-bold animate-in fade-in duration-300">{error}</p>}
               <div className="flex justify-between items-center px-1">
                 <p className="text-slate-500 text-[10px]">OTP sent to {email}</p>
+
                 <button type="button" onClick={() => setStep(1)} className="text-blue-500 text-[10px] hover:underline">Change Email</button>
               </div>
             </div>
@@ -147,8 +166,12 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
                   className="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-800 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
 
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    setError("");
+                  }}
                 />
+
               </div>
             </div>
             <div className="space-y-2">
@@ -162,10 +185,15 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
                   className="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-800 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
 
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    setError("");
+                  }}
                 />
               </div>
+              {error && step === 3 && <p className="text-red-500 text-[10px] mt-1 ml-1 font-bold animate-in fade-in duration-300">{error}</p>}
             </div>
+
             <div className="flex items-center gap-2 px-1">
               <input 
                 type="checkbox" 

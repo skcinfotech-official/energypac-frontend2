@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
 import { getQuotationItems, createQuotation } from "../../services/vendorQuotationService";
-import { HiX, HiInformationCircle } from "react-icons/hi";
+import { exchangeRateService } from "../../services/exchangeRateService";
+import { HiX, HiInformationCircle, HiRefresh } from "react-icons/hi";
 
 const VendorQuotationModal = ({ open, onClose, onSuccess, requisitionId, vendorId }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [currency, setCurrency] = useState("INR");
+  const [exchangeRate, setExchangeRate] = useState(1.0);
+  const [rateLoading, setRateLoading] = useState(false);
 
   useEffect(() => {
     if (open && requisitionId && vendorId) {
@@ -35,6 +39,27 @@ const VendorQuotationModal = ({ open, onClose, onSuccess, requisitionId, vendorI
     }
   };
 
+  const loadExchangeRate = async () => {
+    setRateLoading(true);
+    try {
+      const data = await exchangeRateService.getCurrentRate();
+      setExchangeRate(data.rate);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to fetch exchange rate. Using default 1.0.");
+    } finally {
+      setRateLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currency === "USD") {
+      loadExchangeRate();
+    } else {
+      setExchangeRate(1.0);
+    }
+  }, [currency]);
+
   const handleRateChange = (index, val) => {
     const newItems = [...items];
     newItems[index].quoted_rate = val;
@@ -48,6 +73,7 @@ const VendorQuotationModal = ({ open, onClose, onSuccess, requisitionId, vendorI
       const payload = {
         requisition: requisitionId,
         vendor: vendorId,
+        currency: currency,
         items: items.map((i) => ({
           vendor_item: i.id, // Assuming the API returns 'id' as 'vendor_item' reference
           quoted_rate: Number(i.quoted_rate || 0),
@@ -65,10 +91,11 @@ const VendorQuotationModal = ({ open, onClose, onSuccess, requisitionId, vendorI
     }
   };
 
-  const totalAmount = items.reduce(
+  const totalAmountOriginal = items.reduce(
     (sum, i) => sum + (Number(i.quoted_rate || 0) * Number(i.quantity || 0)),
     0
   );
+  const totalAmountINR = currency === "USD" ? totalAmountOriginal * exchangeRate : totalAmountOriginal;
 
   if (!open) return null;
 
@@ -126,6 +153,45 @@ const VendorQuotationModal = ({ open, onClose, onSuccess, requisitionId, vendorI
             </div>
           )}
 
+          {/* Currency Selection */}
+          <div className="flex items-center justify-between bg-blue-50/50 border border-blue-100 p-3 rounded-xl">
+            <div>
+              <label className="text-[10px] font-bold text-blue-600 uppercase tracking-widest block mb-1.5">Currency</label>
+              <div className="flex gap-1.5">
+                {["INR", "USD"].map((curr) => (
+                  <button
+                    key={curr}
+                    type="button"
+                    onClick={() => setCurrency(curr)}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      currency === curr
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "bg-white text-slate-600 border border-slate-200"
+                    }`}
+                  >
+                    {curr}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {currency === "USD" && (
+              <div className="flex items-center gap-3 bg-white px-3 py-2 rounded-lg border border-blue-100 shadow-sm">
+                <div className="text-right">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase leading-none mb-1">Exchange Rate</p>
+                  <p className="text-sm font-black text-blue-600 leading-none">1 USD = ₹ {exchangeRate}</p>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={loadExchangeRate} 
+                  className="p-1.5 hover:bg-blue-50 rounded-md text-blue-400 transition-colors"
+                >
+                  <HiRefresh className={rateLoading ? "animate-spin" : ""} size={12} />
+                </button>
+              </div>
+            )}
+          </div>
+
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-3">
               <HiInformationCircle className="text-xl shrink-0" />
@@ -141,8 +207,9 @@ const VendorQuotationModal = ({ open, onClose, onSuccess, requisitionId, vendorI
                 <tr>
                   <th className="px-4 py-3">Product</th>
                   <th className="px-4 py-3 text-right">Quantity</th>
-                  <th className="px-4 py-3 text-right">Rate</th>
-                  <th className="px-4 py-3 text-right">Amount</th>
+                  <th className="px-4 py-3 text-right">Rate ({currency})</th>
+                  <th className="px-4 py-3 text-right">Amount ({currency})</th>
+                  {currency === "USD" && <th className="px-4 py-3 text-right">Amount (INR)</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -169,8 +236,13 @@ const VendorQuotationModal = ({ open, onClose, onSuccess, requisitionId, vendorI
                       />
                     </td>
                     <td className="px-4 py-3 text-right font-bold text-slate-800">
-                      ₹ {(Number(item.quoted_rate || 0) * Number(item.quantity || 0)).toFixed(2)}
+                      {currency === "USD" ? "$" : "₹"} {(Number(item.quoted_rate || 0) * Number(item.quantity || 0)).toFixed(2)}
                     </td>
+                    {currency === "USD" && (
+                      <td className="px-4 py-3 text-right font-bold text-blue-600">
+                        ₹ {(Number(item.quoted_rate || 0) * Number(item.quantity || 0) * exchangeRate).toFixed(2)}
+                      </td>
+                    )}
                   </tr>
                 ))}
                 {items.length === 0 && !loading && (
@@ -185,10 +257,16 @@ const VendorQuotationModal = ({ open, onClose, onSuccess, requisitionId, vendorI
           )}
         </div>
 
-        {/* Footer */}
         <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center gap-3">
-          <div className="text-lg font-bold text-slate-900">
-            Total: ₹ {totalAmount.toFixed(2)}
+          <div className="flex flex-col">
+            <div className="text-lg font-bold text-slate-900">
+              Total: {currency === "USD" ? "$" : "₹"} {totalAmountOriginal.toFixed(2)}
+            </div>
+            {currency === "USD" && (
+              <div className="text-sm font-semibold text-blue-600">
+                (Approx ₹ {totalAmountINR.toFixed(2)})
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             <button

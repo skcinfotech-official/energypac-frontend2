@@ -12,8 +12,17 @@ import WorkOrderPDF from "./WorkOrderPDF";
 const WorkOrderDetailsModal = ({ isOpen, onClose, loading, details }) => {
     const [exporting, setExporting] = useState(false);
     const [generatingPdf, setGeneratingPdf] = useState(false);
+    const [viewCurrency, setViewCurrency] = useState('INR');
 
     if (!isOpen) return null;
+
+    const formatCurrency = (amount, currency = 'INR') => {
+        return Number(amount || 0).toLocaleString(currency === 'INR' ? 'en-IN' : 'en-US', {
+            style: 'currency',
+            currency: currency,
+            minimumFractionDigits: 2
+        });
+    };
 
     const handlePrint = async () => {
         if (!details) return;
@@ -186,6 +195,44 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, loading, details }) => {
                     </div>
                 </div>
 
+                {/* View Toggle */}
+                {!loading && details && details.currency && details.currency !== 'INR' && (
+                    <div className="flex justify-center bg-slate-50 py-3 border-b border-slate-200">
+                        <div className="inline-flex p-1 bg-slate-200/50 rounded-xl border border-slate-200 shadow-inner">
+                            <button
+                                onClick={() => setViewCurrency('INR')}
+                                className={`px-8 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
+                                    viewCurrency === 'INR'
+                                        ? 'bg-white text-blue-600 shadow-md transform scale-105'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                            >
+                                INR View
+                            </button>
+                            <button
+                                onClick={() => setViewCurrency(details.currency)}
+                                className={`px-8 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
+                                    viewCurrency !== 'INR'
+                                        ? 'bg-white text-blue-600 shadow-md transform scale-105'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                            >
+                                {details.currency} View
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Exchange Rate Info (Only shown in Foreign Currency View) */}
+                {!loading && viewCurrency !== 'INR' && details?.exchange_rate && (
+                    <div className="flex justify-center py-2 bg-slate-50 border-b border-slate-200">
+                        <div className="bg-blue-50 text-blue-700 px-4 py-1 rounded-full border border-blue-100 text-[10px] font-bold flex items-center gap-2 shadow-sm">
+                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                            Exchange Rate: 1 {details.currency} = {details.exchange_rate} INR
+                        </div>
+                    </div>
+                )}
+
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
                     {loading ? (
@@ -267,8 +314,8 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                             <tr>
                                                 <th className="px-4 py-3">Product</th>
                                                 <th className="px-4 py-3 text-right">Qty</th>
-                                                <th className="px-4 py-3 text-right">Rate</th>
-                                                <th className="px-4 py-3 text-right">Amount</th>
+                                                <th className="px-4 py-3 text-right">Rate ({viewCurrency})</th>
+                                                <th className="px-4 py-3 text-right">Amount ({viewCurrency})</th>
                                                 <th className="px-4 py-3 text-center">Stock</th>
                                             </tr>
                                         </thead>
@@ -283,8 +330,18 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                                     <td className="px-4 py-3 text-right font-mono">
                                                         {parseFloat(item.ordered_quantity).toFixed(2)} {item.unit}
                                                     </td>
-                                                    <td className="px-4 py-3 text-right font-mono">{item.rate}</td>
-                                                    <td className="px-4 py-3 text-right font-medium font-mono">{item.amount}</td>
+                                                    <td className="px-4 py-3 text-right font-mono text-slate-600">
+                                                        {viewCurrency === 'INR'
+                                                            ? formatCurrency(item.rate, 'INR')
+                                                            : formatCurrency(item.original_rate || (item.rate / (details.exchange_rate || 1)), details.currency)
+                                                        }
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right font-medium font-mono text-slate-800">
+                                                        {viewCurrency === 'INR'
+                                                            ? formatCurrency(item.amount, 'INR')
+                                                            : formatCurrency(item.original_amount || (item.amount / (details.exchange_rate || 1)), details.currency)
+                                                        }
+                                                    </td>
                                                     <td className="px-4 py-3 text-center">
                                                         <span className={`inline-flex px-2 py-0.5 rounded text-xs font-semibold
                                             ${item.stock_available ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -311,30 +368,56 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                 </div>
                                 <div className="w-full md:w-5/12 bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-2">
                                     <div className="flex justify-between text-slate-600 text-sm">
-                                        <span>Subtotal:</span>
-                                        <span className="font-mono">{details.subtotal}</span>
+                                        <span>Subtotal ({viewCurrency}):</span>
+                                        <span className="font-mono font-medium">
+                                            {viewCurrency === 'INR'
+                                                ? formatCurrency(details.subtotal, 'INR')
+                                                : formatCurrency(details.original_subtotal || (details.subtotal / (details.exchange_rate || 1)), details.currency)
+                                            }
+                                        </span>
                                     </div>
-                                    <div className="flex justify-between text-slate-600 text-sm">
-                                        <span>CGST ({details.cgst_percentage}%):</span>
-                                        <span className="font-mono">{details.cgst_amount}</span>
-                                    </div>
-                                    <div className="flex justify-between text-slate-600 text-sm">
-                                        <span>SGST ({details.sgst_percentage}%):</span>
-                                        <span className="font-mono">{details.sgst_amount}</span>
-                                    </div>
-                                    {parseFloat(details.igst_amount) > 0 && (
-                                        <div className="flex justify-between text-slate-600 text-sm">
-                                            <span>IGST ({details.igst_percentage}%):</span>
-                                            <span className="font-mono">{details.igst_amount}</span>
+                                    {viewCurrency === 'INR' ? (
+                                        <>
+                                            <div className="flex justify-between text-slate-600 text-sm">
+                                                <span>CGST ({details.cgst_percentage}%):</span>
+                                                <span className="font-mono">{formatCurrency(details.cgst_amount)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-slate-600 text-sm">
+                                                <span>SGST ({details.sgst_percentage}%):</span>
+                                                <span className="font-mono">{formatCurrency(details.sgst_amount)}</span>
+                                            </div>
+                                            {parseFloat(details.igst_amount) > 0 && (
+                                                <div className="flex justify-between text-slate-600 text-sm">
+                                                    <span>IGST ({details.igst_percentage}%):</span>
+                                                    <span className="font-mono">{formatCurrency(details.igst_amount)}</span>
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <div className="flex justify-between text-slate-600 text-sm italic">
+                                            <span>Total Tax ({details.currency}):</span>
+                                            <span className="font-mono">
+                                                {formatCurrency(details.original_total_tax || (details.total_gst / (details.exchange_rate || 1)), details.currency)}
+                                            </span>
                                         </div>
                                     )}
                                     <div className="flex justify-between pt-3 border-t border-slate-300 font-bold text-lg text-slate-900">
-                                        <span>Total Amount:</span>
-                                        <span className="font-mono">{details.total_amount}</span>
+                                        <span>Total Amount ({viewCurrency}):</span>
+                                        <span className="font-mono">
+                                            {viewCurrency === 'INR'
+                                                ? formatCurrency(details.total_amount, 'INR')
+                                                : formatCurrency(details.original_total_amount || (details.total_amount / (details.exchange_rate || 1)), details.currency)
+                                            }
+                                        </span>
                                     </div>
                                     <div className="flex justify-between pt-2 text-blue-600 font-semibold text-sm">
-                                        <span>Advance Amount:</span>
-                                        <span className="font-mono">{details.advance_amount}</span>
+                                        <span>Advance Amount ({viewCurrency}):</span>
+                                        <span className="font-mono">
+                                            {viewCurrency === 'INR'
+                                                ? formatCurrency(details.advance_amount, 'INR')
+                                                : formatCurrency(details.original_advance_amount || (details.advance_amount / (details.exchange_rate || 1)), details.currency)
+                                            }
+                                        </span>
                                     </div>
                                 </div>
                             </div>

@@ -87,11 +87,13 @@ const styles = StyleSheet.create({
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
-const fmt = (val) =>
-    Number(val || 0).toLocaleString('en-IN', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
+const fmt = (val, curr = "INR") => {
+    const c = curr?.toString().trim().toUpperCase() || "INR";
+    const symbol = c === "USD" ? "$" : (c === "INR" ? "₹" : c);
+    const num = Number(val || 0);
+    const formatted = num.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+    return `${symbol} ${formatted}`;
+};
 
 const fmtDate = (date) =>
     date
@@ -169,6 +171,7 @@ const BillPDF = ({ details }) => {
     const net_payable      = details.net_payable      || 0;
     const amount_paid      = details.amount_paid      || 0;
     const balance          = details.balance          || 0;
+    const isInternational  = details.currency && details.currency.toUpperCase() !== 'INR';
 
     // ─────────────────────────────────────────────────────────────────────────
     return (
@@ -223,6 +226,12 @@ const BillPDF = ({ details }) => {
                     <View style={{ width: '17%' }}>
                         <Text style={styles.cellBold}>GST NO.</Text>
                         <Text style={styles.cell}>{STATIC.gst_no}</Text>
+                        {isInternational && (
+                            <View style={[styles.borderTop, { marginTop: 4, paddingTop: 4 }]}>
+                                <Text style={styles.cellBold}>EXCH. RATE</Text>
+                                <Text style={styles.cell}>1 {details.currency} = INR {details.exchange_rate}</Text>
+                            </View>
+                        )}
                     </View>
                 </View>
 
@@ -308,9 +317,9 @@ const BillPDF = ({ details }) => {
                         { label: 'PRODUCT / ITEM',  w: '37%' },
                         { label: 'HSN/SAC',         w: '12%' },
                         { label: 'QTY',             w: '10%' },
-                        { label: 'RATE',            w: '12%' },
-                        { label: 'AMOUNT',          w: '12%' },
-                        { label: 'TOTAL',           w: '24%' },
+                        { label: `RATE\n(${isInternational ? details.currency : 'INR'})`, w: '12%' },
+                        { label: `AMOUNT\n(${isInternational ? details.currency : 'INR'})`, w: '12%' },
+                        { label: 'TOTAL\n(INR)',     w: '24%' },
                     ].map((h, hi) => (
                         <View key={hi} style={[{ width: h.w }, hi < 5 && styles.borderRight]}>
                             <Text style={[styles.cellBold, { textAlign: 'center' }]}>{h.label}</Text>
@@ -358,17 +367,27 @@ const BillPDF = ({ details }) => {
 
                         {/* RATE */}
                         <View style={[{ width: '12%' }, styles.borderRight]}>
-                            <Text style={styles.cellRight}>{fmt(item.rate)}</Text>
+                            <Text style={styles.cellRight}>
+                                {isInternational 
+                                    ? fmt(item.original_rate || (item.rate / (details.exchange_rate || 1)), details.currency)
+                                    : fmt(item.rate, 'INR')
+                                }
+                            </Text>
                         </View>
 
                         {/* AMOUNT */}
                         <View style={[{ width: '12%' }, styles.borderRight]}>
-                            <Text style={styles.cellRight}>{fmt(item.amount)}</Text>
+                            <Text style={styles.cellRight}>
+                                {isInternational 
+                                    ? fmt(item.original_amount || (item.amount / (details.exchange_rate || 1)), details.currency)
+                                    : fmt(item.amount, 'INR')
+                                }
+                            </Text>
                         </View>
 
-                        {/* TOTAL */}
+                        {/* TOTAL (INR) */}
                         <View style={{ width: '24%' }}>
-                            <Text style={styles.cellRight}>{fmt(item.amount)}</Text>
+                            <Text style={styles.cellRight}>{fmt(item.amount, 'INR')}</Text>
                         </View>
                     </View>
                 ))}
@@ -379,10 +398,10 @@ const BillPDF = ({ details }) => {
                 {/* SUB TOTAL */}
                 <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
                     <View style={[{ width: '76%' }, styles.borderRight]}>
-                        <Text style={styles.cellRightBold}>SUB TOTAL</Text>
+                        <Text style={styles.cellRightBold}>SUB TOTAL (INR)</Text>
                     </View>
                     <View style={{ width: '24%' }}>
-                        <Text style={styles.cellRightBold}>{fmt(subtotal)}</Text>
+                        <Text style={styles.cellRightBold}>{fmt(subtotal, 'INR')}</Text>
                     </View>
                 </View>
 
@@ -390,10 +409,10 @@ const BillPDF = ({ details }) => {
                 {parseFloat(cgst_amount) > 0 && (
                     <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
                         <View style={[{ width: '76%' }, styles.borderRight]}>
-                            <Text style={styles.cellRightBold}>CGST @ {cgst_percentage}%</Text>
+                            <Text style={styles.cellRightBold}>CGST @ {cgst_percentage}% (INR)</Text>
                         </View>
                         <View style={{ width: '24%' }}>
-                            <Text style={styles.cellRightBold}>{fmt(cgst_amount)}</Text>
+                            <Text style={styles.cellRightBold}>{fmt(cgst_amount, 'INR')}</Text>
                         </View>
                     </View>
                 )}
@@ -402,10 +421,10 @@ const BillPDF = ({ details }) => {
                 {parseFloat(sgst_amount) > 0 && (
                     <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
                         <View style={[{ width: '76%' }, styles.borderRight]}>
-                            <Text style={styles.cellRightBold}>SGST @ {sgst_percentage}%</Text>
+                            <Text style={styles.cellRightBold}>SGST @ {sgst_percentage}% (INR)</Text>
                         </View>
                         <View style={{ width: '24%' }}>
-                            <Text style={styles.cellRightBold}>{fmt(sgst_amount)}</Text>
+                            <Text style={styles.cellRightBold}>{fmt(sgst_amount, 'INR')}</Text>
                         </View>
                     </View>
                 )}
@@ -414,10 +433,10 @@ const BillPDF = ({ details }) => {
                 {parseFloat(igst_amount) > 0 && (
                     <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
                         <View style={[{ width: '76%' }, styles.borderRight]}>
-                            <Text style={styles.cellRightBold}>IGST @ {igst_percentage}%</Text>
+                            <Text style={styles.cellRightBold}>IGST @ {igst_percentage}% (INR)</Text>
                         </View>
                         <View style={{ width: '24%' }}>
-                            <Text style={styles.cellRightBold}>{fmt(igst_amount)}</Text>
+                            <Text style={styles.cellRightBold}>{fmt(igst_amount, 'INR')}</Text>
                         </View>
                     </View>
                 )}
@@ -425,20 +444,20 @@ const BillPDF = ({ details }) => {
                 {/* TOTAL BILL AMOUNT */}
                 <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
                     <View style={[{ width: '76%' }, styles.borderRight]}>
-                        <Text style={styles.cellRightBold}>TOTAL BILL AMOUNT</Text>
+                        <Text style={styles.cellRightBold}>TOTAL BILL AMOUNT (INR)</Text>
                     </View>
                     <View style={{ width: '24%' }}>
-                        <Text style={styles.cellRightBold}>{fmt(total_amount)}</Text>
+                        <Text style={styles.cellRightBold}>{fmt(total_amount, 'INR')}</Text>
                     </View>
                 </View>
 
                 {/* ADVANCE DEDUCTED */}
                 <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
                     <View style={[{ width: '76%' }, styles.borderRight]}>
-                        <Text style={styles.cellRightBold}>ADVANCE DEDUCTED</Text>
+                        <Text style={styles.cellRightBold}>ADVANCE DEDUCTED (INR)</Text>
                     </View>
                     <View style={{ width: '24%' }}>
-                        <Text style={styles.cellRightBold}>{fmt(advance_deducted)}</Text>
+                        <Text style={styles.cellRightBold}>{fmt(advance_deducted, 'INR')}</Text>
                     </View>
                 </View>
 
@@ -446,10 +465,10 @@ const BillPDF = ({ details }) => {
                 {parseFloat(freight_cost) > 0 && (
                     <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
                         <View style={[{ width: '76%' }, styles.borderRight]}>
-                            <Text style={styles.cellRightBold}>FREIGHT COST</Text>
+                            <Text style={styles.cellRightBold}>FREIGHT COST (INR)</Text>
                         </View>
                         <View style={{ width: '24%' }}>
-                            <Text style={styles.cellRightBold}>{fmt(freight_cost)}</Text>
+                            <Text style={styles.cellRightBold}>{fmt(freight_cost, 'INR')}</Text>
                         </View>
                     </View>
                 )}
@@ -457,32 +476,55 @@ const BillPDF = ({ details }) => {
                 {/* NET PAYABLE */}
                 <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
                     <View style={[{ width: '76%' }, styles.borderRight]}>
-                        <Text style={[styles.cellRightBold, { color: '#1a56db' }]}>NET PAYABLE</Text>
+                        <Text style={[styles.cellRightBold, { color: '#1a56db' }]}>NET PAYABLE (INR)</Text>
                     </View>
                     <View style={{ width: '24%' }}>
-                        <Text style={[styles.cellRightBold, { color: '#1a56db' }]}>{fmt(net_payable)}</Text>
+                        <Text style={[styles.cellRightBold, { color: '#1a56db' }]}>{fmt(net_payable, 'INR')}</Text>
                     </View>
                 </View>
 
                 {/* AMOUNT PAID */}
                 <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
                     <View style={[{ width: '76%' }, styles.borderRight]}>
-                        <Text style={styles.cellRightBold}>AMOUNT PAID</Text>
+                        <Text style={styles.cellRightBold}>AMOUNT PAID (INR)</Text>
                     </View>
                     <View style={{ width: '24%' }}>
-                        <Text style={styles.cellRightBold}>{fmt(amount_paid)}</Text>
+                        <Text style={styles.cellRightBold}>{fmt(amount_paid, 'INR')}</Text>
                     </View>
                 </View>
 
                 {/* BALANCE DUE */}
                 <View style={[styles.row, styles.bordered, styles.noBreak]} wrap={false}>
                     <View style={[{ width: '76%' }, styles.borderRight]}>
-                        <Text style={[styles.cellRightBold, { color: '#dc2626' }]}>BALANCE DUE</Text>
+                        <Text style={[styles.cellRightBold, { color: '#dc2626' }]}>BALANCE DUE (INR)</Text>
                     </View>
                     <View style={{ width: '24%' }}>
-                        <Text style={[styles.cellRightBold, { color: '#dc2626' }]}>{fmt(balance)}</Text>
+                        <Text style={[styles.cellRightBold, { color: '#dc2626' }]}>{fmt(balance, 'INR')}</Text>
                     </View>
                 </View>
+
+                {/* Original Currency Summary Block */}
+                {isInternational && (
+                    <View style={[styles.noBreak, { marginTop: 10, padding: 5, backgroundColor: '#f0f8ff', borderWidth: 1, borderColor: '#accce6' }]} wrap={false}>
+                        <Text style={{ fontWeight: 'bold', fontSize: 8, marginBottom: 4, color: '#2d5a84' }}>ORIGINAL CURRENCY SUMMARY ({details.currency})</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                            <Text style={{ fontSize: 8 }}>Subtotal ({details.currency})</Text>
+                            <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{fmt(details.original_subtotal || (details.subtotal / (details.exchange_rate || 1)), details.currency)}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                            <Text style={{ fontSize: 8 }}>Total Tax ({details.currency})</Text>
+                            <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{fmt(details.original_total_tax || (details.total_gst / (details.exchange_rate || 1)), details.currency)}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                            <Text style={{ fontSize: 8 }}>Net Payable ({details.currency})</Text>
+                            <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{fmt(details.original_net_payable || (details.net_payable / (details.exchange_rate || 1)), details.currency)}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#accce6', pt: 2 }}>
+                            <Text style={{ fontSize: 9, fontWeight: 'bold' }}>Balance Due ({details.currency})</Text>
+                            <Text style={{ fontSize: 9, fontWeight: 'bold' }}>{fmt(details.original_balance || (details.balance / (details.exchange_rate || 1)), details.currency)}</Text>
+                        </View>
+                    </View>
+                )}
 
                 {/* Amount in words */}
                 {details.amount_in_words ? (

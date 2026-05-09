@@ -10,16 +10,17 @@ import { toast } from "react-hot-toast";
 import { useState } from "react";
 
 const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
+    const [viewCurrency, setViewCurrency] = useState('INR');
     if (!isOpen) return null;
 
     const [exporting, setExporting] = useState(false);
     const [generatingPdf, setGeneratingPdf] = useState(false);
 
     // Currency formatter
-    const formatCurrency = (amount) => {
-        return Number(amount).toLocaleString('en-IN', {
+    const formatCurrency = (amount, currency = 'INR') => {
+        return Number(amount || 0).toLocaleString(currency === 'INR' ? 'en-IN' : 'en-US', {
             style: 'currency',
-            currency: 'INR',
+            currency: currency,
             minimumFractionDigits: 2
         });
     };
@@ -200,6 +201,44 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                     </div>
                 </div>
 
+                {/* View Toggle */}
+                {!loading && details && (details.bill_type === 'INTERNATIONAL' || (details.currency && details.currency !== 'INR')) && (
+                    <div className="flex justify-center bg-slate-50 py-3 border-b border-slate-100">
+                        <div className="inline-flex p-1 bg-slate-200/50 rounded-xl border border-slate-200 shadow-inner">
+                            <button
+                                onClick={() => setViewCurrency('INR')}
+                                className={`px-8 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
+                                    viewCurrency === 'INR'
+                                        ? 'bg-white text-blue-600 shadow-md transform scale-105'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                            >
+                                INR View
+                            </button>
+                            <button
+                                onClick={() => setViewCurrency(details.currency || 'USD')}
+                                className={`px-8 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
+                                    viewCurrency !== 'INR'
+                                        ? 'bg-white text-blue-600 shadow-md transform scale-105'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                            >
+                                {details.currency || 'USD'} View
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Exchange Rate Info (Only shown in Foreign Currency View) */}
+                {!loading && viewCurrency !== 'INR' && details?.exchange_rate && (
+                    <div className="flex justify-center py-2 bg-slate-50 border-b border-slate-100">
+                        <div className="bg-blue-50 text-blue-700 px-4 py-1 rounded-full border border-blue-100 text-[10px] font-bold flex items-center gap-2 shadow-sm">
+                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                            Exchange Rate: 1 {details.currency || 'USD'} = {details.exchange_rate} INR
+                        </div>
+                    </div>
+                )}
+
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto bg-white">
                     {loading ? (
@@ -329,8 +368,8 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                                 <th className="px-5 py-3">Product Details</th>
                                                 <th className="px-5 py-3 text-center">HSN</th>
                                                 <th className="px-5 py-3 text-right">Qty</th>
-                                                <th className="px-5 py-3 text-right">Rate</th>
-                                                <th className="px-5 py-3 text-right">Amount</th>
+                                                <th className="px-5 py-3 text-right">Rate ({viewCurrency})</th>
+                                                <th className="px-5 py-3 text-right">Amount ({viewCurrency})</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100 bg-white">
@@ -357,10 +396,16 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                                         </div>
                                                     </td>
                                                     <td className="px-5 py-3 text-right font-mono text-slate-700">
-                                                        {formatCurrency(item.rate)}
+                                                        {viewCurrency === 'INR' 
+                                                            ? formatCurrency(item.rate, 'INR')
+                                                            : formatCurrency(item.original_rate || (item.rate / (details.exchange_rate || 1)), details.currency || 'USD')
+                                                        }
                                                     </td>
                                                     <td className="px-5 py-3 text-right font-semibold font-mono text-slate-900">
-                                                        {formatCurrency(item.amount)}
+                                                        {viewCurrency === 'INR'
+                                                            ? formatCurrency(item.amount, 'INR')
+                                                            : formatCurrency(item.original_amount || (item.amount / (details.exchange_rate || 1)), details.currency || 'USD')
+                                                        }
                                                     </td>
                                                 </tr>
                                             ))}
@@ -368,8 +413,13 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                         {/* Table Footer for quick total check */}
                                         <tfoot className="bg-slate-50 border-t border-slate-200">
                                             <tr>
-                                                <td colSpan="4" className="px-5 py-2 text-right text-xs text-slate-500 uppercase font-semibold">Total Items Amout</td>
-                                                <td className="px-5 py-2 text-right font-mono font-medium text-slate-700">{formatCurrency(details.subtotal)}</td>
+                                                <td colSpan="4" className="px-5 py-2 text-right text-xs text-slate-500 uppercase font-semibold">Total Items Amount ({viewCurrency})</td>
+                                                <td className="px-5 py-2 text-right font-mono font-medium text-slate-700">
+                                                    {viewCurrency === 'INR'
+                                                        ? formatCurrency(details.subtotal, 'INR')
+                                                        : formatCurrency(details.original_subtotal || (details.subtotal / (details.exchange_rate || 1)), details.currency || 'USD')
+                                                    }
+                                                </td>
                                             </tr>
                                         </tfoot>
                                     </table>
@@ -397,8 +447,13 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                             <p className="text-2xl font-bold text-blue-700">{details.total_items}</p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-xs text-blue-500 uppercase font-bold">Balance Due</p>
-                                            <p className="text-xl font-bold text-red-600">{formatCurrency(details.balance)}</p>
+                                            <p className="text-xs text-blue-500 uppercase font-bold">Balance Due ({viewCurrency})</p>
+                                            <p className="text-xl font-bold text-red-600">
+                                                {viewCurrency === 'INR'
+                                                    ? formatCurrency(details.balance, 'INR')
+                                                    : formatCurrency(details.original_balance || (details.balance / (details.exchange_rate || 1)), details.currency || 'USD')
+                                                }
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -406,65 +461,100 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                 {/* Right Side: Financial Summary */}
                                 <div className="w-full md:w-96 bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-3 shadow-sm">
                                     <div className="flex justify-between text-slate-600 text-sm">
-                                        <span>Subtotal</span>
-                                        <span className="font-mono font-medium">{formatCurrency(details.subtotal)}</span>
+                                        <span>Subtotal ({viewCurrency})</span>
+                                        <span className="font-mono font-medium">
+                                            {viewCurrency === 'INR'
+                                                ? formatCurrency(details.subtotal, 'INR')
+                                                : formatCurrency(details.original_subtotal || (details.subtotal / (details.exchange_rate || 1)), details.currency || 'USD')
+                                            }
+                                        </span>
                                     </div>
-                                    {/* Taxes */}
-                                    <div className="py-3 border-y border-slate-200 space-y-2">
-                                        {parseFloat(details.cgst_amount) > 0 && (
-                                            <div className="flex justify-between text-xs text-slate-500">
-                                                <span>CGST ({details.cgst_percentage}%)</span>
-                                                <span className="font-mono">{formatCurrency(details.cgst_amount)}</span>
+                                    {/* Taxes - Only shown in INR View for simplicity if tax values are not converted in backend */}
+                                    {viewCurrency === 'INR' ? (
+                                        <div className="py-3 border-y border-slate-200 space-y-2">
+                                            {parseFloat(details.cgst_amount) > 0 && (
+                                                <div className="flex justify-between text-xs text-slate-500">
+                                                    <span>CGST ({details.cgst_percentage}%)</span>
+                                                    <span className="font-mono">{formatCurrency(details.cgst_amount)}</span>
+                                                </div>
+                                            )}
+                                            {parseFloat(details.sgst_amount) > 0 && (
+                                                <div className="flex justify-between text-xs text-slate-500">
+                                                    <span>SGST ({details.sgst_percentage}%)</span>
+                                                    <span className="font-mono">{formatCurrency(details.sgst_amount)}</span>
+                                                </div>
+                                            )}
+                                            {parseFloat(details.igst_amount) > 0 && (
+                                                <div className="flex justify-between text-xs text-slate-500">
+                                                    <span>IGST ({details.igst_percentage}%)</span>
+                                                    <span className="font-mono">{formatCurrency(details.igst_amount)}</span>
+                                                </div>
+                                            )}
+                                            <div className="flex justify-between text-slate-700 font-semibold text-sm pt-1">
+                                                <span>Total GST</span>
+                                                <span className="font-mono">{formatCurrency(details.total_gst)}</span>
                                             </div>
-                                        )}
-                                        {parseFloat(details.sgst_amount) > 0 && (
-                                            <div className="flex justify-between text-xs text-slate-500">
-                                                <span>SGST ({details.sgst_percentage}%)</span>
-                                                <span className="font-mono">{formatCurrency(details.sgst_amount)}</span>
-                                            </div>
-                                        )}
-                                        {parseFloat(details.igst_amount) > 0 && (
-                                            <div className="flex justify-between text-xs text-slate-500">
-                                                <span>IGST ({details.igst_percentage}%)</span>
-                                                <span className="font-mono">{formatCurrency(details.igst_amount)}</span>
-                                            </div>
-                                        )}
-                                        <div className="flex justify-between text-slate-700 font-semibold text-sm pt-1">
-                                            <span>Total GST</span>
-                                            <span className="font-mono">{formatCurrency(details.total_gst)}</span>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        <div className="py-3 border-y border-slate-200">
+                                            <div className="flex justify-between text-slate-700 font-semibold text-sm">
+                                                <span>Total Tax ({viewCurrency})</span>
+                                                <span className="font-mono">{formatCurrency(details.original_total_tax || (details.total_gst / (details.exchange_rate || 1)), viewCurrency)}</span>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Grand Total */}
                                     <div className="flex justify-between items-center text-slate-800 font-bold text-lg">
-                                        <span>Total Amount</span>
-                                        <span className="font-mono">{formatCurrency(details.total_amount)}</span>
+                                        <span>Total Amount ({viewCurrency})</span>
+                                        <span className="font-mono">
+                                            {viewCurrency === 'INR'
+                                                ? formatCurrency(details.total_amount, 'INR')
+                                                : formatCurrency(details.original_total_amount || (details.total_amount / (details.exchange_rate || 1)), details.currency || 'USD')
+                                            }
+                                        </span>
                                     </div>
 
                                     {/* Adjustments */}
                                     <div className="space-y-2 pt-2">
                                         <div className="flex justify-between text-red-600 text-sm font-medium">
-                                            <span>Less: Advance Deducted</span>
-                                            <span className="font-mono">- {formatCurrency(details.advance_deducted)}</span>
+                                            <span>Less: Advance Deducted ({viewCurrency})</span>
+                                            <span className="font-mono">- {viewCurrency === 'INR' 
+                                                ? formatCurrency(details.advance_deducted, 'INR')
+                                                : formatCurrency(details.original_advance_deducted || (details.advance_deducted / (details.exchange_rate || 1)), viewCurrency)
+                                            }</span>
                                         </div>
                                         {parseFloat(details.freight_cost) > 0 && (
-                                        <div className="flex justify-between text-slate-600 text-sm">
-                                            <span>Freight Cost</span>
-                                            <span className="font-mono font-medium">{formatCurrency(details.freight_cost)}</span>
-                                        </div>
-                                    )}
+                                            <div className="flex justify-between text-slate-600 text-sm">
+                                                <span>Freight Cost ({viewCurrency})</span>
+                                                <span className="font-mono font-medium">
+                                                    {viewCurrency === 'INR'
+                                                        ? formatCurrency(details.freight_cost, 'INR')
+                                                        : formatCurrency(details.original_freight_cost || (details.freight_cost / (details.exchange_rate || 1)), viewCurrency)
+                                                    }
+                                                </span>
+                                            </div>
+                                        )}
                                         <div className="flex justify-between text-green-600 text-sm font-medium">
-                                            <span>Amount Paid</span>
-                                            <span className="font-mono">{formatCurrency(details.amount_paid)}</span>
+                                            <span>Amount Paid ({viewCurrency})</span>
+                                            <span className="font-mono">
+                                                {viewCurrency === 'INR'
+                                                    ? formatCurrency(details.amount_paid, 'INR')
+                                                    : formatCurrency(details.original_amount_paid || (details.amount_paid / (details.exchange_rate || 1)), viewCurrency)
+                                                }
+                                            </span>
                                         </div>
                                     </div>
 
                                     {/* Final Payable */}
                                     <div className="pt-3 mt-1 border-t-2 border-slate-300">
                                         <div className="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-                                            <span className="text-slate-800 font-bold">Net Payable</span>
+                                            <span className="text-slate-800 font-bold">Net Payable ({viewCurrency})</span>
                                             <span className="font-mono font-bold text-xl text-blue-600">
-                                                {formatCurrency(details.net_payable)}
+                                                {viewCurrency === 'INR'
+                                                    ? formatCurrency(details.net_payable, 'INR')
+                                                    : formatCurrency(details.original_net_payable || (details.net_payable / (details.exchange_rate || 1)), viewCurrency)
+                                                }
                                             </span>
                                         </div>
                                     </div>

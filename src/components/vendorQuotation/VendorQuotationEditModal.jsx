@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getVendorQuotationById, updateQuotation } from "../../services/vendorQuotationService";
-import { HiX, HiInformationCircle } from "react-icons/hi";
+import { exchangeRateService } from "../../services/exchangeRateService";
+import { HiX, HiInformationCircle, HiRefresh } from "react-icons/hi";
 import { FaFileInvoiceDollar, FaUserTie, FaBoxOpen, FaClipboardList, FaSave, FaCalendarAlt } from "react-icons/fa";
 
 const VendorQuotationEditModal = ({ open, onClose, quotationId, onSuccess }) => {
@@ -9,6 +10,9 @@ const VendorQuotationEditModal = ({ open, onClose, quotationId, onSuccess }) => 
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
+    const [currency, setCurrency] = useState("INR");
+    const [exchangeRate, setExchangeRate] = useState(1.0);
+    const [rateLoading, setRateLoading] = useState(false);
 
     useEffect(() => {
         if (open && quotationId) {
@@ -25,6 +29,21 @@ const VendorQuotationEditModal = ({ open, onClose, quotationId, onSuccess }) => 
         try {
             const res = await getVendorQuotationById(quotationId);
             setData(res);
+            setCurrency(res.currency || "INR");
+            
+            // If it's a USD quotation, fetch the rate used (or current if not stored)
+            if (res.currency === "USD") {
+                // If the backend doesn't provide the historical rate, we fetch current
+                // But usually we should use what's in the data.
+                // For now, let's fetch current to show what it would be worth now if not provided.
+                try {
+                    const rateData = await exchangeRateService.getCurrentRate();
+                    setExchangeRate(rateData.rate);
+                } catch (e) {
+                    console.error("Exchange rate fetch failed", e);
+                }
+            }
+
             // Initialize editable items
             if (res.items) {
                 setItems(res.items.map(item => ({
@@ -57,6 +76,9 @@ const VendorQuotationEditModal = ({ open, onClose, quotationId, onSuccess }) => 
             return sum + (parseFloat(item.quantity || 0) * parseFloat(item.quoted_rate || 0));
         }, 0);
     };
+
+    const totalAmount = calculateTotal();
+    const totalAmountINR = currency === "USD" ? totalAmount * exchangeRate : totalAmount;
 
     const handleSubmit = async () => {
         setSubmitting(true);
@@ -171,6 +193,12 @@ const VendorQuotationEditModal = ({ open, onClose, quotationId, onSuccess }) => 
                                             <span className="font-semibold">Valid Until:</span> {data.validity_date}
                                         </div>
                                         <div><span className="text-slate-500 font-semibold">Ref No:</span> {data.reference_number || "-"}</div>
+                                        <div className="flex justify-end gap-2 items-center mt-2">
+                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Currency:</span>
+                                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${currency === "USD" ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-700"}`}>
+                                                {currency}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -191,8 +219,9 @@ const VendorQuotationEditModal = ({ open, onClose, quotationId, onSuccess }) => 
                                         <tr>
                                             <th className="px-5 py-3">Product</th>
                                             <th className="px-5 py-3 text-right">Quantity</th>
-                                            <th className="px-5 py-3 text-right">Quoted Rate</th>
-                                            <th className="px-5 py-3 text-right">Amount</th>
+                                            <th className="px-5 py-3 text-right">Rate ({currency})</th>
+                                            <th className="px-5 py-3 text-right">Amount ({currency})</th>
+                                            {currency === "USD" && <th className="px-5 py-3 text-right">Amount (INR)</th>}
                                             <th className="px-5 py-3">Remarks</th>
                                         </tr>
                                     </thead>
@@ -217,8 +246,13 @@ const VendorQuotationEditModal = ({ open, onClose, quotationId, onSuccess }) => 
                                                     />
                                                 </td>
                                                 <td className="px-5 py-3 text-right font-bold text-slate-900">
-                                                    {calculateRowAmount(item.quantity, item.quoted_rate)}
+                                                    {currency === "USD" ? "$" : "₹"} {calculateRowAmount(item.quantity, item.quoted_rate)}
                                                 </td>
+                                                {currency === "USD" && (
+                                                    <td className="px-5 py-3 text-right font-bold text-blue-600">
+                                                        ₹ {(parseFloat(calculateRowAmount(item.quantity, item.quoted_rate)) * exchangeRate).toFixed(2)}
+                                                    </td>
+                                                )}
                                                 <td className="px-5 py-3 text-slate-500 italic max-w-xs truncate">
                                                     {item.remarks || "-"}
                                                 </td>
@@ -228,9 +262,16 @@ const VendorQuotationEditModal = ({ open, onClose, quotationId, onSuccess }) => 
                                     {/* Table Footer Total */}
                                     <tfoot className="bg-slate-50 font-bold text-slate-900">
                                         <tr>
-                                            <td colSpan="3" className="px-5 py-3 text-right text-slate-600 uppercase text-xs tracking-wider">Total Amount</td>
-                                            <td className="px-5 py-3 text-right text-base border-t border-slate-200">
-                                                {calculateTotal().toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                                            <td colSpan={currency === "USD" ? "4" : "3"} className="px-5 py-3 text-right text-slate-600 uppercase text-xs tracking-wider">Total Amount</td>
+                                            <td className="px-5 py-3 text-right text-base border-t border-slate-200 whitespace-nowrap">
+                                                <div className="flex flex-col items-end">
+                                                    <span>{totalAmount.toLocaleString('en-IN', { style: 'currency', currency: currency })}</span>
+                                                    {currency === "USD" && (
+                                                        <span className="text-xs text-blue-600 font-semibold">
+                                                            (Approx {totalAmountINR.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })})
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td></td>
                                         </tr>

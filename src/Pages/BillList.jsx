@@ -28,7 +28,7 @@ const BillList = () => {
     const [confirm, setConfirm] = useState({ open: false, title: "", description: "", action: null });
 
     // Payment Modal State
-    const [paymentModal, setPaymentModal] = useState({ open: false, bill: null, amount: "", payment_date: "", payment_mode: "CASH", reference_number: "", remarks: "" });
+    const [paymentModal, setPaymentModal] = useState({ open: false, bill: null, amount: "", currency: "INR", payment_date: "", payment_mode: "CASH", reference_number: "", remarks: "" });
     const [paymentSubmitting, setPaymentSubmitting] = useState(false);
     const [passwordModal, setPasswordModal] = useState({ open: false, onConfirm: null, title: "", message: "", loading: false });
 
@@ -150,6 +150,7 @@ const BillList = () => {
             open: true,
             bill,
             amount: defaultAmount,
+            currency: "INR",
             payment_date: new Date().toISOString().split("T")[0],
             payment_mode: "CASH",
             reference_number: "",
@@ -167,17 +168,22 @@ const BillList = () => {
             onConfirm: async (password) => {
                 setPasswordModal(prev => ({ ...prev, loading: true }));
                 try {
+                    let finalAmount = parseFloat(paymentModal.amount);
+                    if (paymentModal.currency !== 'INR' && paymentModal.bill?.exchange_rate) {
+                        finalAmount = finalAmount * parseFloat(paymentModal.bill.exchange_rate);
+                    }
+
                     const payload = {
-                        amount_paid: parseFloat(paymentModal.amount),
+                        amount_paid: finalAmount,
                         payment_date: paymentModal.payment_date,
                         payment_mode: paymentModal.payment_mode,
                         reference_number: paymentModal.reference_number,
-                        remarks: paymentModal.remarks,
+                        remarks: paymentModal.remarks + (paymentModal.currency !== 'INR' ? ` (Collected: ${paymentModal.amount} ${paymentModal.currency})` : ""),
                         confirm_password: password
                     };
                     const res = await markBillAsPaid(paymentModal.bill.id, payload);
                     setAlert({ open: true, type: "success", message: res.message || "Payment recorded successfully" });
-                    setPaymentModal({ open: false, bill: null, amount: "", payment_date: "", payment_mode: "NEFT", reference_number: "", remarks: "" });
+                    setPaymentModal({ open: false, bill: null, amount: "", currency: "INR", payment_date: "", payment_mode: "NEFT", reference_number: "", remarks: "" });
                     fetchBills(page);
                     setPasswordModal({ open: false });
                 } catch (error) {
@@ -553,13 +559,43 @@ const BillList = () => {
                         <form onSubmit={handlePaymentSubmit} className="p-8 space-y-6 bg-slate-50">
                             <div className="grid grid-cols-1 gap-6">
                                 <div>
-                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Collected Amount (₹) *</label>
-                                    <input
-                                        type="number" step="0.01" min="0" required
-                                        value={paymentModal.amount}
-                                        onChange={(e) => setPaymentModal({ ...paymentModal, amount: e.target.value })}
-                                        className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-xl text-xl font-black focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
-                                    />
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Collected Amount *</label>
+                                        {paymentModal.bill?.currency && paymentModal.bill?.currency !== 'INR' && (
+                                            <div className="flex bg-slate-200 rounded-lg p-0.5 shadow-inner">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPaymentModal({ ...paymentModal, currency: 'INR', amount: paymentModal.bill.balance })}
+                                                    className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${paymentModal.currency === 'INR' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
+                                                >
+                                                    INR
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPaymentModal({ ...paymentModal, currency: paymentModal.bill.currency, amount: paymentModal.bill.original_balance || (paymentModal.bill.balance / paymentModal.bill.exchange_rate) })}
+                                                    className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${paymentModal.currency !== 'INR' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
+                                                >
+                                                    {paymentModal.bill.currency}
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="relative">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
+                                            {paymentModal.currency === 'INR' ? '₹' : (paymentModal.currency === 'USD' ? '$' : paymentModal.currency)}
+                                        </div>
+                                        <input
+                                            type="number" step="0.01" min="0" required
+                                            value={paymentModal.amount}
+                                            onChange={(e) => setPaymentModal({ ...paymentModal, amount: e.target.value })}
+                                            className="w-full pl-10 pr-5 py-3.5 bg-white border border-slate-200 rounded-xl text-xl font-black focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
+                                        />
+                                    </div>
+                                    {paymentModal.currency !== 'INR' && paymentModal.bill?.exchange_rate && (
+                                        <p className="mt-2 text-[10px] text-slate-400 font-bold uppercase italic">
+                                            Approx. {formatCurrency(parseFloat(paymentModal.amount || 0) * paymentModal.bill.exchange_rate)} (Exch: {paymentModal.bill.exchange_rate})
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>

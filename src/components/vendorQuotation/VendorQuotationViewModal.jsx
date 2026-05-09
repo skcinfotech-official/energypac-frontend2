@@ -101,19 +101,18 @@ const VendorQuotationViewModal = ({ open, onClose, quotationId }) => {
 
                                     {/* Right: Terms & Validity */}
                                     <div className="text-right space-y-2 text-sm">
-                                        <div className="flex items-center gap-2">
-                                            {/* <FaBoxOpen className="text-slate-400 w-4" />
-                                                <span className="font-semibold">Requisition:</span> {data.requisition_number} */}
+                                        <div className="flex flex-col items-start bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 mb-2">
+                                            <span className="text-[9px] font-bold text-blue-400 uppercase tracking-tighter">Input Currency</span>
+                                            <span className="text-sm font-black text-blue-700 leading-none">
+                                                {data.currency?.toString().toUpperCase()}
+                                            </span>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <FaBoxOpen className="text-slate-400 w-4" />
-                                            <span className="font-semibold">Requisition:</span> {data.requisition_number}
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <FaUserTie className="text-slate-400 w-4" />
-                                            <span className="font-semibold">Vendor:</span> {data.vendor_name}
-                                            <span className="text-xs bg-slate-100 px-1.5 rounded-md text-slate-500">{data.vendor_code}</span>
-                                        </div>
+                                        {data.currency?.toString().trim().toUpperCase() !== 'INR' && (
+                                            <div className="flex flex-col items-start bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Exchange Rate</span>
+                                                <span className="text-sm font-bold text-slate-600 leading-none">1 {data.currency} = ₹ {data.exchange_rate}</span>
+                                            </div>
+                                        )}
                                         {/* <div className="bg-amber-50 text-amber-900 px-3 py-1 rounded-lg border border-amber-100 inline-block mb-2">
                                             <span className="font-semibold">Valid Until:</span> {data.validity_date}
                                         </div>
@@ -179,8 +178,14 @@ const VendorQuotationViewModal = ({ open, onClose, quotationId }) => {
                                         <tr>
                                             <th className="px-5 py-3">Product</th>
                                             <th className="px-5 py-3 text-right">Quantity</th>
-                                            <th className="px-5 py-3 text-right">Quoted Rate</th>
-                                            <th className="px-5 py-3 text-right">Amount</th>
+                                            <th className="px-5 py-3 text-right">Rate (INR)</th>
+                                            <th className="px-5 py-3 text-right">Amount (INR)</th>
+                                            {data.currency?.toString().trim().toUpperCase() !== 'INR' && (
+                                                <>
+                                                    <th className="px-5 py-3 text-right bg-blue-50/20">Original Rate</th>
+                                                    <th className="px-5 py-3 text-right bg-blue-50/20">Original Amount</th>
+                                                </>
+                                            )}
                                             <th className="px-5 py-3">Remarks</th>
                                         </tr>
                                     </thead>
@@ -195,11 +200,21 @@ const VendorQuotationViewModal = ({ open, onClose, quotationId }) => {
                                                     {item.quantity} <span className="text-xs text-slate-400">{item.unit}</span>
                                                 </td>
                                                 <td className="px-5 py-3 text-right text-slate-700">
-                                                    ₹ {item.quoted_rate}
+                                                    ₹ {Number(item.quoted_rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                                 </td>
                                                 <td className="px-5 py-3 text-right font-bold text-slate-900">
-                                                    ₹ {item.amount}
+                                                    ₹ {Number(item.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                                 </td>
+                                                {data.currency?.toString().trim().toUpperCase() !== 'INR' && (
+                                                    <>
+                                                        <td className="px-5 py-3 text-right text-blue-600 bg-blue-50/10">
+                                                            {data.currency?.toString().trim().toUpperCase() === 'USD' ? '$' : '₹'} {item.original_rate || item.original_quoted_rate || item.quoted_rate}
+                                                        </td>
+                                                        <td className="px-5 py-3 text-right font-bold text-blue-700 bg-blue-50/10">
+                                                            {data.currency?.toString().trim().toUpperCase() === 'USD' ? '$' : '₹'} {item.original_amount || item.amount}
+                                                        </td>
+                                                    </>
+                                                )}
                                                 <td className="px-5 py-3 text-slate-500 italic max-w-xs truncate">
                                                     {item.remarks || "-"}
                                                 </td>
@@ -209,8 +224,18 @@ const VendorQuotationViewModal = ({ open, onClose, quotationId }) => {
                                     {/* Table Footer Total */}
                                     <tfoot className="bg-slate-50 font-bold text-slate-900">
                                         <tr>
-                                            <td colSpan="3" className="px-5 py-3 text-right text-slate-600 uppercase text-xs tracking-wider">Total Amount</td>
-                                            <td className="px-5 py-3 text-right text-base border-t border-slate-200">₹ {data.total_amount}</td>
+                                            <td colSpan="3" className="px-5 py-3 text-right text-slate-600 uppercase text-xs tracking-wider border-t border-slate-200">Total (INR)</td>
+                                            <td className="px-5 py-3 text-right text-base border-t border-slate-200 font-black">
+                                                ₹ {Number(data.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                            </td>
+                                            {data.currency?.toString().trim().toUpperCase() !== 'INR' && (
+                                                <>
+                                                    <td className="px-5 py-3 text-right text-base border-t border-slate-200 text-blue-700 bg-blue-50/30">
+                                                        {data.currency?.toString().trim().toUpperCase() === 'USD' ? '$' : '₹'} {data.original_total_amount}
+                                                    </td>
+                                                    <td className="bg-blue-50/30 border-t border-slate-200"></td>
+                                                </>
+                                            )}
                                             <td></td>
                                         </tr>
                                     </tfoot>

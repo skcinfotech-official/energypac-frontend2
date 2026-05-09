@@ -70,7 +70,7 @@ export default function Sidebar({ isOpen }) {
             icon={<BiImport />}
             isOpen={isOpen}
             items={[
-              { to: "/HSN", label: "HSN Code", icon: <FaBarcode /> },
+              // { to: "/HSN", label: "HSN Code", icon: <FaBarcode /> },
               { to: "/master/item", label: "Item", icon: <FaCube /> },
               { to: "/master/vendor", label: "Vendor", icon: <FaUserTie /> },
             ]}

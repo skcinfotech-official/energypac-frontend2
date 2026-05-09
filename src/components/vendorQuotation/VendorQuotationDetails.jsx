@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { getQuotationItems, createQuotation } from "../../services/vendorQuotationService";
+import { exchangeRateService } from "../../services/exchangeRateService";
 import RequisitionSelector from "../common/RequisitionSelector";
 import VendorSelector from "../common/VendorSelector";
 import { FaFileInvoiceDollar, FaUserTie, FaBoxOpen, FaClipboardList, FaCheckCircle, FaSearch, FaSave } from "react-icons/fa";
+import { HiRefresh } from "react-icons/hi";
 import AlertToast from "../ui/AlertToast";
 
 const VendorQuotationDetails = () => {
@@ -11,6 +13,9 @@ const VendorQuotationDetails = () => {
   const [contextData, setContextData] = useState(null);
   // State for items (editable)
   const [items, setItems] = useState([]);
+  const [currency, setCurrency] = useState("INR");
+  const [exchangeRate, setExchangeRate] = useState(1.0);
+  const [rateLoading, setRateLoading] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -20,6 +25,27 @@ const VendorQuotationDetails = () => {
   // Filters
   const [selectedRequisition, setSelectedRequisition] = useState(null);
   const [selectedVendor, setSelectedVendor] = useState(null);
+
+  const loadExchangeRate = async () => {
+    setRateLoading(true);
+    try {
+      const data = await exchangeRateService.getCurrentRate();
+      setExchangeRate(data.rate);
+    } catch (err) {
+      console.error(err);
+      setToast({ open: true, type: "error", message: "Failed to fetch exchange rate" });
+    } finally {
+      setRateLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currency === "USD") {
+      loadExchangeRate();
+    } else {
+      setExchangeRate(1.0);
+    }
+  }, [currency]);
 
   const handleSearch = async () => {
     // User flow: Select Requisition + Vendor -> GET /api/vendor-quotations/by_requisition_vendor
@@ -73,6 +99,7 @@ const VendorQuotationDetails = () => {
     const payload = {
       requisition: selectedRequisition,
       vendor: selectedVendor,
+      currency: currency,
       items: items.map(item => ({
         vendor_item: item.vendor_item_id,
         quoted_rate: parseFloat(item.quoted_rate) || 0
@@ -122,6 +149,8 @@ const VendorQuotationDetails = () => {
     const rate = parseFloat(item.quoted_rate) || 0;
     return sum + (qty * rate);
   }, 0);
+
+  const totalAmountINR = currency === "USD" ? totalAmount * exchangeRate : totalAmount;
 
   return (
     <div className="space-y-6">
@@ -208,12 +237,56 @@ const VendorQuotationDetails = () => {
                   </div>
                 </div>
 
+                {/* Currency Selection */}
+                <div className="flex items-center justify-between bg-blue-50/50 border border-blue-100 p-3 rounded-xl">
+                  <div>
+                    <label className="text-[10px] font-bold text-blue-600 uppercase tracking-widest block mb-1.5">Currency</label>
+                    <div className="flex gap-1.5">
+                      {["INR", "USD"].map((curr) => (
+                        <button
+                          key={curr}
+                          type="button"
+                          onClick={() => setCurrency(curr)}
+                          className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                            currency === curr
+                              ? "bg-blue-600 text-white shadow-sm"
+                              : "bg-white text-slate-600 border border-slate-200"
+                          }`}
+                        >
+                          {curr}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {currency === "USD" && (
+                    <div className="flex items-center gap-3 bg-white px-3 py-2 rounded-lg border border-blue-100 shadow-sm">
+                      <div className="text-right">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase leading-none mb-1">Exchange Rate</p>
+                        <p className="text-sm font-black text-blue-600 leading-none">1 USD = ₹ {exchangeRate}</p>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={loadExchangeRate} 
+                        className="p-1.5 hover:bg-blue-50 rounded-md text-blue-400 transition-colors"
+                      >
+                        <HiRefresh className={rateLoading ? "animate-spin" : ""} size={12} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 {/* Right: Total */}
                 <div className="text-right">
                   <div className="text-2xl font-bold text-slate-900">
-                    <span className="text-sm text-slate-400 font-normal mr-2">Total Amount:</span>
-                    {totalAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                    <span className="text-sm text-slate-400 font-normal mr-2">Total ({currency}):</span>
+                    {totalAmount.toLocaleString('en-IN', { style: 'currency', currency: currency })}
                   </div>
+                  {currency === "USD" && (
+                    <div className="text-sm font-semibold text-blue-600">
+                      (Approx {totalAmountINR.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })})
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -229,8 +302,9 @@ const VendorQuotationDetails = () => {
                     <tr>
                       <th className="px-4 py-3">Product</th>
                       <th className="px-4 py-3 text-right">Qty</th>
-                      <th className="px-4 py-3 text-right w-40">Quoted Rate</th>
-                      <th className="px-4 py-3 text-right">Amount</th>
+                      <th className="px-4 py-3 text-right w-40">Rate ({currency})</th>
+                      <th className="px-4 py-3 text-right">Amount ({currency})</th>
+                      {currency === "USD" && <th className="px-4 py-3 text-right">Amount (INR)</th>}
                       <th className="px-4 py-3">Remarks</th>
                     </tr>
                   </thead>
@@ -257,8 +331,13 @@ const VendorQuotationDetails = () => {
                           />
                         </td>
                         <td className="px-4 py-3 text-right font-bold text-slate-800">
-                          {((parseFloat(item.quantity) || 0) * (parseFloat(item.quoted_rate) || 0)).toFixed(2)}
+                          {currency === "USD" ? "$" : "₹"} {((parseFloat(item.quantity) || 0) * (parseFloat(item.quoted_rate) || 0)).toFixed(2)}
                         </td>
+                        {currency === "USD" && (
+                          <td className="px-4 py-3 text-right font-bold text-blue-600">
+                            ₹ {((parseFloat(item.quantity) || 0) * (parseFloat(item.quoted_rate) || 0) * exchangeRate).toFixed(2)}
+                          </td>
+                        )}
                         <td className="px-4 py-3 text-slate-600 italic max-w-37.5 truncate">
                           {/* Display only for now as requested payload didn't include updating remarks */}
                           {item.remarks || "-"}
@@ -266,7 +345,7 @@ const VendorQuotationDetails = () => {
                       </tr>
                     ))}
                     {items.length === 0 && (
-                      <tr><td colSpan="5" className="p-4 text-center text-slate-500">No items found.</td></tr>
+                      <tr><td colSpan={currency === "USD" ? "6" : "5"} className="p-4 text-center text-slate-500">No items found.</td></tr>
                     )}
                   </tbody>
                 </table>

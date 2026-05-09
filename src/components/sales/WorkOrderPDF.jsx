@@ -37,12 +37,17 @@ const styles = StyleSheet.create({
     table: { marginTop: 15, borderWidth: 1, borderColor: '#000' },
     tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', fontWeight: 'bold' },
     tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000' },
-    col1: { width: '8%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
-    col2: { width: '40%', padding: 4, borderRightWidth: 1, borderRightColor: '#000' },
-    col3: { width: '12%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
-    col4: { width: '12%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
-    col5: { width: '12%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'right' },
     col6: { width: '16%', padding: 4, textAlign: 'right' },
+
+    // Dynamic columns for Foreign Currency (International)
+    col1_fc: { width: '4%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
+    col2_fc: { width: '22%', padding: 4, borderRightWidth: 1, borderRightColor: '#000' },
+    col3_fc: { width: '8%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
+    col4_fc: { width: '8%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
+    col5_fc: { width: '13%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'right' },
+    col6_fc: { width: '15%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'right' },
+    col7_fc: { width: '14%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'right' },
+    col8_fc: { width: '16%', padding: 4, textAlign: 'right' },
 
     // 5. Totals Section
     totalsRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000' },
@@ -87,7 +92,17 @@ const styles = StyleSheet.create({
 });
 
 const WorkOrderPDF = ({ details }) => {
-    const formatCurrency = (val) => Number(val || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 });
+    const isInternational = details.currency && details.currency.toUpperCase() !== 'INR';
+
+    const formatCurrency = (val, curr = "INR") => {
+        const c = curr?.toString().trim().toUpperCase() || "INR";
+        const symbol = c === "USD" ? "$" : (c === "INR" ? "₹" : c);
+        
+        const num = Number(val || 0);
+        const formatted = num.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+        return `${symbol} ${formatted}`;
+    };
+
     const formatDate = (date) => date ? new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.') : '';
 
     return (
@@ -129,14 +144,21 @@ const WorkOrderPDF = ({ details }) => {
                             <Text style={styles.detailsLabel}>DATE:</Text>
                             <Text style={styles.detailsValue}>{formatDate(details.wo_date)}</Text>
                         </View>
-                        <View style={styles.detailsRow}>
+                        <View style={[styles.detailsRow, { borderBottomWidth: 1 }]}>
                             <Text style={styles.detailsLabel}>QUOTATION REF:</Text>
                             <Text style={styles.detailsValue}>{details.quotation_number}</Text>
                         </View>
-                        <View style={[styles.detailsRow, { borderBottomWidth: 0 }]}>
-                            <Text style={styles.detailsLabel}>STATUS:</Text>
-                            <Text style={styles.detailsValue}>{details.status}</Text>
-                        </View>
+                        {isInternational ? (
+                            <View style={[styles.detailsRow, { borderBottomWidth: 0, backgroundColor: '#f0f8ff' }]}>
+                                <Text style={styles.detailsLabel}>EXCH. RATE:</Text>
+                                <Text style={styles.detailsValue}>1 {details.currency} = INR {details.exchange_rate}</Text>
+                            </View>
+                        ) : (
+                            <View style={[styles.detailsRow, { borderBottomWidth: 0 }]}>
+                                <Text style={styles.detailsLabel}>STATUS:</Text>
+                                <Text style={styles.detailsValue}>{details.status}</Text>
+                            </View>
+                        )}
                     </View>
                 </View>
 
@@ -156,28 +178,60 @@ const WorkOrderPDF = ({ details }) => {
 
                 {/* 4. Items Table */}
                 <View style={styles.table}>
-                    <View style={styles.tableHeader}>
-                        <Text style={styles.col1}>SL NO</Text>
-                        <Text style={styles.col2}>PRODUCT / ITEM</Text>
-                        <Text style={styles.col3}>HSN CODE</Text>
-                        <Text style={styles.col4}>QTY</Text>
-                        <Text style={styles.col5}>RATE</Text>
-                        <Text style={styles.col6}>AMOUNT</Text>
-                    </View>
+                    {isInternational ? (
+                        <View style={styles.tableHeader}>
+                            <Text style={styles.col1_fc}>SL</Text>
+                            <Text style={styles.col2_fc}>ITEM</Text>
+                            <Text style={styles.col3_fc}>HSN</Text>
+                            <Text style={styles.col4_fc}>QTY</Text>
+                            <Text style={styles.col7_fc}>RATE({details.currency})</Text>
+                            <Text style={styles.col8_fc}>AMOUNT({details.currency})</Text>
+                            <Text style={styles.col5_fc}>RATE(INR)</Text>
+                            <Text style={styles.col6_fc}>AMOUNT(INR)</Text>
+                        </View>
+                    ) : (
+                        <View style={styles.tableHeader}>
+                            <Text style={styles.col1}>SL NO</Text>
+                            <Text style={styles.col2}>PRODUCT / ITEM</Text>
+                            <Text style={styles.col3}>HSN CODE</Text>
+                            <Text style={styles.col4}>QTY</Text>
+                            <Text style={styles.col5}>RATE</Text>
+                            <Text style={styles.col6}>AMOUNT</Text>
+                        </View>
+                    )}
 
                     {details.items?.map((item, index) => (
                         <View key={index} style={styles.tableRow}>
-                            <Text style={styles.col1}>{index + 1}</Text>
-                            <View style={styles.col2}>
-                                <Text style={{ fontWeight: 'bold' }}>{item.item_name}</Text>
-                                {item.item_code && <Text style={{ fontSize: 8, color: '#444' }}>{item.item_code}</Text>}
-                                {item.description && item.description !== item.item_name && <Text style={{ fontSize: 8, color: '#444' }}>{item.description}</Text>}
-                                {item.remarks && <Text style={{ fontSize: 8, color: '#555' }}>Remark: {item.remarks}</Text>}
-                            </View>
-                            <Text style={styles.col3}>{item.hsn_code}</Text>
-                            <Text style={styles.col4}>{parseFloat(item.ordered_quantity || 0).toFixed(2)} {item.unit}</Text>
-                            <Text style={styles.col5}>{formatCurrency(item.rate)}</Text>
-                            <Text style={styles.col6}>{formatCurrency(item.amount)}</Text>
+                            {isInternational ? (
+                                <>
+                                    <Text style={styles.col1_fc}>{index + 1}</Text>
+                                    <View style={styles.col2_fc}>
+                                        <Text style={{ fontWeight: 'bold' }}>{item.item_name}</Text>
+                                        {item.item_code && <Text style={{ fontSize: 7, color: '#444' }}>{item.item_code}</Text>}
+                                        {item.remarks && <Text style={{ fontSize: 7, color: '#555' }}>Rem: {item.remarks}</Text>}
+                                    </View>
+                                    <Text style={styles.col3_fc}>{item.hsn_code}</Text>
+                                    <Text style={styles.col4_fc}>{parseFloat(item.ordered_quantity || 0).toFixed(0)} {item.unit}</Text>
+                                    <Text style={styles.col7_fc}>{formatCurrency(item.original_rate || (item.rate / (details.exchange_rate || 1)), details.currency)}</Text>
+                                    <Text style={styles.col8_fc}>{formatCurrency(item.original_amount || (item.amount / (details.exchange_rate || 1)), details.currency)}</Text>
+                                    <Text style={styles.col5_fc}>{formatCurrency(item.rate, 'INR')}</Text>
+                                    <Text style={styles.col6_fc}>{formatCurrency(item.amount, 'INR')}</Text>
+                                </>
+                            ) : (
+                                <>
+                                    <Text style={styles.col1}>{index + 1}</Text>
+                                    <View style={styles.col2}>
+                                        <Text style={{ fontWeight: 'bold' }}>{item.item_name}</Text>
+                                        {item.item_code && <Text style={{ fontSize: 8, color: '#444' }}>{item.item_code}</Text>}
+                                        {item.description && item.description !== item.item_name && <Text style={{ fontSize: 8, color: '#444' }}>{item.description}</Text>}
+                                        {item.remarks && <Text style={{ fontSize: 8, color: '#555' }}>Remark: {item.remarks}</Text>}
+                                    </View>
+                                    <Text style={styles.col3}>{item.hsn_code}</Text>
+                                    <Text style={styles.col4}>{parseFloat(item.ordered_quantity || 0).toFixed(2)} {item.unit}</Text>
+                                    <Text style={styles.col5}>{formatCurrency(item.rate)}</Text>
+                                    <Text style={styles.col6}>{formatCurrency(item.amount)}</Text>
+                                </>
+                            )}
                         </View>
                     ))}
 
@@ -213,10 +267,33 @@ const WorkOrderPDF = ({ details }) => {
                         <Text style={styles.totalsValueBlock}>{formatCurrency(details.advance_amount)}</Text>
                     </View>
                     <View style={[styles.totalsRow, { borderBottomWidth: 0 }]}>
-                        <Text style={[styles.totalsLabelBlock, { color: '#dc2626' }]}>NET PAYABLE</Text>
+                        <Text style={[styles.totalsLabelBlock, { color: '#dc2626' }]}>NET PAYABLE (INR)</Text>
                         <Text style={[styles.totalsValueBlock, { color: '#dc2626' }]}>{formatCurrency(details.total_amount - details.advance_amount)}</Text>
                     </View>
                 </View>
+
+                {/* Original Currency Summary Block */}
+                {isInternational && (
+                    <View style={{ marginTop: 10, padding: 5, backgroundColor: '#f0f8ff', borderWidth: 1, borderColor: '#accce6' }}>
+                        <Text style={{ fontWeight: 'bold', fontSize: 8, marginBottom: 4, color: '#2d5a84' }}>ORIGINAL CURRENCY SUMMARY ({details.currency})</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                            <Text style={{ fontSize: 8 }}>Subtotal ({details.currency})</Text>
+                            <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{formatCurrency(details.original_subtotal || (details.subtotal / (details.exchange_rate || 1)), details.currency)}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                            <Text style={{ fontSize: 8 }}>Total Tax ({details.currency})</Text>
+                            <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{formatCurrency(details.original_total_tax || (details.total_gst / (details.exchange_rate || 1)), details.currency)}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                            <Text style={{ fontSize: 8 }}>Advance Received ({details.currency})</Text>
+                            <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{formatCurrency(details.original_advance_amount || (details.advance_amount / (details.exchange_rate || 1)), details.currency)}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#accce6', pt: 2 }}>
+                            <Text style={{ fontSize: 9, fontWeight: 'bold' }}>Net Payable ({details.currency})</Text>
+                            <Text style={{ fontSize: 9, fontWeight: 'bold' }}>{formatCurrency(details.original_net_payable || ((details.total_amount - details.advance_amount) / (details.exchange_rate || 1)), details.currency)}</Text>
+                        </View>
+                    </View>
+                )}
 
                 {/* Amount in Words */}
                 {details.amount_in_words && (

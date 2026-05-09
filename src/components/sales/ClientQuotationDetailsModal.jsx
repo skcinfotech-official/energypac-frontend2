@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { FaTimes, FaFileInvoiceDollar, FaPrint } from "react-icons/fa";
-import { getClientQuotationSummary } from "../../services/salesService";
+import { getClientQuotationById } from "../../services/salesService";
 import { pdf } from "@react-pdf/renderer";
 import ClientQuotationPDF from "./ClientQuotationPDF";
 
@@ -9,6 +9,7 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
     const [details, setDetails] = useState(null);
     const [loading, setLoading] = useState(false);
     const [generatingPdf, setGeneratingPdf] = useState(false);
+    const [viewCurrency, setViewCurrency] = useState('INR');
 
     const handlePrint = async () => {
         if (!details) return;
@@ -29,7 +30,7 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
             const fetchDetails = async () => {
                 setLoading(true);
                 try {
-                    const data = await getClientQuotationSummary(quotation.id);
+                    const data = await getClientQuotationById(quotation.id);
                     setDetails(data);
                 } catch (err) {
                     console.error("Failed to fetch quotation details", err);
@@ -40,6 +41,7 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
             fetchDetails();
         } else {
             setDetails(null);
+            setViewCurrency('INR');
         }
     }, [isOpen, quotation]);
 
@@ -103,15 +105,59 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
                                         {details.status}
                                     </div>
                                     <p className="text-sm text-slate-500">Valid until: <span className="font-semibold text-slate-700">{details.validity_date}</span></p>
-                                    <div className="mt-10">
+                                    <div className="mt-10 flex flex-col items-end">
                                         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Contact</p>
-                                        <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider">{details.contact_person}</p>
-                                        <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider">{details.phone}</p>
-                                        <p className="text-sm font-medium text-slate-700">{details.email}</p>
+                                        <p className="text-sm font-semibold text-slate-700">{details.contact_person}</p>
+                                        <p className="text-sm text-slate-600">{details.phone}</p>
+                                        <p className="text-sm text-slate-600">{details.email}</p>
                                     </div>
+                                    {details.currency !== 'INR' && (
+                                        <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg text-right">
+                                            <p className="text-[10px] font-bold text-blue-400 uppercase leading-none mb-1">Exchange Rate</p>
+                                            <p className="text-sm font-black text-blue-700">1 {details.currency} = ₹ {details.exchange_rate}</p>
+                                        </div>
+                                    )}
                                 </div>  
                                 
                             </div>
+
+                            {/* View Toggle */}
+                            {details.currency !== 'INR' && (
+                                <div className="flex justify-center mb-6">
+                                    <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200 shadow-inner">
+                                        <button
+                                            onClick={() => setViewCurrency('INR')}
+                                            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
+                                                viewCurrency === 'INR'
+                                                    ? 'bg-white text-blue-600 shadow-md transform scale-105'
+                                                    : 'text-slate-500 hover:text-slate-700'
+                                            }`}
+                                        >
+                                            INR View
+                                        </button>
+                                        <button
+                                            onClick={() => setViewCurrency(details.currency)}
+                                            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
+                                                viewCurrency !== 'INR'
+                                                    ? 'bg-white text-blue-600 shadow-md transform scale-105'
+                                                    : 'text-slate-500 hover:text-slate-700'
+                                            }`}
+                                        >
+                                            {details.currency} View
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Exchange Rate Info (Only shown in Foreign Currency View) */}
+                            {viewCurrency !== 'INR' && details.exchange_rate && (
+                                <div className="flex justify-center -mt-4 mb-6">
+                                    <div className="bg-blue-50 text-blue-700 px-4 py-1.5 rounded-full border border-blue-100 text-xs font-bold flex items-center gap-2 animate-pulse">
+                                        <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                                        Exchange Rate: 1 {details.currency} = {details.exchange_rate} INR
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Terms Grid */}
                             <div className="grid grid-cols-3 gap-4 bg-slate-50 p-2 rounded-xl border border-slate-100">
@@ -137,25 +183,34 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
                                         <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                                             <tr>
                                                 <th className="px-4 py-3">Item</th>
-                                                <th className="px-4 py-3 w-32 border-l border-slate-100">HSN Code</th>
-                                                <th className="px-4 py-3 w-32 border-l border-slate-100">Code</th>
-                                                <th className="px-4 py-3 w-24 text-right border-l border-slate-100">Qty</th>
-                                                <th className="px-4 py-3 w-32 text-right border-l border-slate-100">Rate</th>
-                                                <th className="px-4 py-3 w-32 text-right border-l border-slate-100">Amount</th>
+                                                <th className="px-4 py-3 w-28 border-l border-slate-100">HSN</th>
+                                                <th className="px-4 py-3 w-16 text-right border-l border-slate-100">Qty</th>
+                                                <th className="px-4 py-3 w-32 text-right border-l border-slate-100">Rate ({viewCurrency})</th>
+                                                <th className="px-4 py-3 w-32 text-right border-l border-slate-100">Amount ({viewCurrency})</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
                                             {details.items?.map((item, idx) => (
-                                                <tr key={idx} className="odd:bg-slate-100 even:bg-white hover:bg-slate-200   ">
-                                                    <td className="px-4 py-3 font-medium text-slate-800">
-                                                        {item.item_name}
-                                                        {item.from_stock && <span className="ml-2 text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100">STOCK</span>}
+                                                <tr key={idx} className="odd:bg-slate-50 even:bg-white hover:bg-blue-50/30 transition-colors">
+                                                    <td className="px-4 py-3">
+                                                        <div className="font-medium text-slate-800">{item.item_name}</div>
+                                                        <div className="text-[10px] text-slate-400 font-mono">{item.item_code}</div>
+                                                        {item.from_stock && <span className="mt-1 inline-block text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100">STOCK</span>}
                                                     </td>
                                                     <td className="px-4 py-3 text-slate-500 font-mono text-xs border-l border-slate-100">{item.hsn_code}</td>
-                                                    <td className="px-4 py-3 text-slate-500 font-mono text-xs border-l border-slate-100">{item.item_code}</td>
-                                                    <td className="px-4 py-3 text-right border-l border-slate-100">{item.quantity} {item.unit}</td>
-                                                    <td className="px-4 py-3 text-right border-l border-slate-100">{Number(item.rate).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
-                                                    <td className="px-4 py-3 text-right font-medium text-slate-700 border-l border-slate-100">{Number(item.amount).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
+                                                    <td className="px-4 py-3 text-right border-l border-slate-100 whitespace-nowrap">{item.quantity} {item.unit}</td>
+                                                    <td className="px-4 py-3 text-right border-l border-slate-100 text-slate-600">
+                                                        {viewCurrency === 'INR' 
+                                                            ? Number(item.rate).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })
+                                                            : Number(item.original_rate || item.rate / details.exchange_rate).toLocaleString('en-US', { style: 'currency', currency: details.currency })
+                                                        }
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right border-l border-slate-100 font-bold text-slate-800">
+                                                        {viewCurrency === 'INR'
+                                                            ? Number(item.amount).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })
+                                                            : Number(item.original_amount || item.amount / details.exchange_rate).toLocaleString('en-US', { style: 'currency', currency: details.currency })
+                                                        }
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -167,41 +222,63 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
                             <div className="flex justify-end">
                                 <div className="w-72 space-y-2">
                                     <div className="flex justify-between text-sm text-slate-600">
-                                        <span>Subtotal</span>
-                                        <span className="font-medium">{Number(details.subtotal).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
+                                        <span>Subtotal ({viewCurrency})</span>
+                                        <span className="font-medium">
+                                            {viewCurrency === 'INR'
+                                                ? Number(details.subtotal || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })
+                                                : Number(details.original_subtotal || details.subtotal / details.exchange_rate).toLocaleString('en-US', { style: 'currency', currency: details.currency })
+                                            }
+                                        </span>
                                     </div>
 
                                     {/* Tax Breakdown */}
-                                    {details.taxes && (
-                                        <div className="py-2 border-y border-slate-100 space-y-1">
-                                            {details.taxes.cgst?.amount > 0 && (
-                                                <div className="flex justify-between text-xs text-slate-500">
-                                                    <span>CGST ({details.taxes.cgst.percentage}%)</span>
-                                                    <span>{Number(details.taxes.cgst.amount).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
-                                                </div>
-                                            )}
-                                            {details.taxes.sgst?.amount > 0 && (
-                                                <div className="flex justify-between text-xs text-slate-500">
-                                                    <span>SGST ({details.taxes.sgst.percentage}%)</span>
-                                                    <span>{Number(details.taxes.sgst.amount).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
-                                                </div>
-                                            )}
-                                            {details.taxes.igst?.amount > 0 && (
-                                                <div className="flex justify-between text-xs text-slate-500">
-                                                    <span>IGST ({details.taxes.igst.percentage}%)</span>
-                                                    <span>{Number(details.taxes.igst.amount).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
-                                                </div>
-                                            )}
-                                            <div className="flex justify-between text-sm font-medium text-slate-700 pt-1">
-                                                <span>Total Tax</span>
-                                                <span>{Number(details.taxes.total_tax).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
+                                    <div className="py-2 border-y border-slate-100 space-y-1">
+                                        {viewCurrency === 'INR' ? (
+                                            <>
+                                                {(details.cgst_amount > 0 || details.taxes?.cgst?.amount > 0) && (
+                                                    <div className="flex justify-between text-xs text-slate-500">
+                                                        <span>CGST ({details.cgst_percentage || details.taxes?.cgst?.percentage}%)</span>
+                                                        <span>{Number(details.cgst_amount || details.taxes?.cgst?.amount || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
+                                                    </div>
+                                                )}
+                                                {(details.sgst_amount > 0 || details.taxes?.sgst?.amount > 0) && (
+                                                    <div className="flex justify-between text-xs text-slate-500">
+                                                        <span>SGST ({details.sgst_percentage || details.taxes?.sgst?.percentage}%)</span>
+                                                        <span>{Number(details.sgst_amount || details.taxes?.sgst?.amount || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
+                                                    </div>
+                                                )}
+                                                {(details.igst_amount > 0 || details.taxes?.igst?.amount > 0) && (
+                                                    <div className="flex justify-between text-xs text-slate-500">
+                                                        <span>IGST ({details.igst_percentage || details.taxes?.igst?.percentage}%)</span>
+                                                        <span>{Number(details.igst_amount || details.taxes?.igst?.amount || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <div className="flex justify-between text-xs text-slate-500 italic">
+                                                <span>Total Tax ({details.currency})</span>
+                                                <span>{Number(details.original_total_tax || details.total_gst / details.exchange_rate).toLocaleString('en-US', { style: 'currency', currency: details.currency })}</span>
                                             </div>
+                                        )}
+                                        <div className="flex justify-between text-sm font-medium text-slate-700 pt-1">
+                                            <span>{viewCurrency === 'INR' ? 'Total Tax' : 'Total Tax Amount'}</span>
+                                            <span>
+                                                {viewCurrency === 'INR'
+                                                    ? Number(details.total_gst || details.taxes?.total_tax || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })
+                                                    : Number(details.original_total_tax || details.total_gst / details.exchange_rate).toLocaleString('en-US', { style: 'currency', currency: details.currency })
+                                                }
+                                            </span>
                                         </div>
-                                    )}
+                                    </div>
 
                                     <div className="flex justify-between text-lg font-bold text-blue-600 pt-1 border-t-2 border-slate-100">
                                         <span>Total Amount</span>
-                                        <span>{Number(details.total_amount).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</span>
+                                        <span>
+                                            {viewCurrency === 'INR'
+                                                ? Number(details.total_amount || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })
+                                                : Number(details.original_total_amount || details.total_amount / details.exchange_rate).toLocaleString('en-US', { style: 'currency', currency: details.currency })
+                                            }
+                                        </span>
                                     </div>
                                 </div>
                             </div>

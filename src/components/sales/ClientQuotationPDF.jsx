@@ -34,19 +34,27 @@ const styles = StyleSheet.create({
 
   // 4. Table Structure
   table: { marginTop: 15, borderWidth: 1, borderColor: '#000' },
-  tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', fontWeight: 'bold' },
+  tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', fontWeight: 'bold', backgroundColor: '#f9f9f9' },
   tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000' },
-  col1: { width: '8%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
-  col2: { width: '40%', padding: 4, borderRightWidth: 1, borderRightColor: '#000' },
-  col3: { width: '12%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
-  col4: { width: '12%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
-  col5: { width: '12%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'right' },
-  col6: { width: '16%', padding: 4, textAlign: 'right' },
+  
+  // Dynamic columns for Foreign Currency (adds Original fields)
+  col1_fc: { width: '4%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
+  col2_fc: { width: '22%', padding: 4, borderRightWidth: 1, borderRightColor: '#000' },
+  col3_fc: { width: '8%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
+  col4_fc: { width: '8%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
+  col5_fc: { width: '13%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'right' },
+  col6_fc: { width: '15%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'right' },
+  col7_fc: { width: '14%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'right' },
+  col8_fc: { width: '16%', padding: 4, textAlign: 'right' },
 
   // 5. Totals Section
   totalsRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000' },
   totalsLabelBlock: { width: '84%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'right', fontWeight: 'bold' },
   totalsValueBlock: { width: '16%', padding: 4, textAlign: 'right', fontWeight: 'bold' },
+  
+  // Totals for FC
+  totalsLabelBlock_fc: { width: '82%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'right', fontWeight: 'bold' },
+  totalsValueBlock_fc: { width: '18%', padding: 4, textAlign: 'right', fontWeight: 'bold' },
 
   // 6. Extras
   amountInWords: { marginTop: 10, fontWeight: 'bold', textTransform: 'uppercase' },
@@ -86,7 +94,16 @@ const styles = StyleSheet.create({
 });
 
 const ClientQuotationPDF = ({ quotation }) => {
-  const formatCurrency = (val) => Number(val || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 });
+  const formatCurrency = (val, curr = "INR") => {
+    const c = curr?.toString().trim().toUpperCase() || "INR";
+    const symbol = c === "USD" ? "$" : "₹";
+    
+    const num = Number(val || 0);
+    // Use manual formatting for PDF to avoid locale issues
+    const formatted = num.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+    
+    return `${symbol} ${formatted}`;
+  };
   const formatDate = (date) => date ? new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.') : '';
 
   return (
@@ -128,10 +145,20 @@ const ClientQuotationPDF = ({ quotation }) => {
               <Text style={styles.detailsLabel}>DATE:</Text>
               <Text style={styles.detailsValue}>{formatDate(quotation.quotation_date)}</Text>
             </View>
-            <View style={[styles.detailsRow, { borderBottomWidth: 0 }]}>
+            <View style={[styles.detailsRow, { borderBottomWidth: 1 }]}>
               <Text style={styles.detailsLabel}>VALID UNTIL:</Text>
               <Text style={styles.detailsValue}>{formatDate(quotation.validity_date)}</Text>
             </View>
+            <View style={[styles.detailsRow, { borderBottomWidth: 0 }]}>
+              <Text style={styles.detailsLabel}>CURRENCY:</Text>
+              <Text style={styles.detailsValue}>{quotation.currency?.toString().toUpperCase()}</Text>
+            </View>
+            {quotation.currency?.toString().trim().toUpperCase() !== 'INR' && (
+              <View style={[styles.detailsRow, { borderTopWidth: 1, borderTopColor: '#000', borderBottomWidth: 0 }]}>
+                <Text style={styles.detailsLabel}>EXCH. RATE:</Text>
+                <Text style={styles.detailsValue}>1 {quotation.currency} = INR {quotation.exchange_rate}</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -151,57 +178,119 @@ const ClientQuotationPDF = ({ quotation }) => {
 
         {/* 4. Items Table */}
         <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text style={styles.col1}>SL NO</Text>
-            <Text style={styles.col2}>PRODUCT / ITEM</Text>
-            <Text style={styles.col3}>HSN CODE</Text>
-            <Text style={styles.col4}>QTY</Text>
-            <Text style={styles.col5}>RATE</Text>
-            <Text style={styles.col6}>AMOUNT</Text>
-          </View>
+          {quotation.currency?.toString().trim().toUpperCase() !== 'INR' ? (
+            <View style={styles.tableHeader}>
+              <Text style={styles.col1_fc}>SL</Text>
+              <Text style={styles.col2_fc}>ITEM</Text>
+              <Text style={styles.col3_fc}>HSN</Text>
+              <Text style={styles.col4_fc}>QTY</Text>
+              <Text style={styles.col7_fc}>RATE({quotation.currency})</Text>
+              <Text style={styles.col8_fc}>AMOUNT({quotation.currency})</Text>
+              <Text style={styles.col5_fc}>RATE(INR)</Text>
+              <Text style={styles.col6_fc}>AMOUNT(INR)</Text>
+            </View>
+          ) : (
+            <View style={styles.tableHeader}>
+              <Text style={styles.col1}>SL NO</Text>
+              <Text style={styles.col2}>PRODUCT / ITEM</Text>
+              <Text style={styles.col3}>HSN CODE</Text>
+              <Text style={styles.col4}>QTY</Text>
+              <Text style={styles.col5}>RATE</Text>
+              <Text style={styles.col6}>AMOUNT</Text>
+            </View>
+          )}
 
           {quotation.items?.map((item, index) => (
             <View key={index} style={styles.tableRow}>
-              <Text style={styles.col1}>{index + 1}</Text>
-              <View style={styles.col2}>
-                <Text style={{ fontWeight: 'bold' }}>{item.item_name}</Text>
-                {item.item_code && <Text style={{ fontSize: 8, color: '#444' }}>{item.item_code}</Text>}
-                {item.description && item.description !== item.item_name && <Text style={{ fontSize: 8, color: '#444' }}>{item.description}</Text>}
-              </View>
-              <Text style={styles.col3}>{item.hsn_code}</Text>
-              <Text style={styles.col4}>{parseFloat(item.quantity || 0).toFixed(2)} {item.unit}</Text>
-              <Text style={styles.col5}>{formatCurrency(item.rate)}</Text>
-              <Text style={styles.col6}>{formatCurrency(item.amount)}</Text>
+              {quotation.currency?.toString().trim().toUpperCase() !== 'INR' ? (
+                <>
+                  <Text style={styles.col1_fc}>{index + 1}</Text>
+                  <View style={styles.col2_fc}>
+                    <Text style={{ fontWeight: 'bold' }}>{item.item_name}</Text>
+                    {item.item_code && <Text style={{ fontSize: 7, color: '#444' }}>{item.item_code}</Text>}
+                  </View>
+                  <Text style={styles.col3_fc}>{item.hsn_code}</Text>
+                  <Text style={styles.col4_fc}>{parseFloat(item.quantity || 0).toFixed(0)} {item.unit}</Text>
+                  <Text style={styles.col7_fc}>{formatCurrency(item.original_rate || item.rate, quotation.currency)}</Text>
+                  <Text style={styles.col8_fc}>{formatCurrency(item.original_amount || item.amount, quotation.currency)}</Text>
+                  <Text style={styles.col5_fc}>{formatCurrency(item.rate, 'INR')}</Text>
+                  <Text style={styles.col6_fc}>{formatCurrency(item.amount, 'INR')}</Text>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.col1}>{index + 1}</Text>
+                  <View style={styles.col2}>
+                    <Text style={{ fontWeight: 'bold' }}>{item.item_name}</Text>
+                    {item.item_code && <Text style={{ fontSize: 8, color: '#444' }}>{item.item_code}</Text>}
+                  </View>
+                  <Text style={styles.col3}>{item.hsn_code}</Text>
+                  <Text style={styles.col4}>{parseFloat(item.quantity || 0).toFixed(0)} {item.unit}</Text>
+                  <Text style={styles.col5}>{formatCurrency(item.rate, 'INR')}</Text>
+                  <Text style={styles.col6}>{formatCurrency(item.amount, 'INR')}</Text>
+                </>
+              )}
             </View>
           ))}
 
-          {/* 5. Totals */}
+          {/* 5. Totals (INR) */}
           <View style={styles.totalsRow}>
-            <Text style={styles.totalsLabelBlock}>SUB TOTAL</Text>
-            <Text style={styles.totalsValueBlock}>{formatCurrency(quotation.subtotal)}</Text>
+            <Text style={styles.totalsLabelBlock}>SUB TOTAL (INR)</Text>
+            <Text style={styles.totalsValueBlock}>{formatCurrency(quotation.subtotal, 'INR')}</Text>
           </View>
-          {quotation.taxes?.cgst?.amount > 0 && (
+          {(Number(quotation.cgst_amount) > 0 || Number(quotation.taxes?.cgst?.amount) > 0) && (
             <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabelBlock}>CGST @ {quotation.taxes.cgst.percentage}%</Text>
-              <Text style={styles.totalsValueBlock}>{formatCurrency(quotation.taxes.cgst.amount)}</Text>
+              <Text style={styles.totalsLabelBlock}>CGST @ {quotation.cgst_percentage || quotation.taxes?.cgst?.percentage}% (INR)</Text>
+              <Text style={styles.totalsValueBlock}>{formatCurrency(quotation.cgst_amount || quotation.taxes?.cgst?.amount, 'INR')}</Text>
             </View>
           )}
-          {quotation.taxes?.sgst?.amount > 0 && (
+          {(Number(quotation.sgst_amount) > 0 || Number(quotation.taxes?.sgst?.amount) > 0) && (
             <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabelBlock}>SGST @ {quotation.taxes.sgst.percentage}%</Text>
-              <Text style={styles.totalsValueBlock}>{formatCurrency(quotation.taxes.sgst.amount)}</Text>
+              <Text style={styles.totalsLabelBlock}>SGST @ {quotation.sgst_percentage || quotation.taxes?.sgst?.percentage}% (INR)</Text>
+              <Text style={styles.totalsValueBlock}>{formatCurrency(quotation.sgst_amount || quotation.taxes?.sgst?.amount, 'INR')}</Text>
             </View>
           )}
-          {quotation.taxes?.igst?.amount > 0 && (
+          {(Number(quotation.igst_amount) > 0 || Number(quotation.taxes?.igst?.amount) > 0) && (
             <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabelBlock}>IGST @ {quotation.taxes.igst.percentage}%</Text>
-              <Text style={styles.totalsValueBlock}>{formatCurrency(quotation.taxes.igst.amount)}</Text>
+              <Text style={styles.totalsLabelBlock}>IGST @ {quotation.igst_percentage || quotation.taxes?.igst?.percentage}% (INR)</Text>
+              <Text style={styles.totalsValueBlock}>{formatCurrency(quotation.igst_amount || quotation.taxes?.igst?.amount, 'INR')}</Text>
             </View>
           )}
-          <View style={[styles.totalsRow, { borderBottomWidth: 0 }]}>
-            <Text style={styles.totalsLabelBlock}>TOTAL AMOUNT</Text>
-            <Text style={styles.totalsValueBlock}>{formatCurrency(quotation.total_amount)}</Text>
+          <View style={styles.totalsRow}>
+            <Text style={styles.totalsLabelBlock}>TOTAL TAX (INR)</Text>
+            <Text style={styles.totalsValueBlock}>{formatCurrency(
+                quotation.total_gst || 
+                quotation.taxes?.total ||
+                (
+                    Number(quotation.cgst_amount || 0) + 
+                    Number(quotation.sgst_amount || 0) + 
+                    Number(quotation.igst_amount || 0)
+                ), 
+                'INR'
+            )}</Text>
           </View>
+          <View style={[styles.totalsRow, { backgroundColor: '#f0f0f0' }]}>
+            <Text style={styles.totalsLabelBlock}>TOTAL AMOUNT (INR)</Text>
+            <Text style={styles.totalsValueBlock}>{formatCurrency(quotation.total_amount, 'INR')}</Text>
+          </View>
+
+          {/* 6. Original Currency Summary (Non-INR) */}
+          {quotation.currency?.toString().trim().toUpperCase() !== 'INR' && (
+            <View style={{ marginTop: 10, padding: 5, backgroundColor: '#f0f8ff', borderWidth: 1, borderColor: '#accce6' }}>
+              <Text style={{ fontWeight: 'bold', fontSize: 8, marginBottom: 4, color: '#2d5a84' }}>ORIGINAL CURRENCY SUMMARY ({quotation.currency})</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                <Text style={{ fontSize: 8 }}>Subtotal ({quotation.currency})</Text>
+                <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{formatCurrency(quotation.original_subtotal, quotation.currency)}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                <Text style={{ fontSize: 8 }}>Total Tax ({quotation.currency})</Text>
+                <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{formatCurrency(quotation.original_total_tax, quotation.currency)}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#accce6', pt: 2 }}>
+                <Text style={{ fontSize: 9, fontWeight: 'bold' }}>Total ({quotation.currency})</Text>
+                <Text style={{ fontSize: 9, fontWeight: 'bold' }}>{formatCurrency(quotation.original_total_amount, quotation.currency)}</Text>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Amount in Words */}

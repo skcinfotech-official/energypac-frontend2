@@ -234,7 +234,7 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                     <div className="flex justify-center py-2 bg-slate-50 border-b border-slate-100">
                         <div className="bg-blue-50 text-blue-700 px-4 py-1 rounded-full border border-blue-100 text-[10px] font-bold flex items-center gap-2 shadow-sm">
                             <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                            Exchange Rate: 1 {details.currency || 'USD'} = {details.exchange_rate} INR
+                            Exchange Rate: 1 {details.currency || 'USD'} = {Number(details.exchange_rate).toFixed(2)} INR
                         </div>
                     </div>
                 )}
@@ -389,10 +389,10 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                                     </td>
                                                     <td className="px-5 py-3 text-right">
                                                         <div className="font-bold text-slate-800">
-                                                            {item.delivered_quantity} <span className="text-xs font-normal text-slate-500">{item.unit}</span>
+                                                            {Number(item.delivered_quantity).toFixed(2)} <span className="text-xs font-normal text-slate-500">{item.unit}</span>
                                                         </div>
                                                         <div className="text-[10px] text-slate-400 mt-0.5" title="Ordered / Previously Delivered / Pending">
-                                                            Order: {item.ordered_quantity} | Pend: {item.pending_quantity}
+                                                            Order: {Number(item.ordered_quantity).toFixed(2)} | Pend: {Number(item.pending_quantity).toFixed(2)}
                                                         </div>
                                                     </td>
                                                     <td className="px-5 py-3 text-right font-mono text-slate-700">

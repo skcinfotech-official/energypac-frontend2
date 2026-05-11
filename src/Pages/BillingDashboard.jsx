@@ -126,21 +126,21 @@ const BillingDashboard = () => {
                         </Link>
                     </div>
                     <div className="p-6 grid grid-cols-2 gap-4">
-                        <div className="p-4 bg-blue-50/50 rounded-lg border border-blue-100">
-                            <p className="text-xs text-blue-600 font-semibold uppercase tracking-wider mb-1">Total Active</p>
-                            <p className="text-2xl font-bold text-slate-800">{stats?.work_orders?.active || 0}</p>
+                        <div className="p-4 bg-blue-50/50 rounded-lg border border-blue-100 min-w-0">
+                            <p className="text-xs text-blue-600 font-semibold uppercase tracking-wider mb-1 truncate">Total Active</p>
+                            <p className="text-xl sm:text-2xl font-bold text-slate-800 break-words leading-tight">{stats?.work_orders?.active || 0}</p>
                         </div>
-                        <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-1">Total Value</p>
-                            <p className="text-2xl font-bold text-slate-800">{formatCurrency(stats?.work_orders?.total_value)}</p>
+                        <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 min-w-0">
+                            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-1 truncate">Total Value</p>
+                            <p className="text-xl sm:text-2xl font-bold text-slate-800 break-words leading-tight">{formatCurrency(stats?.work_orders?.total_value)}</p>
                         </div>
-                        <div className="p-4 bg-amber-50/50 rounded-lg border border-amber-100">
-                            <p className="text-xs text-amber-600 font-semibold uppercase tracking-wider mb-1">Partially Delivered</p>
-                            <p className="text-2xl font-bold text-slate-800">{stats?.work_orders?.partially_delivered || 0}</p>
+                        <div className="p-4 bg-amber-50/50 rounded-lg border border-amber-100 min-w-0">
+                            <p className="text-xs text-amber-600 font-semibold uppercase tracking-wider mb-1 truncate">Partially Delivered</p>
+                            <p className="text-xl sm:text-2xl font-bold text-slate-800 break-words leading-tight">{stats?.work_orders?.partially_delivered || 0}</p>
                         </div>
-                        <div className="p-4 bg-emerald-50/50 rounded-lg border border-emerald-100">
-                            <p className="text-xs text-emerald-600 font-semibold uppercase tracking-wider mb-1">Completed</p>
-                            <p className="text-2xl font-bold text-slate-800">{stats?.work_orders?.completed || 0}</p>
+                        <div className="p-4 bg-emerald-50/50 rounded-lg border border-emerald-100 min-w-0">
+                            <p className="text-xs text-emerald-600 font-semibold uppercase tracking-wider mb-1 truncate">Completed</p>
+                            <p className="text-xl sm:text-2xl font-bold text-slate-800 break-words leading-tight">{stats?.work_orders?.completed || 0}</p>
                         </div>
                     </div>
                 </div>
@@ -156,20 +156,20 @@ const BillingDashboard = () => {
                         </Link>
                     </div>
                     <div className="p-6 grid grid-cols-2 md:grid-cols-3 gap-4">
-                        <div className="p-4 bg-purple-50/50 rounded-lg border border-purple-100 col-span-2 md:col-span-1">
-                            <p className="text-xs text-purple-600 font-semibold uppercase tracking-wider mb-1">Total Billed</p>
-                            <p className="text-xl font-bold text-slate-800">{formatCurrency(stats?.bills?.total_billed)}</p>
-                            <p className="text-[10px] text-slate-400 mt-1">{stats?.bills?.this_month} bills this month</p>
+                        <div className="p-4 bg-purple-50/50 rounded-lg border border-purple-100 col-span-2 md:col-span-1 min-w-0">
+                            <p className="text-xs text-purple-600 font-semibold uppercase tracking-wider mb-1 truncate">Total Billed</p>
+                            <p className="text-lg sm:text-xl font-bold text-slate-800 break-words leading-tight">{formatCurrency(stats?.bills?.total_billed)}</p>
+                            <p className="text-[10px] text-slate-400 mt-1 truncate">{stats?.bills?.this_month} bills this month</p>
                         </div>
-                        <div className="p-4 bg-green-50/50 rounded-lg border border-green-100">
-                            <p className="text-xs text-green-600 font-semibold uppercase tracking-wider mb-1">Received</p>
-                            <p className="text-xl font-bold text-green-700">{formatCurrency(stats?.bills?.total_received)}</p>
-                            <p className="text-[10px] text-green-600/70 mt-1 font-medium">{stats?.bills?.paid} paid bills</p>
+                        <div className="p-4 bg-green-50/50 rounded-lg border border-green-100 min-w-0">
+                            <p className="text-xs text-green-600 font-semibold uppercase tracking-wider mb-1 truncate">Received</p>
+                            <p className="text-lg sm:text-xl font-bold text-green-700 break-words leading-tight">{formatCurrency(stats?.bills?.total_received)}</p>
+                            <p className="text-[10px] text-green-600/70 mt-1 font-medium truncate">{stats?.bills?.paid} paid bills</p>
                         </div>
-                        <div className="p-4 bg-red-50/50 rounded-lg border border-red-100">
-                            <p className="text-xs text-red-600 font-semibold uppercase tracking-wider mb-1">Outstanding</p>
-                            <p className="text-xl font-bold text-red-600">{formatCurrency(stats?.bills?.total_outstanding)}</p>
-                            <p className="text-[10px] text-red-400 mt-1 font-medium">{stats?.bills?.generated} pending</p>
+                        <div className="p-4 bg-red-50/50 rounded-lg border border-red-100 min-w-0">
+                            <p className="text-xs text-red-600 font-semibold uppercase tracking-wider mb-1 truncate">Outstanding</p>
+                            <p className="text-lg sm:text-xl font-bold text-red-600 break-words leading-tight">{formatCurrency(stats?.bills?.total_outstanding)}</p>
+                            <p className="text-[10px] text-red-400 mt-1 font-medium truncate">{stats?.bills?.generated} pending</p>
                         </div>
                     </div>
                 </div>

@@ -233,7 +233,7 @@ const VendorQuotationEditModal = ({ open, onClose, quotationId, onSuccess }) => 
                                                     <div className="text-xs text-slate-400 font-mono">{item.product_code}</div>
                                                 </td>
                                                 <td className="px-5 py-3 text-right font-medium text-slate-700">
-                                                    {item.quantity} <span className="text-xs text-slate-400">{item.unit}</span>
+                                                    {Number(item.quantity).toFixed(2)} <span className="text-xs text-slate-400">{item.unit}</span>
                                                 </td>
                                                 <td className="px-5 py-3 text-right">
                                                     <input

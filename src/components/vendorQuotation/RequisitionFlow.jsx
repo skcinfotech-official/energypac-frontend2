@@ -179,7 +179,7 @@ const RequisitionFlow = ({ requisitionId: propRequisitionId }) => {
                                                                             </div>
                                                                         </div>
                                                                         <div className="text-right whitespace-nowrap">
-                                                                            <span className="font-bold text-slate-900 text-[13px]">{item.quantity}</span>
+                                                                            <span className="font-bold text-slate-900 text-[13px]">{Number(item.quantity).toFixed(2)}</span>
                                                                             <span className="text-xs text-slate-500 ml-1">{item.product?.unit}</span>
                                                                         </div>
                                                                     </div>
@@ -242,7 +242,7 @@ const RequisitionFlow = ({ requisitionId: propRequisitionId }) => {
                                                                                                 <div className="text-slate-500 font-mono text-xs">{qItem.product_code}</div>
                                                                                             </td>
                                                                                             <td className="py-1 px-2 text-right align-top text-slate-800">
-                                                                                                <span className="font-bold text-slate-900 text-xs">{qItem.quantity}</span>
+                                                                                                <span className="font-bold text-slate-900 text-xs">{Number(qItem.quantity).toFixed(2)}</span>
                                                                                                 {/* <span className="text-xs text-slate-500 ml-1">{qItem.unit}</span> */}
                                                                                             </td>
                                                                                             <td className="py-1 px-2 text-right align-top text-slate-800">

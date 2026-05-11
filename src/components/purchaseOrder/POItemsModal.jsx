@@ -116,7 +116,7 @@ const POItemsModal = ({ open, onClose, poId }) => {
                                                                 <p className="text-[10px] font-mono text-slate-400">{it.product_code}</p>
                                                             </td>
                                                             <td className="px-5 py-3 text-center text-[10px] font-bold text-slate-500">{it.hsn_code || "---"}</td>
-                                                            <td className="px-5 py-3 text-right font-black text-slate-700">{it.quantity} <span className="text-[10px] text-slate-400">{it.unit}</span></td>
+                                                            <td className="px-5 py-3 text-right font-black text-slate-700">{Number(it.quantity).toFixed(2)} <span className="text-[10px] text-slate-400">{it.unit}</span></td>
                                                             <td className="px-5 py-3 text-right text-slate-600 font-bold">{formatCurrency(it.rate)}</td>
                                                             <td className="px-5 py-3 text-right font-black text-emerald-600">{formatCurrency(it.amount)}</td>
                                                         </tr>
@@ -160,7 +160,7 @@ const POItemsModal = ({ open, onClose, poId }) => {
                                                                 <p className="text-[10px] font-mono text-slate-400">{it.product_code}</p>
                                                             </td>
                                                             <td className="px-5 py-3 text-center text-[10px] font-bold text-slate-500">{it.hsn_code || "---"}</td>
-                                                            <td className="px-5 py-3 text-right font-black text-slate-700">{it.quantity} <span className="text-[10px] text-slate-400">{it.unit}</span></td>
+                                                            <td className="px-5 py-3 text-right font-black text-slate-700">{Number(it.quantity).toFixed(2)} <span className="text-[10px] text-slate-400">{it.unit}</span></td>
                                                             <td className="px-5 py-3 text-right text-slate-600 font-bold">{formatCurrency(it.rate)}</td>
                                                             <td className="px-5 py-3 text-right font-black text-amber-600">{formatCurrency(it.amount)}</td>
                                                         </tr>

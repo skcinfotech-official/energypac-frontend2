@@ -49,17 +49,8 @@ export default function AdminSidebar({ isOpen }) {
           {isOpen ? "System Administration" : "•••"}
         </div>
 
-        {/* <AdminSidebarLink to="/admin/dashboard" label="Admin Overview" icon={<FaThLarge />} isOpen={isOpen} /> */}
-        
-        <AdminSidebarDropdown
-          label="System Control"
-          icon={<FaCog />}
-          isOpen={isOpen}
-          items={[
-            { to: "/admin/users", label: "Manage Users", icon: <FaUsers /> },
-            { to: "/admin/exchange-rates", label: "Exchange Rates", icon: <FaMoneyBillWave /> },
-          ]}
-        />
+        <AdminSidebarLink to="/admin/users" label="User Control" icon={<FaUsers />} isOpen={isOpen} />
+        <AdminSidebarLink to="/admin/exchange-rates" label="Exchange Rates" icon={<FaMoneyBillWave />} isOpen={isOpen} />
 
         {/* <AdminSidebarDropdown
           label="Master Data"

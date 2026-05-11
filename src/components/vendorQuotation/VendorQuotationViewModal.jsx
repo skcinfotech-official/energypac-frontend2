@@ -110,7 +110,7 @@ const VendorQuotationViewModal = ({ open, onClose, quotationId }) => {
                                         {data.currency?.toString().trim().toUpperCase() !== 'INR' && (
                                             <div className="flex flex-col items-start bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
                                                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Exchange Rate</span>
-                                                <span className="text-sm font-bold text-slate-600 leading-none">1 {data.currency} = ₹ {data.exchange_rate}</span>
+                                                <span className="text-sm font-bold text-slate-600 leading-none">1 {data.currency} = ₹ {Number(data.exchange_rate).toFixed(2)}</span>
                                             </div>
                                         )}
                                         {/* <div className="bg-amber-50 text-amber-900 px-3 py-1 rounded-lg border border-amber-100 inline-block mb-2">
@@ -197,21 +197,21 @@ const VendorQuotationViewModal = ({ open, onClose, quotationId }) => {
                                                     <div className="text-xs text-slate-400 font-mono">{item.product_code}</div>
                                                 </td>
                                                 <td className="px-5 py-3 text-right font-medium text-slate-700">
-                                                    {item.quantity} <span className="text-xs text-slate-400">{item.unit}</span>
+                                                    {Number(item.quantity).toFixed(2)} <span className="text-xs text-slate-400">{item.unit}</span>
                                                 </td>
                                                 <td className="px-5 py-3 text-right text-slate-700">
-                                                    ₹ {Number(item.quoted_rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                    ₹ {Number(item.quoted_rate).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </td>
                                                 <td className="px-5 py-3 text-right font-bold text-slate-900">
-                                                    ₹ {Number(item.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                    ₹ {Number(item.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </td>
                                                 {data.currency?.toString().trim().toUpperCase() !== 'INR' && (
                                                     <>
                                                         <td className="px-5 py-3 text-right text-blue-600 bg-blue-50/10">
-                                                            {data.currency?.toString().trim().toUpperCase() === 'USD' ? '$' : '₹'} {item.original_rate || item.original_quoted_rate || item.quoted_rate}
+                                                            {data.currency?.toString().trim().toUpperCase() === 'USD' ? '$' : '₹'} {Number(item.original_rate || item.original_quoted_rate || item.quoted_rate).toFixed(2)}
                                                         </td>
                                                         <td className="px-5 py-3 text-right font-bold text-blue-700 bg-blue-50/10">
-                                                            {data.currency?.toString().trim().toUpperCase() === 'USD' ? '$' : '₹'} {item.original_amount || item.amount}
+                                                            {data.currency?.toString().trim().toUpperCase() === 'USD' ? '$' : '₹'} {Number(item.original_amount || item.amount).toFixed(2)}
                                                         </td>
                                                     </>
                                                 )}
@@ -226,12 +226,12 @@ const VendorQuotationViewModal = ({ open, onClose, quotationId }) => {
                                         <tr>
                                             <td colSpan="3" className="px-5 py-3 text-right text-slate-600 uppercase text-xs tracking-wider border-t border-slate-200">Total (INR)</td>
                                             <td className="px-5 py-3 text-right text-base border-t border-slate-200 font-black">
-                                                ₹ {Number(data.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                ₹ {Number(data.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
                                             {data.currency?.toString().trim().toUpperCase() !== 'INR' && (
                                                 <>
                                                     <td className="px-5 py-3 text-right text-base border-t border-slate-200 text-blue-700 bg-blue-50/30">
-                                                        {data.currency?.toString().trim().toUpperCase() === 'USD' ? '$' : '₹'} {data.original_total_amount}
+                                                        {data.currency?.toString().trim().toUpperCase() === 'USD' ? '$' : '₹'} {Number(data.original_total_amount).toFixed(2)}
                                                     </td>
                                                     <td className="bg-blue-50/30 border-t border-slate-200"></td>
                                                 </>

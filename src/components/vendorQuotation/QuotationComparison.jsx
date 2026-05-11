@@ -388,7 +388,7 @@ const QuotationComparison = () => {
                                     {data.vendors.map((vendor) => (
                                         vendor.quotations.map((q, idx) => (
                                             <td key={`total-${idx}`} className="px-4 py-3 text-right border-r border-slate-300 text-slate-900 bg-slate-50/50">
-                                                ₹ {Number(q.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                ₹ {Number(q.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
                                         ))
                                     ))}
@@ -429,13 +429,13 @@ const QuotationComparison = () => {
                                                                     />
                                                                 </div>
                                                                 <div className="font-bold text-slate-900">
-                                                                    ₹ {Number(matchedItem.quoted_rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                                    ₹ {Number(matchedItem.quoted_rate).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                                 </div>
                                                                 <div className="text-xs text-slate-500">
-                                                                    x {matchedItem.quantity}
+                                                                    x {Number(matchedItem.quantity).toFixed(2)}
                                                                 </div>
                                                                 <div className="text-xs font-semibold text-slate-700 pt-1 border-t border-dashed w-full border-slate-400">
-                                                                    ₹ {Number(matchedItem.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                                    ₹ {Number(matchedItem.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                                 </div>
                                                             </div>
                                                         ) : (
@@ -495,7 +495,7 @@ const QuotationComparison = () => {
                                             return (
                                                 <td key={`est-total-${idx}`} className="px-4 py-4 text-right border-r border-slate-300 text-blue-700 bg-slate-100/80">
                                                     {selectedTotal > 0 ? (
-                                                        `₹ ${grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                                                        `₹ ${grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                                     ) : (
                                                         <span className="text-slate-400">-</span>
                                                     )}

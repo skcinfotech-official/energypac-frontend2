@@ -238,7 +238,7 @@ const VendorQuotationDetails = () => {
                 </div>
 
                 {/* Currency Selection */}
-                <div className="flex items-center justify-between bg-blue-50/50 border border-blue-100 p-3 rounded-xl">
+                <div className="flex items-center justify-between gap-12 bg-blue-50/50 border border-blue-100 p-3 rounded-xl">
                   <div>
                     <label className="text-[10px] font-bold text-blue-600 uppercase tracking-widest block mb-1.5">Currency</label>
                     <div className="flex gap-1.5">
@@ -263,7 +263,7 @@ const VendorQuotationDetails = () => {
                     <div className="flex items-center gap-3 bg-white px-3 py-2 rounded-lg border border-blue-100 shadow-sm">
                       <div className="text-right">
                         <p className="text-[9px] font-bold text-slate-400 uppercase leading-none mb-1">Exchange Rate</p>
-                        <p className="text-sm font-black text-blue-600 leading-none">1 USD = ₹ {exchangeRate}</p>
+                        <p className="text-sm font-black text-blue-600 leading-none">1 USD = ₹ {Number(exchangeRate).toFixed(2)}</p>
                       </div>
                       <button 
                         type="button" 
@@ -316,7 +316,7 @@ const VendorQuotationDetails = () => {
                           <div className="text-sm text-slate-500 font-mono">{item.product_code}</div>
                         </td>
                         <td className="px-4 py-3 text-right font-bold text-slate-800">
-                          {item.quantity} <span className="text-sm text-slate-500">{item.unit}</span>
+                          {Number(item.quantity).toFixed(2)} <span className="text-sm text-slate-500">{item.unit}</span>
                         </td>
                         <td className="px-4 py-3 text-right">
                           <input

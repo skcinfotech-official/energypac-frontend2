@@ -151,7 +151,7 @@ const WorkOrderPDF = ({ details }) => {
                         {isInternational ? (
                             <View style={[styles.detailsRow, { borderBottomWidth: 0, backgroundColor: '#f0f8ff' }]}>
                                 <Text style={styles.detailsLabel}>EXCH. RATE:</Text>
-                                <Text style={styles.detailsValue}>1 {details.currency} = INR {details.exchange_rate}</Text>
+                                <Text style={styles.detailsValue}>1 {details.currency} = INR {Number(details.exchange_rate).toFixed(2)}</Text>
                             </View>
                         ) : (
                             <View style={[styles.detailsRow, { borderBottomWidth: 0 }]}>
@@ -211,7 +211,7 @@ const WorkOrderPDF = ({ details }) => {
                                         {item.remarks && <Text style={{ fontSize: 7, color: '#555' }}>Rem: {item.remarks}</Text>}
                                     </View>
                                     <Text style={styles.col3_fc}>{item.hsn_code}</Text>
-                                    <Text style={styles.col4_fc}>{parseFloat(item.ordered_quantity || 0).toFixed(0)} {item.unit}</Text>
+                                    <Text style={styles.col4_fc}>{parseFloat(item.ordered_quantity || 0).toFixed(2)} {item.unit}</Text>
                                     <Text style={styles.col7_fc}>{formatCurrency(item.original_rate || (item.rate / (details.exchange_rate || 1)), details.currency)}</Text>
                                     <Text style={styles.col8_fc}>{formatCurrency(item.original_amount || (item.amount / (details.exchange_rate || 1)), details.currency)}</Text>
                                     <Text style={styles.col5_fc}>{formatCurrency(item.rate, 'INR')}</Text>
@@ -282,7 +282,13 @@ const WorkOrderPDF = ({ details }) => {
                         </View>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
                             <Text style={{ fontSize: 8 }}>Total Tax ({details.currency})</Text>
-                            <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{formatCurrency(details.original_total_tax || (details.total_gst / (details.exchange_rate || 1)), details.currency)}</Text>
+                            <Text style={{ fontSize: 8, fontWeight: 'bold' }}>
+                                {formatCurrency(
+                                    details.original_total_tax || 
+                                    ((Number(details.cgst_amount || 0) + Number(details.sgst_amount || 0) + Number(details.igst_amount || 0)) / (details.exchange_rate || 1)), 
+                                    details.currency
+                                )}
+                            </Text>
                         </View>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
                             <Text style={{ fontSize: 8 }}>Advance Received ({details.currency})</Text>

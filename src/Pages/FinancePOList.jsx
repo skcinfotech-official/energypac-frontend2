@@ -74,12 +74,12 @@ const FinancePOList = () => {
     }, [search, status, vendor, ordering, page]);
 
 
-    const formatCurrency = (amount) => {
+    const formatCurrency = (amount, curr = 'INR') => {
         return Number(amount || 0).toLocaleString('en-IN', {
             style: 'currency',
-            currency: 'INR',
+            currency: curr === 'USD' ? 'USD' : 'INR',
             maximumFractionDigits: 2
-        });
+        }).replace('US$', '$');
     };
 
     const getStatusStyle = (status) => {
@@ -220,6 +220,11 @@ const FinancePOList = () => {
                                             <div className="text-sm font-bold text-slate-800">
                                                 {formatCurrency(po.total_amount)}
                                             </div>
+                                            {po.currency && po.currency !== 'INR' && (
+                                                <div className="text-[10px] text-blue-600 font-bold">
+                                                    {formatCurrency(po.original_total_amount || (po.total_amount / po.exchange_rate), po.currency)}
+                                                </div>
+                                            )}
                                             <div className="text-[10px] text-slate-400 font-semibold uppercase">
                                                 Items: {po.total_items_count}
                                             </div>
@@ -228,6 +233,11 @@ const FinancePOList = () => {
                                             <div className="text-sm font-bold text-emerald-600">
                                                 {formatCurrency(po.amount_paid)}
                                             </div>
+                                            {po.currency && po.currency !== 'INR' && (
+                                                <div className="text-[10px] text-emerald-500 font-bold">
+                                                    {formatCurrency(po.original_amount_paid || (po.amount_paid / po.exchange_rate), po.currency)}
+                                                </div>
+                                            )}
                                             <div className="text-[10px] text-slate-400 font-semibold uppercase">
                                                 {po.payment_count} Payments
                                             </div>
@@ -236,6 +246,11 @@ const FinancePOList = () => {
                                             <div className={`text-sm font-bold ${po.balance > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
                                                 {formatCurrency(po.balance)}
                                             </div>
+                                            {po.currency && po.currency !== 'INR' && (
+                                                <div className={`text-[10px] font-bold ${po.balance > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                                    {formatCurrency(po.original_balance || (po.balance / po.exchange_rate), po.currency)}
+                                                </div>
+                                            )}
                                             {po.balance > 0 && (
                                                 <div className="flex justify-end mt-1">
                                                     <div className="w-16 h-1 bg-slate-100 rounded-full overflow-hidden">

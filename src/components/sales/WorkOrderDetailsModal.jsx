@@ -228,7 +228,7 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, loading, details }) => {
                     <div className="flex justify-center py-2 bg-slate-50 border-b border-slate-200">
                         <div className="bg-blue-50 text-blue-700 px-4 py-1 rounded-full border border-blue-100 text-[10px] font-bold flex items-center gap-2 shadow-sm">
                             <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                            Exchange Rate: 1 {details.currency} = {details.exchange_rate} INR
+                            Exchange Rate: 1 {details.currency} = {Number(details.exchange_rate).toFixed(2)} INR
                         </div>
                     </div>
                 )}
@@ -348,7 +348,7 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                                             {item.stock_available ? "In Stock" : "Out of Stock"}
                                                         </span>
                                                         <div className="text-[10px] text-slate-500 mt-1">
-                                                            Avail: {item.stock_quantity}
+                                                            Avail: {Number(item.stock_quantity).toFixed(2)}
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -397,7 +397,11 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                         <div className="flex justify-between text-slate-600 text-sm italic">
                                             <span>Total Tax ({details.currency}):</span>
                                             <span className="font-mono">
-                                                {formatCurrency(details.original_total_tax || (details.total_gst / (details.exchange_rate || 1)), details.currency)}
+                                                {formatCurrency(
+                                                    details.original_total_tax || 
+                                                    ((Number(details.cgst_amount || 0) + Number(details.sgst_amount || 0) + Number(details.igst_amount || 0)) / (details.exchange_rate || 1)), 
+                                                    details.currency
+                                                )}
                                             </span>
                                         </div>
                                     )}

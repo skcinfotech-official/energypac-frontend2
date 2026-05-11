@@ -267,7 +267,7 @@ const VendorAssignmentModal = ({ open, onClose, editData, onSuccess, viewOnly = 
                               {i.product_name || `Product ${i.product}`}
                             </td>
                             <td className="px-4 py-2 text-slate-600">{i.unit}</td>
-                            <td className="px-4 py-2 text-slate-600">{i.quantity}</td>
+                            <td className="px-4 py-2 text-slate-600">{Number(i.quantity).toFixed(2)}</td>
                           </tr>
                         ))
                       ) : (

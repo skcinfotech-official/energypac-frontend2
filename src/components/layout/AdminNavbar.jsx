@@ -11,7 +11,7 @@ export default function AdminNavbar({ toggleSidebar, isSidebarOpen }) {
 
   const getPageTitle = () => {
     const path = location.pathname;
-    if (path === "/admin/dashboard") return "Admin Control Panel";
+    if (path === "/admin/users") return "User Control Center";
     
     return path
       .split("/")

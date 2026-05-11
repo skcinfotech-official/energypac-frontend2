@@ -1,15 +1,57 @@
 import React from "react";
-import { FaTimes, FaMoneyBillWave, FaUserTie, FaCalendarAlt, FaShippingFast, FaIdCard, FaEnvelope, FaPhoneAlt, FaBoxOpen, FaHistory } from "react-icons/fa";
+import { FaTimes, FaMoneyBillWave, FaUserTie, FaCalendarAlt, FaShippingFast, FaIdCard, FaEnvelope, FaPhoneAlt, FaBoxOpen, FaHistory, FaPrint } from "react-icons/fa";
+import { pdf } from "@react-pdf/renderer";
+import PurchaseOrderPDF from "./PurchaseOrderPDF";
+import { toast } from "react-hot-toast";
+import { getPurchaseOrder } from "../../services/purchaseOrderService";
 
 const FinancePOModal = ({ open, onClose, data, onViewItems, onRecordPayment, onShowHistory }) => {
     if (!open || !data) return null;
 
-    const formatCurrency = (amount) => {
+    const [generatingPdf, setGeneratingPdf] = React.useState(false);
+    const [fullPOData, setFullPOData] = React.useState(null);
+    const [loadingDetails, setLoadingDetails] = React.useState(false);
+
+    React.useEffect(() => {
+        const fetchFullData = async () => {
+            if (open && data?.id) {
+                setLoadingDetails(true);
+                try {
+                    const fullData = await getPurchaseOrder(data.id);
+                    setFullPOData(fullData);
+                } catch (error) {
+                    console.error("Failed to fetch full PO details", error);
+                    setFullPOData(data); // fallback to basic data
+                } finally {
+                    setLoadingDetails(false);
+                }
+            }
+        };
+        fetchFullData();
+    }, [open, data?.id]);
+
+    const formatCurrency = (amount, curr = 'INR') => {
         return Number(amount || 0).toLocaleString('en-IN', {
             style: 'currency',
-            currency: 'INR',
+            currency: curr === 'USD' ? 'USD' : 'INR',
             maximumFractionDigits: 2
-        });
+        }).replace('US$', '$');
+    };
+
+    const handlePrint = async () => {
+        const printData = fullPOData || data;
+        if (!printData) return;
+        setGeneratingPdf(true);
+        try {
+            const blob = await pdf(<PurchaseOrderPDF details={printData} />).toBlob();
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+        } catch (error) {
+            console.error("Error generating PDF:", error);
+            toast.error("Failed to generate PDF");
+        } finally {
+            setGeneratingPdf(false);
+        }
     };
 
     const getStatusStyle = (status) => {
@@ -44,9 +86,19 @@ const FinancePOModal = ({ open, onClose, data, onViewItems, onRecordPayment, onS
                              <span className="flex items-center gap-1.5"><FaCalendarAlt className="text-slate-400" /> {new Date(data.po_date).toLocaleDateString()}</span>
                         </p>
                     </div>
-                    <button onClick={onClose} className="p-2.5 hover:bg-slate-200 rounded-full transition-all text-slate-400 hover:text-slate-900 active:scale-90">
-                        <FaTimes size={20} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={handlePrint}
+                            disabled={generatingPdf}
+                            className="p-2.5 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-full transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                            title="Print PO"
+                        >
+                            <FaPrint size={18} className={generatingPdf ? "animate-pulse" : ""} />
+                        </button>
+                        <button onClick={onClose} className="p-2.5 hover:bg-slate-200 rounded-full transition-all text-slate-400 hover:text-slate-900 active:scale-90">
+                            <FaTimes size={20} />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-8 space-y-8">
@@ -55,14 +107,23 @@ const FinancePOModal = ({ open, onClose, data, onViewItems, onRecordPayment, onS
                         <div className="p-5 rounded-2xl border-2 border-slate-100 bg-slate-50/50">
                             <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Total Payable</p>
                             <p className="text-2xl font-black text-slate-900">{formatCurrency(data.total_amount)}</p>
+                            {data.currency && data.currency !== 'INR' && (
+                                <p className="text-xs font-bold text-blue-600 mt-1">{formatCurrency(data.original_total_amount || (data.total_amount / data.exchange_rate), data.currency)}</p>
+                            )}
                         </div>
                         <div className="p-5 rounded-2xl border-2 border-emerald-100 bg-emerald-50/30">
                             <p className="text-[10px] text-emerald-600 font-black uppercase tracking-widest mb-1">Amount Paid</p>
                             <p className="text-2xl font-black text-emerald-700">{formatCurrency(data.amount_paid)}</p>
+                            {data.currency && data.currency !== 'INR' && (
+                                <p className="text-xs font-bold text-emerald-500 mt-1">{formatCurrency(data.original_amount_paid || (data.amount_paid / data.exchange_rate), data.currency)}</p>
+                            )}
                         </div>
                         <div className="p-5 rounded-2xl border-2 border-red-100 bg-red-50/30">
                             <p className="text-[10px] text-red-600 font-black uppercase tracking-widest mb-1">Outstanding Balance</p>
                             <p className="text-2xl font-black text-red-700">{formatCurrency(data.balance)}</p>
+                            {data.currency && data.currency !== 'INR' && (
+                                <p className="text-xs font-bold text-red-400 mt-1">{formatCurrency(data.original_balance || (data.balance / data.exchange_rate), data.currency)}</p>
+                            )}
                         </div>
                     </div>
 
@@ -110,16 +171,29 @@ const FinancePOModal = ({ open, onClose, data, onViewItems, onRecordPayment, onS
                             <div className="space-y-3">
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-slate-500 font-bold">Items Total ({data.total_items_count} units)</span>
-                                    <span className="text-slate-900 font-black">{formatCurrency(data.items_total)}</span>
+                                    <div className="text-right">
+                                        <span className="text-slate-900 font-black block">{formatCurrency(data.items_total)}</span>
+                                        {data.currency && data.currency !== 'INR' && (
+                                            <span className="text-[10px] text-blue-500 font-bold">{formatCurrency(data.original_items_total || (data.items_total / data.exchange_rate), data.currency)}</span>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-slate-500 font-bold flex items-center gap-1.5"><FaShippingFast className="text-blue-400" /> Freight Cost</span>
-                                    <span className="text-slate-900 font-black">{formatCurrency(data.freight_cost)}</span>
+                                    <div className="text-right">
+                                        <span className="text-slate-900 font-black block">{formatCurrency(data.freight_cost)}</span>
+                                        {data.currency && data.currency !== 'INR' && (
+                                            <span className="text-[10px] text-blue-500 font-bold">{formatCurrency(data.original_freight_cost || (data.freight_cost / data.exchange_rate), data.currency)}</span>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="pt-3 border-t border-slate-200 flex justify-between items-center">
                                     <span className="text-base font-black text-slate-900 uppercase tracking-tight">Net Amount</span>
                                     <div className="text-right">
                                         <span className="text-2xl font-black text-emerald-600 block leading-none">{formatCurrency(data.total_amount)}</span>
+                                        {data.currency && data.currency !== 'INR' && (
+                                            <span className="text-xs font-bold text-emerald-500 block mt-1">{formatCurrency(data.original_total_amount || (data.total_amount / data.exchange_rate), data.currency)}</span>
+                                        )}
                                         <span className="text-[10px] text-slate-400 font-bold uppercase mt-1">Inclusive of all taxes</span>
                                     </div>
                                 </div>
@@ -155,7 +229,7 @@ const FinancePOModal = ({ open, onClose, data, onViewItems, onRecordPayment, onS
                                         {data.items.slice(0, 3).map((it, i) => (
                                             <tr key={i}>
                                                 <td className="px-5 py-3 font-bold text-slate-700">{it.product_name}</td>
-                                                <td className="px-5 py-3 text-right font-black text-slate-900">{it.quantity} {it.unit}</td>
+                                                <td className="px-5 py-3 text-right font-black text-slate-900">{Number(it.quantity).toFixed(2)} {it.unit}</td>
                                                 <td className="px-5 py-3 text-right font-bold text-slate-500">{formatCurrency(it.rate)}</td>
                                                 <td className="px-5 py-3 text-right font-black text-slate-900">{formatCurrency(it.amount)}</td>
                                             </tr>

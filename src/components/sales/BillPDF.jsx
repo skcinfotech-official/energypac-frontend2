@@ -229,7 +229,7 @@ const BillPDF = ({ details }) => {
                         {isInternational && (
                             <View style={[styles.borderTop, { marginTop: 4, paddingTop: 4 }]}>
                                 <Text style={styles.cellBold}>EXCH. RATE</Text>
-                                <Text style={styles.cell}>1 {details.currency} = INR {details.exchange_rate}</Text>
+                                <Text style={styles.cell}>1 {details.currency} = INR {Number(details.exchange_rate).toFixed(2)}</Text>
                             </View>
                         )}
                     </View>
@@ -362,7 +362,7 @@ const BillPDF = ({ details }) => {
 
                         {/* QTY */}
                         <View style={[{ width: '10%' }, styles.borderRight]}>
-                            <Text style={styles.cellCenter}>{item.delivered_quantity} {item.unit}</Text>
+                            <Text style={styles.cellCenter}>{Number(item.delivered_quantity).toFixed(2)} {item.unit}</Text>
                         </View>
 
                         {/* RATE */}
@@ -515,6 +515,18 @@ const BillPDF = ({ details }) => {
                             <Text style={{ fontSize: 8 }}>Total Tax ({details.currency})</Text>
                             <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{fmt(details.original_total_tax || (details.total_gst / (details.exchange_rate || 1)), details.currency)}</Text>
                         </View>
+                        {parseFloat(advance_deducted) > 0 && (
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                                <Text style={{ fontSize: 8 }}>Advance Deducted ({details.currency})</Text>
+                                <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{fmt(details.original_advance_deducted || (advance_deducted / (details.exchange_rate || 1)), details.currency)}</Text>
+                            </View>
+                        )}
+                        {parseFloat(freight_cost) > 0 && (
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                                <Text style={{ fontSize: 8 }}>Freight Cost ({details.currency})</Text>
+                                <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{fmt(details.original_freight_cost || (freight_cost / (details.exchange_rate || 1)), details.currency)}</Text>
+                            </View>
+                        )}
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
                             <Text style={{ fontSize: 8 }}>Net Payable ({details.currency})</Text>
                             <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{fmt(details.original_net_payable || (details.net_payable / (details.exchange_rate || 1)), details.currency)}</Text>

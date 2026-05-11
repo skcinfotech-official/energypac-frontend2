@@ -159,9 +159,9 @@ const FinanceDashboard = () => {
                                     style={{ width: `${(stats?.incoming?.total_received / stats?.incoming?.total_value) * 100}%` }}
                                 ></div>
                             </div>
-                            <div className="flex justify-between text-[10px] text-slate-400 font-bold">
-                                <span>REC: {formatCurrency(stats?.incoming?.total_received)}</span>
-                                <span>TOTAL: {formatCurrency(stats?.incoming?.total_value)}</span>
+                            <div className="flex justify-between text-[10px] text-slate-400 font-bold gap-2">
+                                <span className="truncate">REC: {formatCurrency(stats?.incoming?.total_received)}</span>
+                                <span className="truncate">TOTAL: {formatCurrency(stats?.incoming?.total_value)}</span>
                             </div>
                         </div>
                     </div>
@@ -200,9 +200,9 @@ const FinanceDashboard = () => {
                                     style={{ width: `${(stats?.outgoing?.total_paid / stats?.outgoing?.total_value) * 100}%` }}
                                 ></div>
                             </div>
-                            <div className="flex justify-between text-[10px] text-slate-400 font-bold">
-                                <span>PAID: {formatCurrency(stats?.outgoing?.total_paid)}</span>
-                                <span>TOTAL: {formatCurrency(stats?.outgoing?.total_value)}</span>
+                            <div className="flex justify-between text-[10px] text-slate-400 font-bold gap-2">
+                                <span className="truncate">PAID: {formatCurrency(stats?.outgoing?.total_paid)}</span>
+                                <span className="truncate">TOTAL: {formatCurrency(stats?.outgoing?.total_value)}</span>
                             </div>
                         </div>
                     </div>
@@ -354,7 +354,7 @@ function StatCard({ title, value, change, icon, color }) {
             </div>
             <div>
                 <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">{title}</p>
-                <h4 className="text-2xl font-black text-slate-900 tracking-tight">{value}</h4>
+                <h4 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight break-all leading-tight">{value}</h4>
             </div>
         </div>
     );

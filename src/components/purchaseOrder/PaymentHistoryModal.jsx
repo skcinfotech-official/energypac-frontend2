@@ -114,7 +114,7 @@ const PaymentHistoryModal = ({ open, onClose, poId }) => {
                                                 <th className="px-5 py-4 text-right">Amount Paid</th>
                                                 <th className="px-5 py-4 text-right">Balance After</th>
                                                 <th className="px-5 py-4">Recorded By</th>
-                                                <th className="px-5 py-4 text-center">Action</th>
+                                                {/* <th className="px-5 py-4 text-center">Action</th> */}
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
@@ -159,14 +159,14 @@ const PaymentHistoryModal = ({ open, onClose, poId }) => {
                                                                 {payment.recorded_by_name}
                                                             </span>
                                                         </td>
-                                                        <td className="px-5 py-4 text-center">
+                                                        {/* <td className="px-5 py-4 text-center">
                                                             <button 
                                                                 className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-95"
                                                                 title="View Receipt"
                                                             >
                                                                 <FaFileInvoiceDollar size={14} />
                                                             </button>
-                                                        </td>
+                                                        </td> */}
                                                     </tr>
                                                 ))
                                             ) : (

@@ -201,12 +201,12 @@ export default function Dashboard() {
                 </div>
                 <div className="p-0">
                   {stats.top_products?.slice(0, 5).map((prod, idx) => (
-                    <div key={idx} className="px-6 py-3 border-b border-slate-50 hover:bg-slate-50 flex items-center justify-between last:border-0">
-                      <div>
-                        <p className="font-bold text-slate-800 text-sm">{prod.item_name}</p>
+                    <div key={idx} className="px-6 py-3 border-b border-slate-50 hover:bg-slate-50 flex items-center justify-between gap-4 last:border-0">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-slate-800 text-sm truncate">{prod.item_name}</p>
                         <p className="text-xs text-slate-500 font-mono">{prod.item_code}</p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right shrink-0">
                         <p className="font-bold text-blue-600 text-sm">
                           {prod.stock_value?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
                         </p>
@@ -224,12 +224,12 @@ export default function Dashboard() {
                 </div>
                 <div className="p-0">
                   {stats.top_vendors?.slice(0, 5).map((vendor, idx) => (
-                    <div key={idx} className="px-6 py-3 border-b border-slate-50 hover:bg-slate-50 flex items-center justify-between last:border-0">
-                      <div>
-                        <p className="font-bold text-slate-800 text-sm">{vendor.vendor_name}</p>
+                    <div key={idx} className="px-6 py-3 border-b border-slate-50 hover:bg-slate-50 flex items-center justify-between gap-4 last:border-0">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-slate-800 text-sm truncate">{vendor.vendor_name}</p>
                         <p className="text-xs text-slate-500 font-mono">{vendor.vendor_code}</p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right shrink-0">
                         <p className="font-bold text-emerald-600 text-sm">
                           {(vendor.total_po_value || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
                         </p>
@@ -271,7 +271,7 @@ function StatCard({ title, value, change, icon, color }) {
       </div>
       <div>
         <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">{title}</p>
-        <h4 className="text-2xl font-bold text-slate-900">{value}</h4>
+        <h4 className="text-xl sm:text-2xl font-bold text-slate-900 break-all leading-tight">{value}</h4>
       </div>
     </div>
   );

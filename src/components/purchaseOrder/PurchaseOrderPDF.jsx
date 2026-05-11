@@ -102,7 +102,18 @@ const styles = StyleSheet.create({
 });
 
 const PurchaseOrderPDF = ({ details }) => {
-    const formatCurrency = (val) => Number(val || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 });
+    const isInternational = details.currency && details.currency.toUpperCase() !== 'INR';
+
+    const formatCurrency = (val, curr = "INR") => {
+        const c = curr?.toString().trim().toUpperCase() || "INR";
+        const symbol = c === "USD" ? "$" : (c === "INR" ? "₹" : c);
+        
+        return `${symbol} ${Number(val || 0).toLocaleString('en-IN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        })}`;
+    };
+
     const formatDate = (date) => date ? new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.') : '';
     const renderMultiLineText = (text) => {
         if (!text) return null;
@@ -150,18 +161,15 @@ const PurchaseOrderPDF = ({ details }) => {
                 <View style={styles.topSection}>
                     <View style={styles.vendorInfo}>
                         <Text style={{ fontWeight: 'bold', marginBottom: 4 }}>To,</Text>
-                        <Text style={{ fontWeight: 'bold', fontSize: 10 }}>{details.vendor_name}</Text>
-                        {details.vendor_details && (
+                        <Text style={{ fontWeight: 'bold', fontSize: 10 }}>{details.vendor_name || details.vendor?.vendor_name || details.vendor?.name}</Text>
+                        {(details.vendor_details || details.vendor) && (
                             <>
-                                <View>{renderMultiLineText(details.vendor_details.address)}</View>
-                                {details.vendor_details.phone && <Text>Ph: {details.vendor_details.phone}</Text>}
-                                {details.vendor_details.email && <Text>Email: {details.vendor_details.email}</Text>}
-                                {details.vendor_details.gst_number && <Text>GST NO: {details.vendor_details.gst_number}</Text>}
-                                {details.vendor_details.bank_name && <Text>BANK NAME: {details.vendor_details.bank_name}</Text>}
-                                {details.vendor_details.account_name && <Text>A/C NAME: {details.vendor_details.account_name}</Text>}
-                                {details.vendor_details.bank_account_number && <Text>A/C NO: {details.vendor_details.bank_account_number}</Text>}
-                                {details.vendor_details.ifsc_code && <Text>IFSC CODE: {details.vendor_details.ifsc_code}</Text>}
-                                {details.vendor_details.swift_code && <Text>SWIFT CODE: {details.vendor_details.swift_code}</Text>}
+                                <View>{renderMultiLineText(details.vendor_details?.address || details.vendor?.address)}</View>
+                                {(details.vendor_details?.phone || details.vendor?.phone) && <Text>Ph: {details.vendor_details?.phone || details.vendor?.phone}</Text>}
+                                {(details.vendor_details?.email || details.vendor?.email) && <Text>Email: {details.vendor_details?.email || details.vendor?.email}</Text>}
+                                {(details.vendor_details?.gst_number || details.vendor?.gst_number || details.vendor?.gst || details.vendor_gst) && (
+                                    <Text>GST NO: {details.vendor_details?.gst_number || details.vendor?.gst_number || details.vendor?.gst || details.vendor_gst}</Text>
+                                )}
                             </>
                         )}
                     </View>
@@ -230,45 +238,72 @@ const PurchaseOrderPDF = ({ details }) => {
                             </View>
                             <Text style={styles.col3}>{item.hsn_code}</Text>
                             <Text style={styles.col4}>{parseFloat(item.quantity || 0).toFixed(2)} {item.unit}</Text>
-                            <Text style={styles.col5}>{formatCurrency(item.rate)}</Text>
-                            <Text style={styles.col6}>{formatCurrency(item.amount)}</Text>
+                            <Text style={styles.col5}>{formatCurrency(item.rate, 'INR')}</Text>
+                            <Text style={styles.col6}>{formatCurrency(item.amount, 'INR')}</Text>
                         </View>
                     ))}
 
                     {/* 5. Totals */}
                     <View style={styles.totalsRow}>
                         <Text style={styles.totalsLabelBlock}>SUB TOTAL</Text>
-                        <Text style={styles.totalsValueBlock}>{formatCurrency(details.total_amount-details.freight_cost)}</Text>
+                        <Text style={styles.totalsValueBlock}>{formatCurrency(details.total_amount - (details.freight_cost || 0), 'INR')}</Text>
                     </View>
                     {parseFloat(details.freight_cost) > 0 && (
                         <View style={styles.totalsRow}>
                             <Text style={styles.totalsLabelBlock}>FREIGHT COST</Text>
-                            <Text style={styles.totalsValueBlock}>{formatCurrency(details.freight_cost)}</Text>
+                            <Text style={styles.totalsValueBlock}>{formatCurrency(details.freight_cost, 'INR')}</Text>
                         </View>
                     )}
                     {parseFloat(details.cgst_amount) > 0 && (
                         <View style={styles.totalsRow}>
                             <Text style={styles.totalsLabelBlock}>CGST @ {details.cgst_percentage}%</Text>
-                            <Text style={styles.totalsValueBlock}>{formatCurrency(details.cgst_amount)}</Text>
+                            <Text style={styles.totalsValueBlock}>{formatCurrency(details.cgst_amount, 'INR')}</Text>
                         </View>
                     )}
                     {parseFloat(details.sgst_amount) > 0 && (
                         <View style={styles.totalsRow}>
                             <Text style={styles.totalsLabelBlock}>SGST @ {details.sgst_percentage}%</Text>
-                            <Text style={styles.totalsValueBlock}>{formatCurrency(details.sgst_amount)}</Text>
+                            <Text style={styles.totalsValueBlock}>{formatCurrency(details.sgst_amount, 'INR')}</Text>
                         </View>
                     )}
                     {parseFloat(details.igst_amount) > 0 && (
                         <View style={styles.totalsRow}>
                             <Text style={styles.totalsLabelBlock}>IGST @ {details.igst_percentage}%</Text>
-                            <Text style={styles.totalsValueBlock}>{formatCurrency(details.igst_amount)}</Text>
+                            <Text style={styles.totalsValueBlock}>{formatCurrency(details.igst_amount, 'INR')}</Text>
                         </View>
                     )}
                     <View style={[styles.totalsRow, { borderBottomWidth: 0 }]}>
-                        <Text style={styles.totalsLabelBlock}>INVOICE TOTAL</Text>
-                        <Text style={styles.totalsValueBlock}>{formatCurrency(details.total_amount)}</Text>
+                        <Text style={styles.totalsLabelBlock}>INVOICE TOTAL (INR)</Text>
+                        <Text style={styles.totalsValueBlock}>{formatCurrency(details.total_amount, 'INR')}</Text>
                     </View>
                 </View>
+
+                {/* Original Currency Summary Block */}
+                {isInternational && (
+                    <View style={{ marginTop: 10, padding: 5, backgroundColor: '#f0f8ff', borderWidth: 1, borderColor: '#accce6' }}>
+                        <Text style={{ fontWeight: 'bold', fontSize: 8, marginBottom: 4, color: '#2d5a84' }}>ORIGINAL CURRENCY SUMMARY ({details.currency})</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                            <Text style={{ fontSize: 8 }}>Subtotal ({details.currency})</Text>
+                            <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{formatCurrency(details.original_total_amount ? (details.original_total_amount - (details.original_freight_cost || (details.freight_cost / details.exchange_rate))) : ((details.total_amount - details.freight_cost) / (details.exchange_rate || 1)), details.currency)}</Text>
+                        </View>
+                        {parseFloat(details.freight_cost) > 0 && (
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                                <Text style={{ fontSize: 8 }}>Freight Cost ({details.currency})</Text>
+                                <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{formatCurrency(details.original_freight_cost || (details.freight_cost / (details.exchange_rate || 1)), details.currency)}</Text>
+                            </View>
+                        )}
+                        {(details.amount_paid > 0 || details.advance_amount > 0) && (
+                             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                                <Text style={{ fontSize: 8 }}>Advance Paid ({details.currency})</Text>
+                                <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{formatCurrency(details.original_amount_paid || details.original_advance_amount || ((details.amount_paid || details.advance_amount) / (details.exchange_rate || 1)), details.currency)}</Text>
+                            </View>
+                        )}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#accce6', pt: 2 }}>
+                            <Text style={{ fontSize: 9, fontWeight: 'bold' }}>Invoice Total ({details.currency})</Text>
+                            <Text style={{ fontSize: 9, fontWeight: 'bold' }}>{formatCurrency(details.original_total_amount || (details.total_amount / (details.exchange_rate || 1)), details.currency)}</Text>
+                        </View>
+                    </View>
+                )}
 
                 {/* Amount in Words */}
                 {details.amount_in_words && (

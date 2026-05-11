@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
 import { AuthProvider } from "./context/AuthContext";
@@ -80,7 +80,7 @@ export default function App() {
           {/* ADMIN ROUTES */}
           <Route element={<ProtectedRoute requiredRole="ADMIN" />}>
             <Route element={<AdminLayout />}>
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
               <Route path="/admin/users" element={<ManageUsers />} />
               <Route path="/admin/roles" element={<AdminDashboard />} />
               <Route path="/admin/access-logs" element={<AdminDashboard />} />

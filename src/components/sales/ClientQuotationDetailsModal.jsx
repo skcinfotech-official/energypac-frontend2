@@ -1,12 +1,13 @@
 
 import { useState, useEffect } from "react";
 import { FaTimes, FaFileInvoiceDollar, FaPrint } from "react-icons/fa";
-import { getClientQuotationById } from "../../services/salesService";
+import { getClientQuotationById, getClientQueryById } from "../../services/salesService";
 import { pdf } from "@react-pdf/renderer";
 import ClientQuotationPDF from "./ClientQuotationPDF";
 
 const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
     const [details, setDetails] = useState(null);
+    const [clientQuery, setClientQuery] = useState(null);
     const [loading, setLoading] = useState(false);
     const [generatingPdf, setGeneratingPdf] = useState(false);
     const [viewCurrency, setViewCurrency] = useState('INR');
@@ -15,7 +16,15 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
         if (!details) return;
         setGeneratingPdf(true);
         try {
-            const blob = await pdf(<ClientQuotationPDF quotation={details} />).toBlob();
+            // Merge details with clientQuery for the PDF
+            const mergedQuotation = {
+                ...details,
+                address: details.address || details.client_details?.address || clientQuery?.address,
+                contact_person: details.contact_person || details.client_details?.contact_person || clientQuery?.contact_person,
+                phone: details.phone || details.client_details?.phone || clientQuery?.phone,
+                email: details.email || details.client_details?.email || clientQuery?.email,
+            };
+            const blob = await pdf(<ClientQuotationPDF quotation={mergedQuotation} />).toBlob();
             const url = URL.createObjectURL(blob);
             window.open(url, '_blank');
         } catch (error) {
@@ -32,6 +41,16 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
                 try {
                     const data = await getClientQuotationById(quotation.id);
                     setDetails(data);
+
+                    // If client info is missing, try to fetch from the linked client query
+                    if (data.client_query && (!data.address || !data.contact_person)) {
+                        try {
+                            const queryData = await getClientQueryById(data.client_query);
+                            setClientQuery(queryData);
+                        } catch (err) {
+                            console.error("Failed to fetch client query details", err);
+                        }
+                    }
                 } catch (err) {
                     console.error("Failed to fetch quotation details", err);
                 } finally {
@@ -89,11 +108,13 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
                                     <p className="text-sm text-slate-500">Created on {details.quotation_date}</p>
                                     <div className="mt-4">
                                         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Client</p>
-                                        <p className="text-lg font-medium text-slate-900">{details.client_name}</p>
+                                        <p className="text-lg font-medium text-slate-900">{details.client_name || details.client_details?.name}</p>
                                     </div>
                                     <div className="mt-2">
                                         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Address</p>
-                                        <p className="text-sm font-medium text-slate-700">{details.address}</p>
+                                        <p className="text-sm font-medium text-slate-700">
+                                            {details.address || details.client_details?.address || clientQuery?.address || 'N/A'}
+                                        </p>
                                     </div>
                                 </div>
                                 <div className="text-right">
@@ -107,14 +128,14 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
                                     <p className="text-sm text-slate-500">Valid until: <span className="font-semibold text-slate-700">{details.validity_date}</span></p>
                                     <div className="mt-10 flex flex-col items-end">
                                         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Contact</p>
-                                        <p className="text-sm font-semibold text-slate-700">{details.contact_person}</p>
-                                        <p className="text-sm text-slate-600">{details.phone}</p>
-                                        <p className="text-sm text-slate-600">{details.email}</p>
+                                        <p className="text-sm font-semibold text-slate-700">{details.contact_person || details.client_details?.contact_person || clientQuery?.contact_person || 'N/A'}</p>
+                                        <p className="text-sm text-slate-600">{details.phone || details.client_details?.phone || clientQuery?.phone || 'N/A'}</p>
+                                        <p className="text-sm text-slate-600">{details.email || details.client_details?.email || clientQuery?.email || 'N/A'}</p>
                                     </div>
                                     {details.currency !== 'INR' && (
                                         <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg text-right">
                                             <p className="text-[10px] font-bold text-blue-400 uppercase leading-none mb-1">Exchange Rate</p>
-                                            <p className="text-sm font-black text-blue-700">1 {details.currency} = ₹ {details.exchange_rate}</p>
+                                            <p className="text-sm font-black text-blue-700">1 {details.currency} = ₹ {Number(details.exchange_rate).toFixed(2)}</p>
                                         </div>
                                     )}
                                 </div>  
@@ -154,7 +175,7 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
                                 <div className="flex justify-center -mt-4 mb-6">
                                     <div className="bg-blue-50 text-blue-700 px-4 py-1.5 rounded-full border border-blue-100 text-xs font-bold flex items-center gap-2 animate-pulse">
                                         <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                                        Exchange Rate: 1 {details.currency} = {details.exchange_rate} INR
+                                        Exchange Rate: 1 {details.currency} = {Number(details.exchange_rate).toFixed(2)} INR
                                     </div>
                                 </div>
                             )}
@@ -198,7 +219,7 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
                                                         {item.from_stock && <span className="mt-1 inline-block text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100">STOCK</span>}
                                                     </td>
                                                     <td className="px-4 py-3 text-slate-500 font-mono text-xs border-l border-slate-100">{item.hsn_code}</td>
-                                                    <td className="px-4 py-3 text-right border-l border-slate-100 whitespace-nowrap">{item.quantity} {item.unit}</td>
+                                                    <td className="px-4 py-3 text-right border-l border-slate-100 whitespace-nowrap">{Number(item.quantity).toFixed(2)} {item.unit}</td>
                                                     <td className="px-4 py-3 text-right border-l border-slate-100 text-slate-600">
                                                         {viewCurrency === 'INR' 
                                                             ? Number(item.rate).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })
@@ -264,8 +285,8 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, quotation }) => {
                                             <span>{viewCurrency === 'INR' ? 'Total Tax' : 'Total Tax Amount'}</span>
                                             <span>
                                                 {viewCurrency === 'INR'
-                                                    ? Number(details.total_gst || details.taxes?.total_tax || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })
-                                                    : Number(details.original_total_tax || details.total_gst / details.exchange_rate).toLocaleString('en-US', { style: 'currency', currency: details.currency })
+                                                    ? Number(details.total_gst || details.taxes?.total_tax || (Number(details.cgst_amount || details.taxes?.cgst?.amount || 0) + Number(details.sgst_amount || details.taxes?.sgst?.amount || 0) + Number(details.igst_amount || details.taxes?.igst?.amount || 0))).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })
+                                                    : Number(details.original_total_tax || (details.total_gst || (Number(details.cgst_amount || details.taxes?.cgst?.amount || 0) + Number(details.sgst_amount || details.taxes?.sgst?.amount || 0) + Number(details.igst_amount || details.taxes?.igst?.amount || 0))) / details.exchange_rate).toLocaleString('en-US', { style: 'currency', currency: details.currency })
                                                 }
                                             </span>
                                         </div>

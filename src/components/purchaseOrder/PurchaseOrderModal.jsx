@@ -267,7 +267,7 @@ const PurchaseOrderModal = ({ open, onClose, data, onShowAlert, onUpdate }) => {
                                                         {item.hsn_code}
                                                     </td>
                                                     <td className="px-4 py-3 text-right">
-                                                        {item.quantity} <span className="text-xs text-slate-400">{item.unit}</span>
+                                                        {Number(item.quantity).toFixed(2)} <span className="text-xs text-slate-400">{item.unit}</span>
                                                     </td>
                                                     <td className="px-4 py-3 text-right font-mono">
                                                         ₹ {parseFloat(item.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}

@@ -130,10 +130,10 @@ const ClientQuotationPDF = ({ quotation }) => {
         <View style={styles.topSection}>
           <View style={styles.clientInfo}>
             <Text style={{ fontWeight: 'bold', marginBottom: 4 }}>To,</Text>
-            <Text style={{ fontWeight: 'bold', fontSize: 10 }}>{quotation.client_name}</Text>
-            <Text>{quotation.address}</Text>
-            {quotation.phone && <Text>Ph: {quotation.phone}</Text>}
-            {quotation.email && <Text>Email: {quotation.email}</Text>}
+            <Text style={{ fontWeight: 'bold', fontSize: 10 }}>{quotation.client_name || quotation.client_details?.name}</Text>
+            <Text>{quotation.address || quotation.client_details?.address || 'N/A'}</Text>
+            <Text>Ph: {quotation.phone || quotation.client_details?.phone || 'N/A'}</Text>
+            <Text>Email: {quotation.email || quotation.client_details?.email || 'N/A'}</Text>
           </View>
 
           <View style={styles.detailsBox}>
@@ -156,17 +156,17 @@ const ClientQuotationPDF = ({ quotation }) => {
             {quotation.currency?.toString().trim().toUpperCase() !== 'INR' && (
               <View style={[styles.detailsRow, { borderTopWidth: 1, borderTopColor: '#000', borderBottomWidth: 0 }]}>
                 <Text style={styles.detailsLabel}>EXCH. RATE:</Text>
-                <Text style={styles.detailsValue}>1 {quotation.currency} = INR {quotation.exchange_rate}</Text>
+                <Text style={styles.detailsValue}>1 {quotation.currency} = INR {Number(quotation.exchange_rate).toFixed(2)}</Text>
               </View>
             )}
           </View>
         </View>
 
         {/* 3. Subject & Attention */}
-        {quotation.contact_person && (
+        {(quotation.contact_person || quotation.client_details?.contact_person) && (
           <View style={styles.textBlock}>
             <Text style={styles.boldLabel}>KIND ATTENTION:</Text>
-            <Text>{quotation.contact_person}</Text>
+            <Text>{quotation.contact_person || quotation.client_details?.contact_person}</Text>
           </View>
         )}
         {quotation.subject && (
@@ -210,7 +210,7 @@ const ClientQuotationPDF = ({ quotation }) => {
                     {item.item_code && <Text style={{ fontSize: 7, color: '#444' }}>{item.item_code}</Text>}
                   </View>
                   <Text style={styles.col3_fc}>{item.hsn_code}</Text>
-                  <Text style={styles.col4_fc}>{parseFloat(item.quantity || 0).toFixed(0)} {item.unit}</Text>
+                  <Text style={styles.col4_fc}>{parseFloat(item.quantity || 0).toFixed(2)} {item.unit}</Text>
                   <Text style={styles.col7_fc}>{formatCurrency(item.original_rate || item.rate, quotation.currency)}</Text>
                   <Text style={styles.col8_fc}>{formatCurrency(item.original_amount || item.amount, quotation.currency)}</Text>
                   <Text style={styles.col5_fc}>{formatCurrency(item.rate, 'INR')}</Text>
@@ -224,7 +224,7 @@ const ClientQuotationPDF = ({ quotation }) => {
                     {item.item_code && <Text style={{ fontSize: 8, color: '#444' }}>{item.item_code}</Text>}
                   </View>
                   <Text style={styles.col3}>{item.hsn_code}</Text>
-                  <Text style={styles.col4}>{parseFloat(item.quantity || 0).toFixed(0)} {item.unit}</Text>
+                  <Text style={styles.col4}>{parseFloat(item.quantity || 0).toFixed(2)} {item.unit}</Text>
                   <Text style={styles.col5}>{formatCurrency(item.rate, 'INR')}</Text>
                   <Text style={styles.col6}>{formatCurrency(item.amount, 'INR')}</Text>
                 </>
@@ -283,7 +283,13 @@ const ClientQuotationPDF = ({ quotation }) => {
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
                 <Text style={{ fontSize: 8 }}>Total Tax ({quotation.currency})</Text>
-                <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{formatCurrency(quotation.original_total_tax, quotation.currency)}</Text>
+                <Text style={{ fontSize: 8, fontWeight: 'bold' }}>
+                    {formatCurrency(
+                        quotation.original_total_tax || 
+                        ((quotation.total_gst || (Number(quotation.cgst_amount || 0) + Number(quotation.sgst_amount || 0) + Number(quotation.igst_amount || 0))) / quotation.exchange_rate), 
+                        quotation.currency
+                    )}
+                </Text>
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#accce6', pt: 2 }}>
                 <Text style={{ fontSize: 9, fontWeight: 'bold' }}>Total ({quotation.currency})</Text>

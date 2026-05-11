@@ -128,7 +128,7 @@ const VendorQuotationList = ({ initialViewId }) => {
                                             {row.quotation_date}
                                         </td>
                                         <td className="px-4 py-2 text-right font-bold text-slate-900">
-                                            ₹ {row.total_amount}
+                                            ₹ {Number(row.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </td>
                                         <td className="px-4 py-2 text-center">
                                             <span className="bg-slate-100 text-slate-700 px-2 py-1 rounded text-sm font-bold border border-slate-200">

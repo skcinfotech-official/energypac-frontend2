@@ -23,7 +23,7 @@ export default function Login() {
     useEffect(() => {
         if (authChecked && isAuthenticated) {
             if (user?.role === "ADMIN") {
-                navigate("/admin/dashboard", { replace: true });
+                navigate("/admin/users", { replace: true });
             } else {
                 navigate("/", { replace: true });
             }
@@ -39,7 +39,7 @@ export default function Login() {
             const user = await login(employeeCode, password);
             
             if (user?.role === "ADMIN") {
-                navigate("/admin/dashboard", { replace: true });
+                navigate("/admin/users", { replace: true });
             } else {
                 navigate("/", { replace: true });
             }

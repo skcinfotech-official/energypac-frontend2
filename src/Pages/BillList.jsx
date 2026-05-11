@@ -5,7 +5,7 @@ import BillDetailsModal from "../components/sales/BillDetailsModal";
 import { getBills, getBillById, markBillAsPaid, cancelBill, getBillReport, getOutstandingReport, getBillPaymentHistory } from "../services/salesService";
 import PasswordConfirmModal from "../components/ui/PasswordConfirmModal";
 import WorkOrderSelector from "../components/common/WorkOrderSelector";
-import { FaSearch, FaFilter, FaEye, FaMoneyBillWave, FaTimes, FaFileExcel, FaHistory, FaFileInvoiceDollar, FaCalendarAlt, FaUserTie } from "react-icons/fa";
+import { FaSearch, FaFilter, FaEye, FaMoneyBillWave, FaTimes, FaFileExcel, FaHistory, FaFileInvoiceDollar, FaCalendarAlt, FaUserTie, FaUserEdit } from "react-icons/fa";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { useSearchParams } from "react-router-dom";
@@ -260,12 +260,12 @@ const BillList = () => {
         }
     };
 
-    const formatCurrency = (amount) => {
+    const formatCurrency = (amount, curr = 'INR') => {
         return Number(amount || 0).toLocaleString('en-IN', {
             style: 'currency',
-            currency: 'INR',
+            currency: curr === 'USD' ? 'USD' : 'INR',
             maximumFractionDigits: 2
-        });
+        }).replace('US$', '$');
     };
 
     const getStatusStyle = (status) => {
@@ -400,16 +400,31 @@ const BillList = () => {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="text-sm font-bold text-slate-800">{formatCurrency(bill.total_amount)}</div>
+                                            {bill.currency && bill.currency !== 'INR' && (
+                                                <div className="text-[10px] text-blue-600 font-bold">
+                                                    {formatCurrency(bill.original_total_amount || (bill.total_amount / bill.exchange_rate), bill.currency)}
+                                                </div>
+                                            )}
                                             <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Net Payable</div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="text-sm font-bold text-emerald-600">{formatCurrency(bill.amount_paid)}</div>
+                                            {bill.currency && bill.currency !== 'INR' && (
+                                                <div className="text-[10px] text-emerald-500 font-bold">
+                                                    {formatCurrency(bill.original_amount_paid || (bill.amount_paid / bill.exchange_rate), bill.currency)}
+                                                </div>
+                                            )}
                                             <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Total Collected</div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className={`text-sm font-black ${parseFloat(bill.balance) > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
                                                 {formatCurrency(bill.balance)}
                                             </div>
+                                            {bill.currency && bill.currency !== 'INR' && (
+                                                <div className={`text-[10px] font-bold ${parseFloat(bill.balance) > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                                    {formatCurrency(bill.original_balance || (bill.balance / bill.exchange_rate), bill.currency)}
+                                                </div>
+                                            )}
                                             {parseFloat(bill.balance) > 0 && (
                                                 <div className="w-16 h-1 bg-slate-100 rounded-full mt-1.5 ml-auto overflow-hidden">
                                                     <div className="h-full bg-red-400" style={{ width: `${Math.min(100, (bill.balance / bill.total_amount) * 100)}%` }}></div>
@@ -593,7 +608,7 @@ const BillList = () => {
                                     </div>
                                     {paymentModal.currency !== 'INR' && paymentModal.bill?.exchange_rate && (
                                         <p className="mt-2 text-[10px] text-slate-400 font-bold uppercase italic">
-                                            Approx. {formatCurrency(parseFloat(paymentModal.amount || 0) * paymentModal.bill.exchange_rate)} (Exch: {paymentModal.bill.exchange_rate})
+                                            Approx. {formatCurrency(parseFloat(paymentModal.amount || 0) * paymentModal.bill.exchange_rate)} (Exch: {Number(paymentModal.bill.exchange_rate).toFixed(2)})
                                         </p>
                                     )}
                                 </div>
@@ -658,7 +673,7 @@ const BillList = () => {
             {historyModal.open && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setHistoryModal({ open: false, data: null, loading: false })}></div>
-                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
+                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
                         <div className="bg-slate-900 text-white p-6 flex justify-between items-center">
                             <div>
                                 <h3 className="text-lg font-black uppercase tracking-tighter flex items-center gap-2">
@@ -673,36 +688,111 @@ const BillList = () => {
                                 <div className="py-20 flex justify-center"><div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>
                             ) : historyModal.data ? (
                                 <>
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div className="bg-white p-4 rounded-xl border border-slate-200">
-                                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Net Bill</p>
-                                            <p className="font-black text-slate-800">{formatCurrency(historyModal.data.net_payable)}</p>
+                                    {/* Summary Cards */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md">
+                                            <p className="text-[10px] text-slate-500 uppercase font-black tracking-wider mb-1">Net Bill Amount</p>
+                                            <p className="text-xl font-black text-slate-800">{formatCurrency(historyModal.data.net_payable)}</p>
+                                            {historyModal.data.currency && historyModal.data.currency !== 'INR' && (
+                                                <p className="text-[10px] font-bold text-blue-600 mt-1">
+                                                    {formatCurrency(historyModal.data.original_net_payable || (historyModal.data.net_payable / (historyModal.data.exchange_rate || 1)), historyModal.data.currency)}
+                                                </p>
+                                            )}
                                         </div>
-                                        <div className="bg-white p-4 rounded-xl border border-slate-200">
-                                            <p className="text-[10px] text-emerald-600 font-black uppercase tracking-widest mb-1">Collected</p>
-                                            <p className="font-black text-emerald-700">{formatCurrency(historyModal.data.total_paid)}</p>
+                                        <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 shadow-sm hover:shadow-md">
+                                            <p className="text-[10px] text-emerald-600 uppercase font-black tracking-wider mb-1">Total Collected</p>
+                                            <p className="text-xl font-black text-emerald-700">{formatCurrency(historyModal.data.total_paid)}</p>
+                                            {historyModal.data.currency && historyModal.data.currency !== 'INR' && (
+                                                <p className="text-[10px] font-bold text-emerald-500 mt-1">
+                                                    {formatCurrency(historyModal.data.original_total_paid || (historyModal.data.total_paid / (historyModal.data.exchange_rate || 1)), historyModal.data.currency)}
+                                                </p>
+                                            )}
                                         </div>
-                                        <div className="bg-white p-4 rounded-xl border border-slate-200">
-                                            <p className="text-[10px] text-red-600 font-black uppercase tracking-widest mb-1">Due</p>
-                                            <p className="font-black text-red-700">{formatCurrency(historyModal.data.balance)}</p>
+                                        <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 shadow-sm hover:shadow-md">
+                                            <p className="text-[10px] text-orange-600 uppercase font-black tracking-wider mb-1">Current Balance</p>
+                                            <p className="text-xl font-black text-orange-700">{formatCurrency(historyModal.data.balance)}</p>
+                                            {historyModal.data.currency && historyModal.data.currency !== 'INR' && (
+                                                <p className="text-[10px] font-bold text-orange-400 mt-1">
+                                                    {formatCurrency(historyModal.data.original_balance || (historyModal.data.balance / (historyModal.data.exchange_rate || 1)), historyModal.data.currency)}
+                                                </p>
+                                            )}
                                         </div>
+                                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 shadow-sm hover:shadow-md">
+                                            <p className="text-[10px] text-blue-600 uppercase font-black tracking-wider mb-1">Payment Count</p>
+                                            <p className="text-xl font-black text-blue-700">{historyModal.data.payments?.length || 0} <span className="text-xs font-bold uppercase tracking-tighter">Collections</span></p>
+                                        </div> 
                                     </div>
-                                    <div className="space-y-3">
-                                        {historyModal.data.payments?.map((p, i) => (
-                                            <div key={i} className="bg-white p-5 rounded-xl border border-slate-200 flex items-center justify-between shadow-sm transition-hover hover:shadow-md">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-xs font-black text-slate-400">{i+1}</div>
-                                                    <div>
-                                                        <p className="text-sm font-black text-slate-800">{formatCurrency(p.amount)}</p>
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{p.payment_mode_display} • {p.reference_number || 'No Ref'}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-xs font-bold text-slate-600">{new Date(p.created_at).toLocaleDateString()}</p>
-                                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-tighter mt-0.5">Balance After: {formatCurrency(p.balance_after)}</p>
-                                                </div>
+
+                                    {/* Payments Table */}
+                                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                        <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <FaMoneyBillWave className="text-slate-400" />
+                                                <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Collection Breakdown</h4>
                                             </div>
-                                        ))}
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left">
+                                                <thead>
+                                                    <tr className="bg-slate-50/50 border-b border-slate-100">
+                                                        <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                                                        <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Mode</th>
+                                                        <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Reference</th>
+                                                        <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Amount Collected</th>
+                                                        <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Balance After</th>
+                                                        <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Recorded By</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {historyModal.data.payments?.map((payment, idx) => (
+                                                        <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                                                            <td className="px-5 py-4">
+                                                                <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5 whitespace-nowrap">
+                                                                    <FaCalendarAlt size={12} className="text-slate-300" />
+                                                                    {new Date(payment.created_at).toLocaleDateString()}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-5 py-4">
+                                                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-100 px-2 py-1 rounded">
+                                                                    {payment.payment_mode_display}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-5 py-4">
+                                                                <span className="text-xs font-mono font-bold text-slate-500">
+                                                                    {payment.reference_number || "N/A"}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-5 py-4 text-right">
+                                                                <div className="flex flex-col items-end">
+                                                                    <span className="text-sm font-black text-slate-800">{formatCurrency(payment.amount)}</span>
+                                                                    {historyModal.data.currency && historyModal.data.currency !== 'INR' && (
+                                                                        <span className="text-[10px] font-bold text-emerald-600">
+                                                                            {formatCurrency(payment.original_amount || (payment.amount / (historyModal.data.exchange_rate || 1)), historyModal.data.currency)}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-5 py-4 text-right">
+                                                                <div className="flex flex-col items-end">
+                                                                    <span className="text-xs font-bold text-slate-400">{formatCurrency(payment.balance_after)}</span>
+                                                                    {historyModal.data.currency && historyModal.data.currency !== 'INR' && (
+                                                                        <span className="text-[10px] font-medium text-slate-400">
+                                                                            {formatCurrency(payment.original_balance_after || (payment.balance_after / (historyModal.data.exchange_rate || 1)), historyModal.data.currency)}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-5 py-4">
+                                                                <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5 whitespace-nowrap">
+                                                                    <FaUserEdit size={12} className="text-slate-300" />
+                                                                    {payment.recorded_by_name}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 </>
                             ) : null}

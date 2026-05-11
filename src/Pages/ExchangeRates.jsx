@@ -180,7 +180,7 @@ export default function ExchangeRates() {
                     </td>
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-2">
-                         <span className="text-lg font-black text-slate-900 tracking-tighter">₹ {parseFloat(rate.rate).toFixed(4)}</span>
+                         <span className="text-lg font-black text-slate-900 tracking-tighter">₹ {parseFloat(rate.rate).toFixed(2)}</span>
                          <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-bold border border-indigo-100">USD/INR</span>
                       </div>
                     </td>
@@ -266,7 +266,7 @@ export default function ExchangeRates() {
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
                     <input 
                       type="number" 
-                      step="0.0001"
+                      step="0.01"
                       required
                       className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:border-indigo-500 outline-none transition-all font-bold"
                       placeholder="83.5000"
@@ -339,7 +339,7 @@ export default function ExchangeRates() {
         open={deleteConfirm.open}
         loading={deleteConfirm.loading}
         title="Purge Exchange Rate"
-        message={`Are you sure you want to permanently delete the rate of ₹${parseFloat(deleteConfirm.rate?.rate || 0).toFixed(4)} effective from ${deleteConfirm.rate ? new Date(deleteConfirm.rate.effective_date).toLocaleDateString() : ''}? This action cannot be undone.`}
+        message={`Are you sure you want to permanently delete the rate of ₹${parseFloat(deleteConfirm.rate?.rate || 0).toFixed(2)} effective from ${deleteConfirm.rate ? new Date(deleteConfirm.rate.effective_date).toLocaleDateString() : ''}? This action cannot be undone.`}
         confirmText="Purge Record"
         onConfirm={confirmDelete}
         onCancel={() => setDeleteConfirm({ open: false, rate: null, loading: false })}

@@ -133,8 +133,9 @@ const VendorAssignmentModal = ({ open, onClose, editData, onSuccess, viewOnly = 
       onSuccess();
       onClose();
     } catch (err) {
-      console.error(err);
-      setError("Failed to save assignment. Please try again.");
+      console.error("Submission Error:", err);
+      const errorMsg = err.response?.data?.error || err.response?.data?.detail || err.response?.data?.message || "Failed to save assignment";
+      setError(errorMsg);
     } finally {
       setSubmitting(false);
     }

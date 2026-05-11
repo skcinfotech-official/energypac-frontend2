@@ -225,8 +225,8 @@ const PurchaseOrderList = () => {
                             loadData(page);
                             setPasswordModal({ open: false });
                         } catch (err) {
-                            console.error(err);
-                            const errorMsg = err.response?.data?.message || err.response?.data?.detail || "Failed to cancel Purchase Order";
+                            console.error("Cancellation Error:", err);
+                            const errorMsg = err.response?.data?.error || err.response?.data?.detail || err.response?.data?.message || "Failed to cancel Purchase Order";
                             setToast({ open: true, type: "error", message: errorMsg });
                             setPasswordModal(prev => ({ ...prev, loading: false }));
                         }

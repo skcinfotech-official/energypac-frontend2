@@ -135,8 +135,31 @@ const VendorQuotationDetails = () => {
         console.warn("Validation failed:", err.errors);
         setToast({ open: true, type: "error", message: "All items must have a valid quoted rate greater than 0.00" });
       } else {
-        console.error(err);
-        setToast({ open: true, type: "error", message: "Failed to submit quotation" });
+        console.error("Submission Error:", err);
+        let errorMsg = "Failed to submit quotation";
+
+        if (err.response) {
+          const data = err.response.data;
+          if (typeof data === "string") {
+            errorMsg = data;
+          } else if (data?.error) {
+            errorMsg = data.error;
+          } else if (data?.detail) {
+            errorMsg = data.detail;
+          } else if (data?.message) {
+            errorMsg = data.message;
+          } else if (data?.non_field_errors) {
+            errorMsg = Array.isArray(data.non_field_errors) ? data.non_field_errors[0] : data.non_field_errors;
+          } else if (typeof data === "object") {
+            // Get first field error if available
+            const firstKey = Object.keys(data)[0];
+            if (firstKey) {
+              const val = data[firstKey];
+              errorMsg = Array.isArray(val) ? val[0] : val;
+            }
+          }
+        }
+        setToast({ open: true, type: "error", message: errorMsg });
       }
     } finally {
       setSubmitting(false);

@@ -148,10 +148,11 @@ const CreateBill = () => {
                     message: issueMessages || "Stock validation failed. Please check inventory."
                 });
             } else {
+                const errorMsg = error.response?.data?.error || error.response?.data?.detail || error.response?.data?.message || "Failed to validate stock";
                 setAlert({
                     open: true,
                     type: "error",
-                    message: error.response?.data?.message || "Failed to validate stock"
+                    message: errorMsg
                 });
             }
         } finally {
@@ -226,7 +227,8 @@ const CreateBill = () => {
                     });
                 } catch (error) {
                     console.error("Bill creation failed", error);
-                    setAlert({ open: true, type: "error", message: "Failed to create bill" });
+                    const errorMsg = error.response?.data?.error || error.response?.data?.detail || error.response?.data?.message || "Failed to create bill";
+                    setAlert({ open: true, type: "error", message: errorMsg });
                 } finally {
                     setSubmitting(false);
                     setConfirm({ ...confirm, open: false });

@@ -207,7 +207,7 @@ export default function Dashboard() {
                         <p className="text-xs text-slate-500 font-mono">{prod.item_code}</p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="font-bold text-blue-600 text-sm">
+                        <p className="font-bold text-blue-600 text-sm break-all">
                           {prod.stock_value?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
                         </p>
                         <p className="text-[10px] text-slate-400">Stock: {prod.current_stock}</p>
@@ -230,7 +230,7 @@ export default function Dashboard() {
                         <p className="text-xs text-slate-500 font-mono">{vendor.vendor_code}</p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="font-bold text-emerald-600 text-sm">
+                        <p className="font-bold text-emerald-600 text-sm break-all">
                           {(vendor.total_po_value || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
                         </p>
                         <p className="text-[10px] text-slate-400">Total PO Value</p>

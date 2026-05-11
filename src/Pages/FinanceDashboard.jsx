@@ -138,9 +138,9 @@ const FinanceDashboard = () => {
                     </div>
                     <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
-                            <div>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Total Outstanding</p>
-                                <p className="text-2xl font-bold text-slate-900">{formatCurrency(stats?.incoming?.outstanding)}</p>
+                            <div className="min-w-0">
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1 truncate">Total Outstanding</p>
+                                <p className="text-2xl sm:text-3xl font-bold text-slate-900 break-all leading-none">{formatCurrency(stats?.incoming?.outstanding)}</p>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-black rounded-full uppercase">
@@ -179,9 +179,9 @@ const FinanceDashboard = () => {
                     </div>
                     <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
-                            <div>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">To Be Paid</p>
-                                <p className="text-2xl font-bold text-slate-900">{formatCurrency(stats?.outgoing?.outstanding)}</p>
+                            <div className="min-w-0">
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1 truncate">To Be Paid</p>
+                                <p className="text-2xl sm:text-3xl font-bold text-slate-900 break-all leading-none">{formatCurrency(stats?.outgoing?.outstanding)}</p>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="px-2 py-0.5 bg-orange-50 text-orange-700 text-[10px] font-black rounded-full uppercase">

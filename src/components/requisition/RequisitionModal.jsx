@@ -174,8 +174,8 @@ const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false
       onSuccess();
       onClose();
     } catch (err) {
-      // Show more detailed error if available
-      const detail = err.response?.data?.detail || err.response?.data?.message || err.message;
+      console.error("Submission Error:", err);
+      const detail = err.response?.data?.error || err.response?.data?.detail || err.response?.data?.message || err.message || "Failed to save requisition";
       setError(`Error: ${detail}. Please try again.`);
     } finally {
       setSubmitting(false);

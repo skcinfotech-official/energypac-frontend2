@@ -48,9 +48,9 @@ const RecordPaymentModal = ({ open, onClose, poData, onSuccess }) => {
             onSuccess("Payment recorded successfully!");
             setConfirmOpen(false);
             onClose();
-        } catch (err) {
-            console.error("Payment failed", err);
-            const msg = err.response?.data?.message || err.response?.data?.detail || "Failed to record payment";
+        } catch (error) {
+            console.error("Payment failed", error);
+            const msg = error.response?.data?.error || error.response?.data?.detail || error.response?.data?.message || "Failed to record payment";
             setError(msg);
             setConfirmOpen(false);
         } finally {

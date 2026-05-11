@@ -107,7 +107,8 @@ const EnquiryModal = ({ isOpen, onClose, onSuccess }) => {
             });
         } catch (error) {
             console.error("Failed to submit enquiry", error);
-            // Handle specific backend errors if needed
+            const errorMsg = error.response?.data?.error || error.response?.data?.detail || error.response?.data?.message || "Failed to submit enquiry";
+            setErrors(prev => ({ ...prev, submit: errorMsg }));
         } finally {
             setLoading(false);
         }
@@ -129,6 +130,11 @@ const EnquiryModal = ({ isOpen, onClose, onSuccess }) => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                    {errors.submit && (
+                        <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-bold animate-in slide-in-from-top-2">
+                            {errors.submit}
+                        </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Client Name */}
                         <div>

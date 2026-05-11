@@ -132,7 +132,7 @@ const BillList = () => {
                             setPasswordModal({ open: false });
                         } catch (error) {
                             console.error("Failed to cancel bill", error);
-                            const errorMsg = error.response?.data?.message || error.response?.data?.detail || "Failed to cancel bill";
+                            const errorMsg = error.response?.data?.error || error.response?.data?.detail || error.response?.data?.message || "Failed to cancel bill";
                             setAlert({ open: true, type: "error", message: errorMsg });
                             setPasswordModal(prev => ({ ...prev, loading: false }));
                         }
@@ -188,7 +188,7 @@ const BillList = () => {
                     setPasswordModal({ open: false });
                 } catch (error) {
                     console.error("Payment failed", error);
-                    const errorMsg = error.response?.data?.message || error.response?.data?.detail || "Failed to record payment";
+                    const errorMsg = error.response?.data?.error || error.response?.data?.detail || error.response?.data?.message || "Failed to record payment";
                     setAlert({ open: true, type: "error", message: errorMsg });
                     setPasswordModal(prev => ({ ...prev, loading: false }));
                 }

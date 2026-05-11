@@ -30,9 +30,9 @@ import BillingDashboard from "./Pages/BillingDashboard.jsx";
 import BillingAnalytics from "./Pages/BillingAnalytics.jsx";
 import FinancePOList from "./Pages/FinancePOList.jsx";
 import FinanceDashboard from "./Pages/FinanceDashboard.jsx";
-import AdminDashboard from "./Pages/AdminDashboard.jsx";
 import ManageUsers from "./Pages/ManageUsers.jsx";
 import ExchangeRates from "./Pages/ExchangeRates.jsx";
+
 
 
 
@@ -82,14 +82,7 @@ export default function App() {
             <Route element={<AdminLayout />}>
               <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
               <Route path="/admin/users" element={<ManageUsers />} />
-              <Route path="/admin/roles" element={<AdminDashboard />} />
-              <Route path="/admin/access-logs" element={<AdminDashboard />} />
-              <Route path="/admin/modules" element={<AdminDashboard />} />
-              <Route path="/admin/audit-trail" element={<AdminDashboard />} />
-              <Route path="/admin/security" element={<AdminDashboard />} />
-               <Route path="/admin/settings" element={<AdminDashboard />} />
-               <Route path="/admin/exchange-rates" element={<ExchangeRates />} />
-
+              <Route path="/admin/exchange-rates" element={<ExchangeRates />} />
             </Route>
           </Route>
         </Routes>

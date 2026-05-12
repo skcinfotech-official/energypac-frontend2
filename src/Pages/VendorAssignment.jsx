@@ -51,11 +51,15 @@ const VendorAssignment = () => {
       }
       setPage(pageNum);
     } catch (err) {
-      console.error(err);
+      console.error("Load Error:", err);
+      const data = err.response?.data;
+      const errorMsg = err.response?.status === 400
+        ? (data?.non_field_errors?.[0] || data?.message || data?.error || data?.detail || "Validation error")
+        : (data?.error || data?.detail || data?.message || "Failed to load vendor assignments");
       setToast({
         open: true,
         type: "error",
-        message: "Failed to load vendor assignments",
+        message: errorMsg,
       });
     } finally {
       setLoading(false);
@@ -161,6 +165,7 @@ const VendorAssignment = () => {
                 <th className="px-6 py-4 text-[13px]">Assigned By</th>
                 <th className="px-6 py-4 text-[13px] text-center">Items</th>
                 <th className="px-6 py-4 text-[13px]">Date</th>
+                <th className="px-6 py-4 text-[13px] text-center">Status</th>
                 <th className="px-6 py-4 text-[13px] text-center">Actions</th>
               </tr>
             </thead>
@@ -168,7 +173,7 @@ const VendorAssignment = () => {
               {loading ? (
                 <tr>
                   <td
-                    colSpan="6"
+                    colSpan="7"
                     className="px-6 py-6 text-center text-slate-500"
                   >
                     Loading assignments...
@@ -198,6 +203,21 @@ const VendorAssignment = () => {
                         ? new Date(row.assignment_date).toLocaleDateString()
                         : "-"}
                     </td>
+                    <td className="px-6 py-4 text-center">
+                      {row.status === "Completed" ? (
+                        <span className="px-2 py-1 bg-green-100 text-green-700 rounded-md text-[10px] font-bold uppercase tracking-wider border border-green-200">
+                          Completed
+                        </span>
+                      ) : (row.quotations?.length > 0 || row.is_quoted) ? (
+                        <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-md text-[10px] font-bold uppercase tracking-wider border border-amber-200">
+                          Quoted
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 bg-blue-50 text-blue-600 rounded-md text-[10px] font-bold uppercase tracking-wider border border-blue-100">
+                          Pending
+                        </span>
+                      )}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex justify-center gap-3">
                         <button
@@ -208,9 +228,9 @@ const VendorAssignment = () => {
                           <FaEye />
                         </button>
                         <button
-                          className="text-blue-600 hover:text-blue-800"
-                          title="Edit"
-                          onClick={() => handleEdit(row)}
+                          className={(row.quotations?.length > 0 || row.is_quoted || row.status === "Completed") ? "text-slate-300 cursor-not-allowed" : "text-blue-600 hover:text-blue-800"}
+                          title={row.status === "Completed" ? "Cannot edit - Assignment Completed" : (row.quotations?.length > 0 || row.is_quoted) ? "Cannot edit - Quotation exists" : "Edit"}
+                          onClick={() => (row.quotations?.length > 0 || row.is_quoted || row.status === "Completed") ? handleView(row) : handleEdit(row)}
                         >
                           <FaEdit />
                         </button>
@@ -221,7 +241,7 @@ const VendorAssignment = () => {
               ) : (
                 <tr>
                   <td
-                    colSpan="6"
+                    colSpan="7"
                     className="px-6 py-6 text-center text-slate-500"
                   >
                     No assignments found

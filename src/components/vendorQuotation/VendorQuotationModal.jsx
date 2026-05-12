@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 import { getQuotationItems, createQuotation } from "../../services/vendorQuotationService";
 import { exchangeRateService } from "../../services/exchangeRateService";
-import { HiX, HiInformationCircle, HiRefresh } from "react-icons/hi";
+import { HiX, HiRefresh } from "react-icons/hi";
+import AlertToast from "../ui/AlertToast";
 
 const VendorQuotationModal = ({ open, onClose, onSuccess, requisitionId, vendorId }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
   const [currency, setCurrency] = useState("INR");
   const [exchangeRate, setExchangeRate] = useState(1.0);
   const [rateLoading, setRateLoading] = useState(false);
+  const [toast, setToast] = useState({ open: false, type: "error", message: "" });
 
   useEffect(() => {
     if (open && requisitionId && vendorId) {
@@ -20,7 +21,6 @@ const VendorQuotationModal = ({ open, onClose, onSuccess, requisitionId, vendorI
 
   const loadItems = async () => {
     setLoading(true);
-    setError("");
     try {
       const data = await getQuotationItems(requisitionId, vendorId);
       // data.items expected array
@@ -33,7 +33,7 @@ const VendorQuotationModal = ({ open, onClose, onSuccess, requisitionId, vendorI
       );
     } catch (err) {
       console.error(err);
-      setError("Failed to load items for quotation.");
+      setToast({ open: true, type: "error", message: "Failed to load items for quotation." });
     } finally {
       setLoading(false);
     }
@@ -46,7 +46,7 @@ const VendorQuotationModal = ({ open, onClose, onSuccess, requisitionId, vendorI
       setExchangeRate(data.rate);
     } catch (err) {
       console.error(err);
-      setError("Failed to fetch exchange rate. Using default 1.0.");
+      setToast({ open: true, type: "error", message: "Failed to fetch exchange rate. Using default 1.0." });
     } finally {
       setRateLoading(false);
     }
@@ -68,7 +68,6 @@ const VendorQuotationModal = ({ open, onClose, onSuccess, requisitionId, vendorI
 
   const handleSubmit = async () => {
     setSubmitting(true);
-    setError("");
     try {
       const payload = {
         requisition: requisitionId,
@@ -85,7 +84,7 @@ const VendorQuotationModal = ({ open, onClose, onSuccess, requisitionId, vendorI
       onClose();
     } catch (err) {
       console.error(err);
-      setError("Failed to create quotation. Please try again.");
+      setToast({ open: true, type: "error", message: "Failed to create quotation. Please try again." });
     } finally {
       setSubmitting(false);
     }
@@ -192,12 +191,7 @@ const VendorQuotationModal = ({ open, onClose, onSuccess, requisitionId, vendorI
             )}
           </div>
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-3">
-              <HiInformationCircle className="text-xl shrink-0" />
-              <p className="text-sm font-medium">{error}</p>
-            </div>
-          )}
+          {/* Currency Selection */}
 
           {loading ? (
             <div className="text-center py-8 text-slate-500">Loading items...</div>
@@ -285,6 +279,12 @@ const VendorQuotationModal = ({ open, onClose, onSuccess, requisitionId, vendorI
             </button>
           </div>
         </div>
+        <AlertToast
+          open={toast.open}
+          type={toast.type}
+          message={toast.message}
+          onClose={() => setToast({ ...toast, open: false })}
+        />
       </div>
     </div>
   );

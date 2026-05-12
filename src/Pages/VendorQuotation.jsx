@@ -16,7 +16,7 @@ export default function VendorQuotation() {
   const currentTab = viewId ? "list" : activeTab;
 
   const tabs = [
-    { id: "assigned", label: "Quotation Submission" },
+    { id: "assigned", label: "Create Quotation" },
     { id: "list", label: "All Quotations" },
     { id: "flow", label: "Quotation Flow" },
     { id: "comparison", label: "Comparison" },

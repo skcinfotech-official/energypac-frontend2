@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { getProducts } from "../../services/productService";
 import { HiSearch, HiX } from "react-icons/hi";
 
-const ProductSelector = ({ value, onChange, placeholder = "Search product...", defaultItem = null }) => {
+const ProductSelector = ({ value, onChange, placeholder = "Search product...", defaultItem = null, excludeIds = [] }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [products, setProducts] = useState([]);
@@ -130,6 +130,11 @@ const ProductSelector = ({ value, onChange, placeholder = "Search product...", d
             return () => clearTimeout(timeoutId);
         }
     }, [search, isOpen]);
+    
+    // Filter out excluded IDs and sort alphabetically
+    const filteredProducts = products
+        .filter(p => !excludeIds.includes(p.uuid || p.id))
+        .sort((a, b) => (a.item_name || "").localeCompare(b.item_name || ""));
 
     const foundProduct = products.find((p) => String(p.id) === String(value) || p.uuid === value);
     const selectedProduct = foundProduct || defaultItem;
@@ -164,8 +169,8 @@ const ProductSelector = ({ value, onChange, placeholder = "Search product...", d
             <div className="overflow-y-auto max-h-[200px] py-1">
                 {loading ? (
                     <div className="px-4 py-3 text-sm text-slate-500 text-center">Loading...</div>
-                ) : products.length > 0 ? (
-                    products.map((p) => (
+                ) : filteredProducts.length > 0 ? (
+                    filteredProducts.map((p) => (
                         <div
                             key={p.id || p.uuid}
                             className="px-4 py-2 text-sm hover:bg-blue-50 cursor-pointer transition-colors"

@@ -183,7 +183,7 @@ const QuotationComparison = () => {
                 quotations.forEach(q => {
                     const matchedItem = q.items.find(i => i.product_code === prod.code);
                     if (matchedItem) {
-                        row.push(matchedItem.quoted_rate, matchedItem.amount);
+                        row.push(parseFloat(matchedItem.quoted_rate) === 0 ? "N/A" : matchedItem.quoted_rate, matchedItem.amount);
                     } else {
                         row.push("-", "-");
                     }
@@ -429,7 +429,7 @@ const QuotationComparison = () => {
                                                                     />
                                                                 </div>
                                                                 <div className="font-bold text-slate-900">
-                                                                    ₹ {Number(matchedItem.quoted_rate).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                    {parseFloat(matchedItem.quoted_rate) === 0 ? "N/A" : `₹ ${Number(matchedItem.quoted_rate).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                                                                 </div>
                                                                 <div className="text-xs text-slate-500">
                                                                     x {Number(matchedItem.quantity).toFixed(2)}

@@ -102,7 +102,7 @@ const VendorQuotationDetails = () => {
       currency: currency,
       items: items.map(item => ({
         vendor_item: item.vendor_item_id,
-        quoted_rate: parseFloat(item.quoted_rate) || 0
+        quoted_rate: item.quoted_rate === "" ? 0 : parseFloat(item.quoted_rate)
       }))
     };
 
@@ -110,7 +110,7 @@ const VendorQuotationDetails = () => {
     const schema = z.object({
       items: z.array(z.object({
         vendor_item: z.any(),
-        quoted_rate: z.number().gt(0, "Rate must be greater than 0")
+        quoted_rate: z.number().min(0, "Rate must be 0 or greater").nullable()
       }))
     });
 
@@ -185,7 +185,10 @@ const VendorQuotationDetails = () => {
             <label className="block text-xs font-semibold text-slate-500 mb-1 ml-1">Select Requisition</label>
             <RequisitionSelector
               value={selectedRequisition}
-              onChange={(id) => setSelectedRequisition(id)}
+              onChange={(id) => {
+                setSelectedRequisition(id);
+                setSelectedVendor(null); // Reset vendor when requisition changes
+              }}
               placeholder="Search Requisition..."
             />
           </div>
@@ -194,7 +197,9 @@ const VendorQuotationDetails = () => {
             <VendorSelector
               value={selectedVendor}
               onChange={(id) => setSelectedVendor(id)}
-              placeholder="Search Vendor..."
+              requisitionId={selectedRequisition}
+              disabled={!selectedRequisition}
+              placeholder={selectedRequisition ? "Search Vendor..." : "Select Requisition First"}
             />
           </div>
           <div className="w-full md:w-auto">
@@ -348,9 +353,8 @@ const VendorQuotationDetails = () => {
                             step="0.01"
                             placeholder="0.00"
                             className="w-full text-right px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                            value={item.quoted_rate}
+                            value={item.quoted_rate || ""}
                             onChange={(e) => handleRateChange(idx, e.target.value)}
-                            required
                           />
                         </td>
                         <td className="px-4 py-3 text-right font-bold text-slate-800">

@@ -538,9 +538,10 @@ const Requisition = () => {
                           <FaEye />
                         </button>
                         <button
-                          className="text-blue-600 hover:text-blue-800"
-                          title="Edit"
+                          className={`text-blue-600 hover:text-blue-800 disabled:opacity-30 disabled:cursor-not-allowed`}
+                          title={row.is_assigned ? "Editing Disabled (Assigned)" : "Edit"}
                           onClick={() => handleEdit(row)}
+                          disabled={row.is_assigned}
                         >
                           <FaEdit />
                         </button>

@@ -246,7 +246,7 @@ const RequisitionFlow = ({ requisitionId: propRequisitionId }) => {
                                                                                                 {/* <span className="text-xs text-slate-500 ml-1">{qItem.unit}</span> */}
                                                                                             </td>
                                                                                             <td className="py-1 px-2 text-right align-top text-slate-800">
-                                                                                                ₹ {Number(qItem.quoted_rate).toFixed(2)}
+                                                                                                {parseFloat(qItem.quoted_rate) === 0 ? "N/A" : `₹ ${Number(qItem.quoted_rate).toFixed(2)}`}
                                                                                             </td>
                                                                                             <td className="py-1 px-2 text-right align-top font-semibold text-slate-900">
                                                                                                 ₹ {Number(qItem.amount).toFixed(2)}

@@ -427,7 +427,7 @@ const ClientQuotation = () => {
                                                     }}
                                                     className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                                                     title="Edit Quotation"
-                                                    disabled={item.status !== 'DRAFT'}
+                                                    disabled={item.status === 'ACCEPTED'}
                                                 >
                                                     <FaEdit />
                                                 </button>

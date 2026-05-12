@@ -5,8 +5,12 @@ export const generatePOFromComparison = async (payload) => {
     return res.data;
 };
 
-export const fetchPurchaseOrders = async (page = 1) => {
-    const res = await axiosSecure.get(`/api/purchase-orders?page=${page}`);
+export const fetchPurchaseOrders = async (page = 1, search = "", vendor = "", status = "") => {
+    let url = `/api/purchase-orders?page=${page}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (vendor) url += `&vendor=${vendor}`;
+    if (status) url += `&status=${status}`;
+    const res = await axiosSecure.get(url);
     return res.data;
 };
 

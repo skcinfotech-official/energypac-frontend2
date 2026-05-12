@@ -200,7 +200,7 @@ const VendorQuotationViewModal = ({ open, onClose, quotationId }) => {
                                                     {Number(item.quantity).toFixed(2)} <span className="text-xs text-slate-400">{item.unit}</span>
                                                 </td>
                                                 <td className="px-5 py-3 text-right text-slate-700">
-                                                    ₹ {Number(item.quoted_rate).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    {parseFloat(item.quoted_rate) === 0 ? "N/A" : `₹ ${Number(item.quoted_rate).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                                                 </td>
                                                 <td className="px-5 py-3 text-right font-bold text-slate-900">
                                                     ₹ {Number(item.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -208,7 +208,7 @@ const VendorQuotationViewModal = ({ open, onClose, quotationId }) => {
                                                 {data.currency?.toString().trim().toUpperCase() !== 'INR' && (
                                                     <>
                                                         <td className="px-5 py-3 text-right text-blue-600 bg-blue-50/10">
-                                                            {data.currency?.toString().trim().toUpperCase() === 'USD' ? '$' : '₹'} {Number(item.original_rate || item.original_quoted_rate || item.quoted_rate).toFixed(2)}
+                                                            {parseFloat(item.original_rate || item.original_quoted_rate || item.quoted_rate) === 0 ? "N/A" : `${data.currency?.toString().trim().toUpperCase() === 'USD' ? '$' : '₹'} ${Number(item.original_rate || item.original_quoted_rate || item.quoted_rate).toFixed(2)}`}
                                                         </td>
                                                         <td className="px-5 py-3 text-right font-bold text-blue-700 bg-blue-50/10">
                                                             {data.currency?.toString().trim().toUpperCase() === 'USD' ? '$' : '₹'} {Number(item.original_amount || item.amount).toFixed(2)}

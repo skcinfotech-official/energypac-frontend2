@@ -25,8 +25,10 @@ const PurchaseOrderList = () => {
     const [confirm, setConfirm] = useState({ open: false, action: null });
     const [passwordModal, setPasswordModal] = useState({ open: false, onConfirm: null, loading: false });
 
-    // ✅ Search state
+    // ✅ Search & Filter state
     const [searchText, setSearchText] = useState("");
+    const [vendorFilter, setVendorFilter] = useState("");
+    const [statusFilter, setStatusFilter] = useState("");
 
     /* =========================
        REPORT STATE
@@ -54,7 +56,7 @@ const PurchaseOrderList = () => {
     const loadData = async (pageNum = 1) => {
         setLoading(true);
         try {
-            const res = await fetchPurchaseOrders(pageNum, searchText);
+            const res = await fetchPurchaseOrders(pageNum, searchText, vendorFilter, statusFilter);
             const data = res.data ? res.data : res;
 
             if (data && data.results) {
@@ -92,10 +94,10 @@ const PurchaseOrderList = () => {
        ========================= */
     useEffect(() => {
         const timer = setTimeout(() => {
-            loadData(1); // ✅ always page 1 when search changes
+            loadData(1); // ✅ always page 1 when search or filters change
         }, 500);
         return () => clearTimeout(timer);
-    }, [searchText]);
+    }, [searchText, vendorFilter, statusFilter]);
 
     // Check for view_id query param (deep linking from Dashboard)
     useEffect(() => {
@@ -262,22 +264,53 @@ const PurchaseOrderList = () => {
                     </button>
                 </div>
 
-                {/* ✅ SEARCH BAR */}
+                {/* ✅ SEARCH & FILTERS */}
                 <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
                     <div className="flex flex-wrap gap-4 items-end">
+                        {/* Search */}
                         <div className="flex-1 min-w-55">
                             <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                Search Purchase Order
+                                Search PO 
                             </label>
                             <div className="relative">
                                 <input
                                     value={searchText}
                                     onChange={(e) => setSearchText(e.target.value)}
-                                    placeholder="Search by PO number, vendor..."
+                                    placeholder="Search by PO ..."
                                     className="w-full pl-10 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                                 />
                                 <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                             </div>
+                        </div>
+
+                        {/* Vendor Filter */}
+                        <div className="w-64">
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                Filter by Vendor
+                            </label>
+                            <VendorSelector
+                                value={vendorFilter}
+                                onChange={(val) => setVendorFilter(val)}
+                                placeholder="Select Vendor"
+                            />
+                        </div>
+
+                        {/* Status Filter */}
+                        <div className="w-40">
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                Status
+                            </label>
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                            >
+                                <option value="">All Status</option>
+                                <option value="PENDING">Pending</option>
+                                <option value="PARTIALLY_RECEIVED">Partial</option>
+                                <option value="COMPLETED">Completed</option>
+                                <option value="CANCELLED">Cancelled</option>
+                            </select>
                         </div>
                     </div>
                 </div>

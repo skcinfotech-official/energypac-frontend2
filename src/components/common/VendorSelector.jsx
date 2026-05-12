@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { getVendors } from "../../services/vendorService";
+import { getVendorAssignmentsByRequisition } from "../../services/vendorAssignment";
 import { HiSearch, HiX } from "react-icons/hi";
 
 const VendorSelector = ({
@@ -8,6 +9,8 @@ const VendorSelector = ({
   onChange,
   placeholder = "Search vendor...",
   defaultItem = null,
+  requisitionId = null,
+  disabled = false,
 }) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -57,7 +60,19 @@ const VendorSelector = ({
     const fetchItems = async () => {
       if (vendors.length === 0) setLoading(true);
       try {
-        const res = await getVendors({ search });
+        let res;
+        if (requisitionId) {
+          const assignmentRes = await getVendorAssignmentsByRequisition(requisitionId, search);
+          const assignments = assignmentRes.data.results || assignmentRes.data || [];
+          // Map assignments to vendor objects
+          const assignedVendors = assignments.map(a => ({
+            ...a.vendor_details,
+            id: a.vendor // Use the vendor ID from the assignment
+          }));
+          res = { results: assignedVendors };
+        } else {
+          res = await getVendors({ search });
+        }
         setVendors(res.results || res || []);
       } catch (e) {
         console.error("Failed to load vendors", e);
@@ -72,7 +87,7 @@ const VendorSelector = ({
       const t = setTimeout(fetchItems, 300);
       return () => clearTimeout(t);
     }
-  }, [search, open]);
+  }, [search, open, requisitionId]);
 
   const selected =
     vendors.find((v) => v.id === value) ||
@@ -135,8 +150,8 @@ const VendorSelector = ({
   return (
     <div ref={inputRef} className="relative w-full">
       <div
-        className="input flex items-center justify-between cursor-pointer"
-        onClick={() => setOpen(true)}
+        className={`input flex items-center justify-between ${disabled ? "bg-slate-50 cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+        onClick={() => !disabled && setOpen(true)}
       >
         <span className={selected ? "text-slate-800" : "text-slate-400"}>
           {selected
@@ -144,7 +159,7 @@ const VendorSelector = ({
             : placeholder}
         </span>
 
-        {value && (
+        {value && !disabled && (
           <HiX
             className="text-slate-400 hover:text-slate-600"
             onClick={(e) => {

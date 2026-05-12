@@ -12,6 +12,7 @@ import {
   FaTrophy,
   FaBoxOpen,
   FaList,
+  FaUserShield
 } from "react-icons/fa";
 import { BiImport } from "react-icons/bi";
 import { RiCustomerService2Fill } from "react-icons/ri";
@@ -137,10 +138,9 @@ export default function Sidebar({ isOpen }) {
             ]}
           />
         )}
-
-        {/* {hasPermission("PURCHASE") && (
-          <SidebarLink to="/direct-purchase" label="Direct Purchase" icon={<BiSolidPurchaseTag />} isOpen={isOpen} />
-        )} */}
+        {user?.role === "ADMIN" && (
+          <SidebarLink to="/admin/users" label="Admin Panel" icon={<FaUserShield />} isOpen={isOpen} />
+        )}
       </nav>
 
       {/* FOOTER */}

@@ -8,8 +8,8 @@ export const getVendorAssignments = (page = 1, search = "", vendor = "") =>
 export const createVendorAssignment = (data) =>
   axiosSecure.post("/api/vendor-assignments", data);
 
-export const getVendorAssignmentsByRequisition = (requisitionId) =>
-  axiosSecure.get(`/api/vendor-assignments?requisition=${requisitionId}`);
+export const getVendorAssignmentsByRequisition = (requisitionId, search = "") =>
+  axiosSecure.get(`/api/vendor-assignments?requisition=${requisitionId}&search=${search}`);
 
 export const updateVendorAssignment = (id, data) =>
   axiosSecure.put(`/api/vendor-assignments/${id}`, data);

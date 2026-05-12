@@ -8,6 +8,7 @@ import { getRequisitionItems } from "../../services/requisition";
 import VendorSelector from "../common/VendorSelector";
 import RequisitionSelector from "../common/RequisitionSelector";
 import { HiX, HiInformationCircle } from "react-icons/hi";
+import AlertToast from "../ui/AlertToast";
 
 const VendorAssignmentModal = ({ open, onClose, editData, onSuccess, viewOnly = false }) => {
   const [form, setForm] = useState({
@@ -19,11 +20,12 @@ const VendorAssignmentModal = ({ open, onClose, editData, onSuccess, viewOnly = 
   const [displayData, setDisplayData] = useState(null); // To hold rich data for defaultItems
   const [submitting, setSubmitting] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
-  const [error, setError] = useState("");
+  const [isQuoted, setIsQuoted] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [toast, setToast] = useState({ open: false, type: "error", message: "" });
 
   useEffect(() => {
     const initData = async () => {
-      setError("");
 
       if (editData) {
         // Init display data from props first to show something immediately
@@ -38,6 +40,11 @@ const VendorAssignmentModal = ({ open, onClose, editData, onSuccess, viewOnly = 
             // Update display data for selectors
             setDisplayData(data);
 
+            // Check if quotation exists
+            const hasQuotation = data.quotations && data.quotations.length > 0;
+            setIsQuoted(hasQuotation);
+            setIsCompleted(data.status === "Completed");
+
             // Update form with fresh data
             setForm({
               requisition: data.requisition,
@@ -47,8 +54,6 @@ const VendorAssignmentModal = ({ open, onClose, editData, onSuccess, viewOnly = 
             });
           } catch (err) {
             console.error("Failed to fetch assignment details", err);
-            // Fallback is already set via initial prop read if we want, 
-            // but let's ensure form is set from props if it wasn't already (though we do it below)
           } finally {
             setLoadingData(false);
           }
@@ -76,6 +81,8 @@ const VendorAssignmentModal = ({ open, onClose, editData, onSuccess, viewOnly = 
           remarks: "",
           items: [],
         });
+        setIsQuoted(false);
+        setIsCompleted(false);
       }
     };
 
@@ -109,9 +116,7 @@ const VendorAssignmentModal = ({ open, onClose, editData, onSuccess, viewOnly = 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (viewOnly) return; // double check
-
-    setError("");
+    if (viewOnly || isQuoted || isCompleted) return; // double check
     setSubmitting(true);
 
     const payload = {
@@ -134,8 +139,11 @@ const VendorAssignmentModal = ({ open, onClose, editData, onSuccess, viewOnly = 
       onClose();
     } catch (err) {
       console.error("Submission Error:", err);
-      const errorMsg = err.response?.data?.error || err.response?.data?.detail || err.response?.data?.message || "Failed to save assignment";
-      setError(errorMsg);
+      const data = err.response?.data;
+      const errorMsg = err.response?.status === 400
+        ? (data?.non_field_errors?.[0] || data?.message || data?.error || data?.detail || "Validation error")
+        : (data?.error || data?.detail || data?.message || "Failed to save assignment");
+      setToast({ open: true, type: "error", message: errorMsg });
     } finally {
       setSubmitting(false);
     }
@@ -167,13 +175,13 @@ const VendorAssignmentModal = ({ open, onClose, editData, onSuccess, viewOnly = 
         <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center rounded-t-2xl">
           <div>
             <h2 className="text-xl font-bold text-slate-900">
-              {viewOnly
+              {viewOnly || isQuoted || isCompleted
                 ? "View Assignment"
                 : editData ? "Edit Vendor Assignment" : "Assign Vendor"}
             </h2>
             <p className="text-sm text-slate-500">
-              {viewOnly
-                ? "Viewing assignment details"
+              {viewOnly || isQuoted || isCompleted
+                ? isCompleted ? "Assignment is Completed - View only" : isQuoted ? "Quotation already created - View only" : "Viewing assignment details"
                 : editData
                   ? "Update the vendor assignment details"
                   : "Create a new vendor assignment for a requisition"}
@@ -187,12 +195,19 @@ const VendorAssignmentModal = ({ open, onClose, editData, onSuccess, viewOnly = 
           </button>
         </div>
 
-        {/* Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-3 animate-in slide-in-from-top-2">
-              <HiInformationCircle className="text-xl shrink-0" />
-              <p className="text-sm font-medium">{error}</p>
+
+          {(isQuoted || isCompleted) && !viewOnly && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-xl flex items-center gap-3 animate-in slide-in-from-top-2">
+              <HiInformationCircle className="text-xl shrink-0 text-amber-500" />
+              <div className="text-sm font-medium">
+                <p className="font-bold">Editing Restricted</p>
+                <p>
+                  {isCompleted 
+                    ? "This assignment has been marked as Completed. Changes are no longer permitted."
+                    : "A vendor quotation has already been created for this assignment. Changes are no longer permitted."}
+                </p>
+              </div>
             </div>
           )}
 
@@ -207,7 +222,7 @@ const VendorAssignmentModal = ({ open, onClose, editData, onSuccess, viewOnly = 
                 <RequisitionSelector
                   value={form.requisition}
                   onChange={(val) => handleRequisitionChange(val)}
-                  disabled={!!editData || viewOnly}
+                  disabled={!!editData || viewOnly || isQuoted || isCompleted}
                   defaultItem={defaultRequisitionItem}
                   placeholder="Select a requisition..."
                 />
@@ -215,7 +230,7 @@ const VendorAssignmentModal = ({ open, onClose, editData, onSuccess, viewOnly = 
 
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-slate-700">Vendor</label>
-                {!viewOnly ? (
+                {!(viewOnly || isQuoted || isCompleted) ? (
                   <VendorSelector
                     value={form.vendor}
                     onChange={(val) => setForm({ ...form, vendor: val })}
@@ -243,8 +258,8 @@ const VendorAssignmentModal = ({ open, onClose, editData, onSuccess, viewOnly = 
                   onChange={(e) =>
                     setForm({ ...form, remarks: e.target.value })
                   }
-                  readOnly={viewOnly}
-                  disabled={viewOnly}
+                  readOnly={viewOnly || isQuoted || isCompleted}
+                  disabled={viewOnly || isQuoted || isCompleted}
                 />
               </div>
 
@@ -293,9 +308,9 @@ const VendorAssignmentModal = ({ open, onClose, editData, onSuccess, viewOnly = 
             className="bg-white hover:bg-slate-100 text-slate-700 font-bold py-2 px-4 rounded-lg border border-slate-300"
             onClick={onClose}
           >
-            {viewOnly ? "Close" : "Cancel"}
+            {viewOnly || isQuoted || isCompleted ? "Close" : "Cancel"}
           </button>
-          {!viewOnly && (
+          {!(viewOnly || isQuoted || isCompleted) && (
             <button
               onClick={handleSubmit}
               className="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2 rounded-lg min-w-25"
@@ -312,6 +327,12 @@ const VendorAssignmentModal = ({ open, onClose, editData, onSuccess, viewOnly = 
             </button>
           )}
         </div>
+        <AlertToast
+          open={toast.open}
+          type={toast.type}
+          message={toast.message}
+          onClose={() => setToast({ ...toast, open: false })}
+        />
       </div>
     </div>
   );

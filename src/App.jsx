@@ -32,8 +32,16 @@ import FinancePOList from "./Pages/FinancePOList.jsx";
 import FinanceDashboard from "./Pages/FinanceDashboard.jsx";
 import ManageUsers from "./Pages/ManageUsers.jsx";
 import ExchangeRates from "./Pages/ExchangeRates.jsx";
+import { useAuth } from "./context/AuthContext";
 
 
+const HomeRedirect = () => {
+  const { user } = useAuth();
+  if (user?.role === "ADMIN") {
+    return <Navigate to="/admin/users" replace />;
+  }
+  return <Dashboard />;
+};
 
 
 export default function App() {
@@ -47,7 +55,7 @@ export default function App() {
 
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/" element={<HomeRedirect />} />
               <Route path="/master/item" element={<Products />} />
               <Route path="/master/vendor" element={<Vendor />} />
               <Route path="/sales/dashboard" element={<SalesDashboard />} />

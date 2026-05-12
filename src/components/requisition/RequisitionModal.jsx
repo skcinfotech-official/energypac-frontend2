@@ -5,7 +5,8 @@ import {
   getRequisition,
 } from "../../services/requisition";
 import ProductSelector from "../common/ProductSelector";
-import { HiPlus, HiTrash, HiX, HiInformationCircle } from "react-icons/hi";
+import { HiPlus, HiTrash, HiX } from "react-icons/hi";
+import AlertToast from "../ui/AlertToast";
 
 const emptyItem = {
   product: "",
@@ -22,7 +23,7 @@ const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false
     items: [{ ...emptyItem }],
   });
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const [toast, setToast] = useState({ open: false, type: "error", message: "" });
   const [isAssigned, setIsAssigned] = useState(false);
 
   useEffect(() => {
@@ -145,11 +146,10 @@ const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
 
     // Basic validation
     if (form.items.some(item => !item.product || !item.quantity)) {
-      setError("Please select a product and specify quantity for all items.");
+      setToast({ open: true, type: "error", message: "Please select a product and specify quantity for all items." });
       return;
     }
 
@@ -176,7 +176,7 @@ const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false
     } catch (err) {
       console.error("Submission Error:", err);
       const detail = err.response?.data?.error || err.response?.data?.detail || err.response?.data?.message || err.message || "Failed to save requisition";
-      setError(`Error: ${detail}. Please try again.`);
+      setToast({ open: true, type: "error", message: `Error: ${detail}. Please try again.` });
     } finally {
       setSubmitting(false);
     }
@@ -221,14 +221,7 @@ const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false
           </div>
         </div>
 
-        {/* MODAL BODY */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-3 animate-in slide-in-from-top-2">
-              <HiInformationCircle className="text-xl shrink-0" />
-              <p className="text-sm font-medium">{error}</p>
-            </div>
-          )}
 
           {/* MASTER DATA */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-slate-100">
@@ -294,6 +287,7 @@ const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false
                       <ProductSelector
                         value={item.product}
                         defaultItem={item.product_name ? { item_name: item.product_name, item_code: item.product_code, id: item.product } : null}
+                        excludeIds={form.items.filter((_, idx) => idx !== i).map(it => it.product)}
                         onChange={(val, productObj) => {
                           if (productObj) {
                             updateItem(i, {
@@ -392,6 +386,12 @@ const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false
             </button>
           )}
         </div>
+        <AlertToast
+          open={toast.open}
+          type={toast.type}
+          message={toast.message}
+          onClose={() => setToast({ ...toast, open: false })}
+        />
       </div>
     </div>
   );

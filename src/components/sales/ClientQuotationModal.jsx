@@ -448,6 +448,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, quotation = null }) 
                                                         <div className="w-full">
                                                             <ProductSelector
                                                                 value={item.product}
+                                                                excludeIds={items.filter((_, idx) => idx !== index).map(it => it.product)}
                                                                 onChange={(val, productInfo) => {
                                                                     const newItems = [...items];
                                                                     newItems[index] = {

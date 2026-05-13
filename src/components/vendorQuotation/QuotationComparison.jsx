@@ -416,18 +416,20 @@ const QuotationComparison = () => {
                                                     <td key={`cell-${qIdx}`} className="px-4 py-3 border-r border-slate-300 align-top text-right">
                                                         {matchedItem ? (
                                                             <div className="flex flex-col items-end gap-1">
-                                                                <div className="flex items-center gap-2 mb-1 w-full justify-end">
-                                                                    <div className="text-xs text-slate-400 font-mono hidden group-hover:block">
-                                                                        Select
+                                                                {parseFloat(matchedItem.quoted_rate) !== 0 && (
+                                                                    <div className="flex items-center gap-2 mb-1 w-full justify-end">
+                                                                        <div className="text-xs text-slate-400 font-mono hidden group-hover:block">
+                                                                            Select
+                                                                        </div>
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            name={`product-${product.code}`}
+                                                                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                                                                            checked={selectedItems[product.code] === matchedItem.id}
+                                                                            onChange={() => handleItemSelect(product.code, matchedItem.id)}
+                                                                        />
                                                                     </div>
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        name={`product-${product.code}`}
-                                                                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-                                                                        checked={selectedItems[product.code] === matchedItem.id}
-                                                                        onChange={() => handleItemSelect(product.code, matchedItem.id)}
-                                                                    />
-                                                                </div>
+                                                                )}
                                                                 <div className="font-bold text-slate-900">
                                                                     {parseFloat(matchedItem.quoted_rate) === 0 ? "N/A" : `₹ ${Number(matchedItem.quoted_rate).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                                                                 </div>

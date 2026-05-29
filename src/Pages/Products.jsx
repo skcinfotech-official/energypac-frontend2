@@ -6,7 +6,7 @@ import ProductViewModal from "../components/products/ProductViewModal";
 import BulkProductModal from "../components/products/BulkProductModal";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import AlertToast from "../components/ui/AlertToast";
-import { getProducts, deleteProduct, getProduct, getInventoryReport, getLowStockProducts } from "../services/productService";
+import { getProducts, deleteProduct, getProduct, getStockReport, getMovementReport, getLowStockProducts } from "../services/productService";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { FaPlus, FaEdit, FaTrash, FaEye, FaFileExcel, FaFileUpload } from "react-icons/fa";
@@ -41,6 +41,7 @@ export default function Products() {
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [passwordModal, setPasswordModal] = useState({ open: false, onConfirm: null, loading: false });
 
+    
     // View Modal State
     const [viewModalOpen, setViewModalOpen] = useState(false);
     const [viewProduct, setViewProduct] = useState(null);
@@ -51,7 +52,7 @@ export default function Products() {
        ========================= */
     const [showReportModal, setShowReportModal] = useState(false);
     const [showBulkModal, setShowBulkModal] = useState(false);
-    const [reportType, setReportType] = useState("current"); // current, low, out
+    const [reportType, setReportType] = useState("stock"); // stock, movement
     const [downloading, setDownloading] = useState(false);
 
     const [toast, setToast] = useState({
@@ -212,66 +213,115 @@ export default function Products() {
     const handleDownloadReport = async () => {
         setDownloading(true);
         try {
-            let statusParam = "";
-            let reportTitle = "Inventory Stock Report";
+            const wb = XLSX.utils.book_new();
+            let finalSheetData = [];
+            let sheetName = "";
+            let filePrefix = "";
 
-            if (reportType === "low") {
-                statusParam = "low_stock";
-                reportTitle = "Low Stock Report";
-            } else if (reportType === "out") {
-                statusParam = "out_of_stock";
-                reportTitle = "Out of Stock Report";
+            if (reportType === "stock") {
+                const res = await getStockReport();
+                const data = res.data;
+                if (!data) throw new Error("No data received from API");
+
+                const productsList = data.products || [];
+                sheetName = "Stock Report";
+                filePrefix = "Inventory_Stock_Report";
+
+                finalSheetData = [
+                    [data.report_type || "INVENTORY STOCK REPORT"],
+                    ["Purpose:", "Stock Report"],
+                    ["Generated At:", data.generated_at ? new Date(data.generated_at).toLocaleString() : new Date().toLocaleString()],
+                    [],
+                    ["OVERALL SUMMARY"],
+                    ["Total Products:", data.summary?.total_products || 0],
+                    ["Total Value:", data.summary?.total_inventory_value || 0],
+                    ["Healthy Stock:", data.summary?.healthy_stock || 0],
+                    ["Low Stock:", data.summary?.low_stock || 0],
+                    ["Out of Stock:", data.summary?.out_of_stock || 0],
+                    [],
+                    ["Item Code", "Item Name", "Current Stock", "Reorder Level", "Unit", "Rate", "Stock Value", "Status", "HSN Code"]
+                ];
+
+                productsList.forEach(p => {
+                    let status = p.stock_status || "Healthy";
+                    if (p.current_stock <= 0) status = "Out of Stock";
+                    else if (p.current_stock <= p.reorder_level) status = "Low Stock";
+
+                    finalSheetData.push([
+                        p.item_code,
+                        p.item_name,
+                        p.current_stock,
+                        p.reorder_level,
+                        p.unit,
+                        p.rate,
+                        p.stock_value,
+                        status,
+                        p.hsn_code
+                    ]);
+                });
             } else {
-                reportTitle = "Current Stock Report";
+                const res = await getMovementReport();
+                const data = res.data;
+                if (!data) throw new Error("No data received from API");
+
+                sheetName = "Movement Report";
+                filePrefix = "Inventory_Movement_Report";
+
+                let movementsList = [];
+                if (Array.isArray(data)) {
+                    movementsList = data;
+                } else if (data && typeof data === "object") {
+                    const arrayKey = Object.keys(data).find(key => Array.isArray(data[key]));
+                    if (arrayKey) {
+                        movementsList = data[arrayKey];
+                    } else {
+                        movementsList = [data];
+                    }
+                }
+
+                const headers = [];
+                const keys = [];
+
+                if (movementsList.length > 0) {
+                    Object.keys(movementsList[0]).forEach(key => {
+                        const formattedHeader = key
+                            .split("_")
+                            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                            .join(" ");
+                        headers.push(formattedHeader);
+                        keys.push(key);
+                    });
+                } else {
+                    headers.push("Message");
+                    keys.push("msg");
+                    movementsList = [{ msg: "No movement records found" }];
+                }
+
+                finalSheetData = [
+                    [data.report_type || "INVENTORY MOVEMENT REPORT"],
+                    ["Purpose:", "Movement Report"],
+                    ["Generated At:", data.generated_at ? new Date(data.generated_at).toLocaleString() : new Date().toLocaleString()],
+                    [],
+                    headers
+                ];
+
+                movementsList.forEach(item => {
+                    const row = keys.map(key => {
+                        const val = item[key];
+                        if (val === null || val === undefined) return "-";
+                        if (typeof val === "object") return JSON.stringify(val);
+                        return val;
+                    });
+                    finalSheetData.push(row);
+                });
             }
 
-            const res = await getInventoryReport(statusParam);
-            const data = res.data;
-            if (!data) throw new Error("No data received from API");
-
-            let filteredProducts = data.products || [];
-
-            const wb = XLSX.utils.book_new();
-
-            const finalSheetData = [
-                [data.report_type || "INVENTORY REPORT"],
-                ["Purpose:", reportTitle],
-                ["Generated At:", data.generated_at ? new Date(data.generated_at).toLocaleString() : new Date().toLocaleString()],
-                [],
-                ["OVERALL SUMMARY"],
-                ["Total Products:", data.summary?.total_products || 0],
-                ["Total Value:", data.summary?.total_inventory_value || 0],
-                ["Healthy Stock:", data.summary?.healthy_stock || 0],
-                ["Low Stock:", data.summary?.low_stock || 0],
-                ["Out of Stock:", data.summary?.out_of_stock || 0],
-                [],
-                ["Item Code", "Item Name", "Current Stock", "Reorder Level", "Unit", "Rate", "Stock Value", "Status", "HSN Code"]
-            ];
-
-            filteredProducts.forEach(p => {
-                let status = p.stock_status || "Healthy";
-                if (p.current_stock <= 0) status = "Out of Stock";
-                else if (p.current_stock <= p.reorder_level) status = "Low Stock";
-
-                finalSheetData.push([
-                    p.item_code,
-                    p.item_name,
-                    p.current_stock,
-                    p.reorder_level,
-                    p.unit,
-                    p.rate,
-                    p.stock_value,
-                    status,
-                    p.hsn_code
-                ]);
-            });
-
             const worksheet = XLSX.utils.aoa_to_sheet(finalSheetData);
-            XLSX.utils.book_append_sheet(wb, worksheet, "Stock Report");
+            XLSX.utils.book_append_sheet(wb, worksheet, sheetName);
 
             const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
             const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
-            saveAs(blob, `Inventory_${reportType}_${new Date().toISOString().split('T')[0]}.xlsx`);
+            saveAs(blob, `${filePrefix}_${new Date().toISOString().split('T')[0]}.xlsx`);
 
             setShowReportModal(false);
             setToast({ open: true, type: "success", message: "Report downloaded successfully" });
@@ -379,9 +429,8 @@ export default function Products() {
                                 <th className="px-6 py-4 text-[12px] min-w-50">Description</th>
                                 <th className="px-6 py-4 text-[12px] whitespace-nowrap">HSN</th>
                                 <th className="px-6 py-4 text-[12px] whitespace-nowrap">Unit</th>
-                                <th className="px-6 py-4 text-[12px] text-right whitespace-nowrap">Stock</th>
-                                <th className="px-6 py-4 text-[12px] text-right whitespace-nowrap">Reorder</th>
                                 <th className="px-6 py-4 text-[12px] text-right whitespace-nowrap">Rate</th>
+                                <th className="px-6 py-4 text-[12px] whitespace-nowrap">Requisition Number</th>
                                 <th className="px-6 py-4 text-[12px] text-center whitespace-nowrap">Action</th>
                             </tr>
                         </thead>
@@ -389,7 +438,7 @@ export default function Products() {
                         <tbody className="divide-y divide-slate-100">
                             {loading && (
                                 <tr>
-                                    <td colSpan="9" className="px-6 py-6 text-center text-slate-500">
+                                    <td colSpan="8" className="px-6 py-6 text-center text-slate-500">
                                         Loading products...
                                     </td>
                                 </tr>
@@ -397,7 +446,7 @@ export default function Products() {
 
                             {!loading && products.length === 0 && (
                                 <tr>
-                                    <td colSpan="9" className="px-6 py-6 text-center text-slate-500">
+                                    <td colSpan="8" className="px-6 py-6 text-center text-slate-500">
                                         No products found
                                     </td>
                                 </tr>
@@ -423,14 +472,11 @@ export default function Products() {
                                     <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
                                         {item.unit}
                                     </td>
-                                    <td className="px-6 py-4 text-right font-medium text-slate-800 whitespace-nowrap">
-                                        {item.current_stock}
-                                    </td>
-                                    <td className="px-6 py-4 text-right font-medium text-slate-800 whitespace-nowrap">
-                                        {item.reorder_level}
-                                    </td>
                                     <td className="px-6 py-4 text-right font-bold text-slate-900 whitespace-nowrap">
                                         ₹{item.rate}
+                                    </td>
+                                    <td className="px-6 py-4 text-slate-700 whitespace-nowrap font-mono">
+                                        {item.requisition_number || "-"}
                                     </td>
 
                                     {/* ACTIONS */}
@@ -548,43 +594,31 @@ export default function Products() {
                             </h3>
                         </div>
                         <div className="p-6 space-y-4">
-                            <p className="text-sm text-slate-600 font-medium">Choose Purpose:</p>
+                            <p className="text-sm text-slate-600 font-medium">Choose Report Type:</p>
 
                             <div className="space-y-3">
                                 <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition">
                                     <input
                                         type="radio"
                                         name="reportType"
-                                        value="current"
-                                        checked={reportType === "current"}
+                                        value="stock"
+                                        checked={reportType === "stock"}
                                         onChange={(e) => setReportType(e.target.value)}
                                         className="text-blue-600 focus:ring-blue-500"
                                     />
-                                    <span className="text-sm font-semibold text-slate-700">Current Stock Product</span>
+                                    <span className="text-sm font-semibold text-slate-700">Stock Report</span>
                                 </label>
 
                                 <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition">
                                     <input
                                         type="radio"
                                         name="reportType"
-                                        value="low"
-                                        checked={reportType === "low"}
+                                        value="movement"
+                                        checked={reportType === "movement"}
                                         onChange={(e) => setReportType(e.target.value)}
                                         className="text-amber-500 focus:ring-amber-500"
                                     />
-                                    <span className="text-sm font-semibold text-slate-700">Low Stock Product</span>
-                                </label>
-
-                                <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition">
-                                    <input
-                                        type="radio"
-                                        name="reportType"
-                                        value="out"
-                                        checked={reportType === "out"}
-                                        onChange={(e) => setReportType(e.target.value)}
-                                        className="text-red-500 focus:ring-red-500"
-                                    />
-                                    <span className="text-sm font-semibold text-slate-700">Out of Stock Product</span>
+                                    <span className="text-sm font-semibold text-slate-700">Movement Report</span>
                                 </label>
                             </div>
                         </div>

@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { getWorkOrders } from "../../services/salesService";
+import { getProformaInvoices, getProformaInvoiceById } from "../../services/salesService";
 import { HiSearch, HiX } from "react-icons/hi";
 
-const WorkOrderSelector = ({ value, onChange, placeholder = "Search work order...", defaultItem = null, status = "ACTIVE" }) => {
+const WorkOrderSelector = ({ value, onChange, placeholder = "Search proforma invoice...", defaultItem = null, status = "ACTIVE" }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [workOrders, setWorkOrders] = useState([]);
@@ -65,16 +65,54 @@ const WorkOrderSelector = ({ value, onChange, placeholder = "Search work order..
     }, [isOpen]);
 
     useEffect(() => {
+        if (!value) return;
+        const found = workOrders.find((w) => String(w.id) === String(value) || w.uuid === value);
+        if (found) return;
+
+        const fetchSingle = async () => {
+            try {
+                const res = await getProformaInvoiceById(value);
+                if (res) {
+                    const mapped = {
+                        ...res,
+                        wo_number: res.pi_number,
+                        pi_number: res.pi_number,
+                        client_name: res.applicant_importer,
+                        applicant_importer: res.applicant_importer,
+                        total_amount: res.grand_total,
+                        grand_total: res.grand_total
+                    };
+                    setWorkOrders(prev => {
+                        const exists = prev.some(w => String(w.id) === String(mapped.id) || w.uuid === mapped.uuid);
+                        return exists ? prev : [...prev, mapped];
+                    });
+                }
+            } catch (err) {
+                console.error("Failed to fetch selected proforma invoice:", err);
+            }
+        };
+        fetchSingle();
+    }, [value]);
+
+    useEffect(() => {
         if (!isOpen) return;
         const fetchItems = async () => {
             if (workOrders.length === 0) setLoading(true);
             try {
-                // We use search if present, otherwise just fetch active
-                const res = await getWorkOrders(1, search, status);
-                const data = res.results || res.data || [];
-                setWorkOrders(Array.isArray(data) ? data : []);
+                const res = await getProformaInvoices(1, search);
+                const rawData = res.results || res.data || [];
+                const data = (Array.isArray(rawData) ? rawData : []).map(w => ({
+                    ...w,
+                    wo_number: w.pi_number,
+                    pi_number: w.pi_number,
+                    client_name: w.applicant_importer,
+                    applicant_importer: w.applicant_importer,
+                    total_amount: w.grand_total,
+                    grand_total: w.grand_total
+                }));
+                setWorkOrders(data);
             } catch (err) {
-                console.error("Failed to fetch work orders:", err);
+                console.error("Failed to fetch proforma invoices:", err);
             } finally {
                 setLoading(false);
             }
@@ -86,7 +124,7 @@ const WorkOrderSelector = ({ value, onChange, placeholder = "Search work order..
             const timeoutId = setTimeout(fetchItems, 300);
             return () => clearTimeout(timeoutId);
         }
-    }, [search, isOpen, status]);
+    }, [search, isOpen]);
 
     const findWO = (id) => {
         return workOrders.find((w) => String(w.id) === String(id) || w.uuid === id);
@@ -136,12 +174,15 @@ const WorkOrderSelector = ({ value, onChange, placeholder = "Search work order..
                             <div className="font-medium text-slate-900">{w.wo_number}</div>
                             <div className="text-xs text-slate-500 flex items-center justify-between mt-0.5">
                                 <span>{w.client_name}</span>
-                                <span className="font-mono text-blue-600 font-semibold">₹{w.total_amount}</span>
+                                <span className="font-mono text-blue-600 font-semibold">
+                                    {w.currency === 'USD' ? '$' : (w.currency === 'EUR' ? '€' : '₹')}
+                                    {Number(w.total_amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                                </span>
                             </div>
                         </div>
                     ))
                 ) : (
-                    <div className="px-4 py-3 text-sm text-slate-500 text-center">No work orders found</div>
+                    <div className="px-4 py-3 text-sm text-slate-500 text-center">No proforma invoices found</div>
                 )}
             </div>
         </div>

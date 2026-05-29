@@ -270,7 +270,7 @@ const VendorAssignmentModal = ({ open, onClose, editData, onSuccess, viewOnly = 
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50 text-slate-700 font-semibold uppercase text-xs tracking-wider">
                       <tr>
-                        <th className="px-4 py-3 text-left">Product</th>
+                        <th className="px-4 py-3 text-left">Product</th>              
                         <th className="px-4 py-3 text-left">Unit</th>
                         <th className="px-4 py-3 text-left">Qty</th>
                       </tr>

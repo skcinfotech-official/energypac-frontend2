@@ -41,20 +41,44 @@ export const updateQuotation = async (id, data) => {
 };
 
 export const getVendorQuotationsList = async (url = null, requisitionId = null, vendorId = null) => {
-  const params = {};
-  // Only add params if URL is not provided (filters apply to base endpoint)
-  if (!url) {
-    if (requisitionId) params.requisition = requisitionId;
-    if (vendorId) params.vendor = vendorId;
+  if (url) {
+    const res = await axiosSecure.get(url);
+    return {
+      results: res.data.results || [],
+      count: res.data.count || 0,
+      next: res.data.next || null,
+      previous: res.data.previous || null,
+    };
   }
 
-  const endpoint = "/api/vendor-quotations";
-  const res = await axiosSecure.get(url || endpoint, { params });
+  let endpoint = "/api/vendor-quotations";
+  const params = {};
+
+  if (requisitionId && vendorId) {
+    endpoint = "/api/vendor-quotations/by_requisition_vendor";
+    params.requisition = requisitionId;
+    params.vendor = vendorId;
+  } else if (requisitionId) {
+    endpoint = "/api/vendor-quotations/by_requisition";
+    params.requisition = requisitionId;
+  } else if (vendorId) {
+    endpoint = "/api/vendor-quotations/by_vendor";
+    params.vendor = vendorId;
+  }
+
+  const res = await axiosSecure.get(endpoint, { params });
+  
+  // Supporting paginated results as well as raw lists returned by custom detail actions
+  const results = res.data.results || (Array.isArray(res.data) ? res.data : (res.data ? [res.data] : []));
+  const count = res.data.count !== undefined ? res.data.count : results.length;
+  const next = res.data.next || null;
+  const previous = res.data.previous || null;
+
   return {
-    results: res.data.results || [],
-    count: res.data.count || 0,
-    next: res.data.next || null,
-    previous: res.data.previous || null,
+    results,
+    count,
+    next,
+    previous,
   };
 };
 

@@ -75,11 +75,19 @@ const FinancePOList = () => {
 
 
     const formatCurrency = (amount, curr = 'INR') => {
-        return Number(amount || 0).toLocaleString('en-IN', {
-            style: 'currency',
-            currency: curr === 'USD' ? 'USD' : 'INR',
-            maximumFractionDigits: 2
-        }).replace('US$', '$');
+        const c = curr?.toString().trim().toUpperCase() || 'INR';
+        try {
+            return Number(amount || 0).toLocaleString('en-IN', {
+                style: 'currency',
+                currency: c,
+                maximumFractionDigits: 2
+            }).replace('US$', '$');
+        } catch (e) {
+            return `${c} ${Number(amount || 0).toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            })}`;
+        }
     };
 
     const getStatusStyle = (status) => {
@@ -92,6 +100,7 @@ const FinancePOList = () => {
         }
     };
 
+    
     return (
         <>
             <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
@@ -218,7 +227,7 @@ const FinancePOList = () => {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="text-sm font-bold text-slate-800">
-                                                {formatCurrency(po.total_amount)}
+                                                {formatCurrency(po.total_amount, po.currency)}
                                             </div>
                                             {po.currency && po.currency !== 'INR' && (
                                                 <div className="text-[10px] text-blue-600 font-bold">
@@ -231,7 +240,7 @@ const FinancePOList = () => {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="text-sm font-bold text-emerald-600">
-                                                {formatCurrency(po.amount_paid)}
+                                                {formatCurrency(po.amount_paid, po.currency)}
                                             </div>
                                             {po.currency && po.currency !== 'INR' && (
                                                 <div className="text-[10px] text-emerald-500 font-bold">
@@ -244,7 +253,7 @@ const FinancePOList = () => {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className={`text-sm font-bold ${po.balance > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                                                {formatCurrency(po.balance)}
+                                                {formatCurrency(po.balance, po.currency)}
                                             </div>
                                             {po.currency && po.currency !== 'INR' && (
                                                 <div className={`text-[10px] font-bold ${po.balance > 0 ? 'text-red-400' : 'text-emerald-400'}`}>

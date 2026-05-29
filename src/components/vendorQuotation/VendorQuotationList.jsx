@@ -1,17 +1,42 @@
 import { useEffect, useState } from "react";
 import { getVendorQuotationsList } from "../../services/vendorQuotationService";
-import { FaEye, FaSearch, FaFileInvoiceDollar, FaEdit } from "react-icons/fa";
+import { FaEye, FaSearch, FaFileInvoiceDollar, FaEdit, FaPlus } from "react-icons/fa";
 import VendorQuotationViewModal from "./VendorQuotationViewModal";
 import VendorQuotationEditModal from "./VendorQuotationEditModal";
 import AlertToast from "../ui/AlertToast";
+import RequisitionSelector from "../common/RequisitionSelector";
+import VendorSelector from "../common/VendorSelector";
 
-const VendorQuotationList = ({ initialViewId }) => {
+const getCurrencySymbol = (currencyCode) => {
+    switch (currencyCode?.toString().toUpperCase()) {
+        case "USD": return "$";
+        case "INR": return "₹";
+        case "EUR": return "€";
+        case "GBP": return "£";
+        case "JPY": return "¥";
+        case "CAD": return "C$";
+        case "AUD": return "A$";
+        default: return currencyCode || "₹";
+    }
+};
+
+const formatAmount = (amount, currencyCode) => {
+    const num = Number(amount) || 0;
+    const locale = currencyCode?.toString().toUpperCase() === "INR" ? "en-IN" : "en-US";
+    return num.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const VendorQuotationList = ({ initialViewId, onNewQuotation }) => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [count, setCount] = useState(0);
     const [next, setNext] = useState(null);
     const [previous, setPrevious] = useState(null);
     const [toast, setToast] = useState({ open: false, type: "success", message: "" });
+
+    // Filter States
+    const [selectedRequisition, setSelectedRequisition] = useState(null);
+    const [selectedVendor, setSelectedVendor] = useState(null);
 
     // View Modal State
     const [viewId, setViewId] = useState(null);
@@ -21,11 +46,11 @@ const VendorQuotationList = ({ initialViewId }) => {
     const [editId, setEditId] = useState(null);
     const [openEdit, setOpenEdit] = useState(false);
 
-    const loadData = async (url = null) => {
+    const loadData = async (url = null, reqId = selectedRequisition, vendId = selectedVendor) => {
         setLoading(true);
         try {
-            // Fetch all quotations (paginated)
-            const res = await getVendorQuotationsList(url);
+            // Fetch quotations matching the conditional filters
+            const res = await getVendorQuotationsList(url, reqId, vendId);
             setData(res.results || []);
             setCount(res.count || 0);
             setNext(res.next);
@@ -38,9 +63,10 @@ const VendorQuotationList = ({ initialViewId }) => {
         }
     };
 
+    // Reload list when requisition or vendor filters change
     useEffect(() => {
-        loadData();
-    }, []);
+        loadData(null, selectedRequisition, selectedVendor);
+    }, [selectedRequisition, selectedVendor]);
 
     useEffect(() => {
         if (initialViewId) {
@@ -66,22 +92,61 @@ const VendorQuotationList = ({ initialViewId }) => {
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
 
-            {/* HEADER / TOOLBAR */}
-            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <FaFileInvoiceDollar className="text-blue-600" />
-                    All Quotations <span className="text-sm font-normal text-slate-500">({count})</span>
-                </h3>
-                <button
-                    onClick={() => loadData()}
-                    className="text-sm text-blue-600 font-semibold hover:underline"
-                >
-                    Refresh
-                </button>
-            </div>
-
-            {/* TABLE */}
             <div className="bg-white border border-slate-300 rounded-xl shadow-sm overflow-hidden">
+                {/* HEADER / TOOLBAR */}
+                <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <div>
+                        <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                            <FaFileInvoiceDollar className="text-blue-600" />
+                            Vendor Quotations
+                        </h3>
+                        <span className="text-xs text-slate-400 font-bold uppercase">
+                            Total: {count}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => loadData()}
+                            className="text-xs bg-white text-slate-700 hover:text-blue-600 font-bold px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm transition"
+                        >
+                            Refresh
+                        </button>
+                        <button
+                            onClick={onNewQuotation}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg shadow-sm transition-all active:scale-95"
+                        >
+                            <FaPlus className="text-xs" />
+                            New Quotation
+                        </button>
+                    </div>
+                </div>
+
+                {/* SEARCH & FILTER */}
+                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="relative z-30">
+                            <label className="block text-xs font-semibold text-slate-600 mb-1 ml-1">
+                                Filter by Requisition
+                            </label>
+                            <RequisitionSelector
+                                value={selectedRequisition}
+                                onChange={(id) => setSelectedRequisition(id)}
+                                placeholder="All Requisitions"
+                            />
+                        </div>
+                        <div className="relative z-20">
+                            <label className="block text-xs font-semibold text-slate-600 mb-1 ml-1">
+                                Filter by Vendor
+                            </label>
+                            <VendorSelector
+                                value={selectedVendor}
+                                onChange={(id) => setSelectedVendor(id)}
+                                placeholder="All Vendors"
+                            />
+                        </div>
+                    </div>
+                </div>
+
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-300 uppercase text-xs tracking-wider">
@@ -128,7 +193,7 @@ const VendorQuotationList = ({ initialViewId }) => {
                                             {row.quotation_date}
                                         </td>
                                         <td className="px-4 py-2 text-right font-bold text-slate-900">
-                                            ₹ {Number(row.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            {getCurrencySymbol(row.currency)} {formatAmount(row.total_amount, row.currency)}
                                         </td>
                                         <td className="px-4 py-2 text-center">
                                             <span className="bg-slate-100 text-slate-700 px-2 py-1 rounded text-sm font-bold border border-slate-200">

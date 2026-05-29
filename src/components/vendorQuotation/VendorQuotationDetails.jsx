@@ -1,21 +1,28 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { z } from "zod";
 import { getQuotationItems, createQuotation } from "../../services/vendorQuotationService";
-import { exchangeRateService } from "../../services/exchangeRateService";
+import { getCurrencies } from "../../services/currencyService";
 import RequisitionSelector from "../common/RequisitionSelector";
 import VendorSelector from "../common/VendorSelector";
-import { FaFileInvoiceDollar, FaUserTie, FaBoxOpen, FaClipboardList, FaCheckCircle, FaSearch, FaSave } from "react-icons/fa";
-import { HiRefresh } from "react-icons/hi";
+import { FaFileInvoiceDollar, FaUserTie, FaBoxOpen, FaClipboardList, FaSearch, FaSave, FaTimes, FaGlobe } from "react-icons/fa";
 import AlertToast from "../ui/AlertToast";
 
-const VendorQuotationDetails = () => {
+const VendorQuotationDetails = ({ open, onClose, onSuccess }) => {
+  const modalRef = useRef(null);
+  
   // State for the loaded context (header info)
   const [contextData, setContextData] = useState(null);
   // State for items (editable)
   const [items, setItems] = useState([]);
   const [currency, setCurrency] = useState("INR");
-  const [exchangeRate, setExchangeRate] = useState(1.0);
-  const [rateLoading, setRateLoading] = useState(false);
+  const [currencies, setCurrencies] = useState([]);
+
+  // New Required Quotation Fields
+  const [referenceNumber, setReferenceNumber] = useState("");
+  const [validityDate, setValidityDate] = useState("");
+  const [paymentTerms, setPaymentTerms] = useState("");
+  const [deliveryTerms, setDeliveryTerms] = useState("");
+  const [remarks, setRemarks] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -26,29 +33,61 @@ const VendorQuotationDetails = () => {
   const [selectedRequisition, setSelectedRequisition] = useState(null);
   const [selectedVendor, setSelectedVendor] = useState(null);
 
-  const loadExchangeRate = async () => {
-    setRateLoading(true);
-    try {
-      const data = await exchangeRateService.getCurrentRate();
-      setExchangeRate(data.rate);
-    } catch (err) {
-      console.error(err);
-      setToast({ open: true, type: "error", message: "Failed to fetch exchange rate" });
-    } finally {
-      setRateLoading(false);
+  // Load active currencies from database
+  useEffect(() => {
+    if (open) {
+      getCurrencies({ isActive: true }).then((res) => {
+        const results = res.data?.results || res.results || res.data || [];
+        setCurrencies(results);
+        if (results.length > 0) {
+          // Default to INR or first active currency
+          const inr = results.find((c) => c.code === "INR");
+          setCurrency(inr ? "INR" : results[0].code);
+        }
+      }).catch((err) => {
+        console.error("Failed to load currencies", err);
+      });
+    }
+  }, [open]);
+
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (open) {
+      setContextData(null);
+      setItems([]);
+      setHasSearched(false);
+      setSelectedRequisition(null);
+      setSelectedVendor(null);
+      setReferenceNumber("");
+      setValidityDate("");
+      setPaymentTerms("");
+      setDeliveryTerms("");
+      setRemarks("");
+    }
+  }, [open]);
+
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    if (open) {
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
+  // Close on backdrop click
+  const handleBackdropClick = (e) => {
+    if (e.target.closest(".requisition-selector-portal") || e.target.closest(".vendor-selector-portal")) {
+      return;
+    }
+    if (modalRef.current && !modalRef.current.contains(e.target)) {
+      onClose();
     }
   };
 
-  useEffect(() => {
-    if (currency === "USD") {
-      loadExchangeRate();
-    } else {
-      setExchangeRate(1.0);
-    }
-  }, [currency]);
-
   const handleSearch = async () => {
-    // User flow: Select Requisition + Vendor -> GET /api/vendor-quotations/by_requisition_vendor
     if (!selectedRequisition || !selectedVendor) {
       setToast({ open: true, type: "error", message: "Please select both Requisition and Vendor to search" });
       return;
@@ -60,20 +99,15 @@ const VendorQuotationDetails = () => {
     setItems([]);
 
     try {
-      const reqId = selectedRequisition;
-      const vendId = selectedVendor;
-
-      // specific endpoint
-      const data = await getQuotationItems(reqId, vendId);
+      const data = await getQuotationItems(selectedRequisition, selectedVendor);
 
       console.log("Loaded Quotation Details:", data);
       if (data) {
         setContextData(data);
-        // Initialize items with editable state
         const rawItems = data.items || [];
         setItems(rawItems.map(item => ({
           ...item,
-          quoted_rate: item.quoted_rate || "" // Pre-fill if exists, else empty
+          quoted_rate: item.quoted_rate || "" 
         })));
       }
     } catch (err) {
@@ -90,27 +124,38 @@ const VendorQuotationDetails = () => {
     setItems(newItems);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
     if (!contextData) return;
 
     setSubmitting(true);
 
-    // Prepare Payload
+    // Prepare Payload exactly matching requirement
     const payload = {
       requisition: selectedRequisition,
       vendor: selectedVendor,
       currency: currency,
+      reference_number: referenceNumber,
+      validity_date: validityDate,
+      payment_terms: paymentTerms || null,
+      delivery_terms: deliveryTerms || null,
+      remarks: remarks || null,
       items: items.map(item => ({
-        vendor_item: item.vendor_item_id,
+        vendor_item: item.vendor_item_id || item.vendor_item || item.id,
         quoted_rate: item.quoted_rate === "" ? 0 : parseFloat(item.quoted_rate)
       }))
     };
 
     // Zod Validation Schema
     const schema = z.object({
+      requisition: z.string().uuid("Invalid Requisition"),
+      vendor: z.string().uuid("Invalid Vendor"),
+      currency: z.string().min(1, "Currency is required"),
+      reference_number: z.string().min(1, "Reference Number is required"),
+      validity_date: z.string().min(1, "Validity Date is required"),
       items: z.array(z.object({
         vendor_item: z.any(),
-        quoted_rate: z.number().min(0, "Rate must be 0 or greater").nullable()
+        quoted_rate: z.number().min(0, "Rate must be 0 or greater")
       }))
     });
 
@@ -121,24 +166,18 @@ const VendorQuotationDetails = () => {
       // 2. Submit
       await createQuotation(payload);
 
-      setToast({ open: true, type: "success", message: "Quotation submitted successfully!" });
-
-      // Clear form after success
-      setItems([]);
-      setContextData(null);
-      setHasSearched(false);
-      setSelectedRequisition(null);
-      setSelectedVendor(null);
-
+      onSuccess?.();
+      onClose();
     } catch (err) {
       if (err instanceof z.ZodError) {
         console.warn("Validation failed:", err.errors);
-        setToast({ open: true, type: "error", message: "All items must have a valid quoted rate greater than 0.00" });
+        const firstError = err.errors[0]?.message || "Please check all required fields";
+        setToast({ open: true, type: "error", message: firstError });
       } else {
         console.error("Submission Error:", err);
         let errorMsg = "Failed to submit quotation";
 
-        if (err.response) {
+        if (err.response?.data) {
           const data = err.response.data;
           if (typeof data === "string") {
             errorMsg = data;
@@ -148,10 +187,7 @@ const VendorQuotationDetails = () => {
             errorMsg = data.detail;
           } else if (data?.message) {
             errorMsg = data.message;
-          } else if (data?.non_field_errors) {
-            errorMsg = Array.isArray(data.non_field_errors) ? data.non_field_errors[0] : data.non_field_errors;
           } else if (typeof data === "object") {
-            // Get first field error if available
             const firstKey = Object.keys(data)[0];
             if (firstKey) {
               const val = data[firstKey];
@@ -166,238 +202,259 @@ const VendorQuotationDetails = () => {
     }
   };
 
-  // Calculate total for display
+  // Calculate total in selected currency (No price conversion)
   const totalAmount = items.reduce((sum, item) => {
     const qty = parseFloat(item.quantity) || 0;
     const rate = parseFloat(item.quoted_rate) || 0;
     return sum + (qty * rate);
   }, 0);
 
-  const totalAmountINR = currency === "USD" ? totalAmount * exchangeRate : totalAmount;
+  if (!open) return null;
 
   return (
-    <div className="space-y-6">
-
-      {/* FILTERS CONTAINER */}
-      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-        <div className="flex flex-col md:flex-row gap-4 items-end">
-          <div className="flex-1 w-full relative z-20">
-            <label className="block text-xs font-semibold text-slate-500 mb-1 ml-1">Select Requisition</label>
-            <RequisitionSelector
-              value={selectedRequisition}
-              onChange={(id) => {
-                setSelectedRequisition(id);
-                setSelectedVendor(null); // Reset vendor when requisition changes
-              }}
-              placeholder="Search Requisition..."
-            />
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto transition-opacity"
+      onClick={handleBackdropClick}
+    >
+      <div
+        ref={modalRef}
+        className="bg-white w-full max-w-6xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+      >
+        {/* HEADER */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-3">
+            <div className="bg-blue-100 text-blue-600 p-2 rounded-lg">
+              <FaFileInvoiceDollar className="text-xl" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-800">Create Vendor Quotation</h3>
+              <p className="text-xs text-slate-500">Provide quotation details and item rates</p>
+            </div>
           </div>
-          <div className="flex-1 w-full relative z-10">
-            <label className="block text-xs font-semibold text-slate-500 mb-1 ml-1">Select Vendor</label>
-            <VendorSelector
-              value={selectedVendor}
-              onChange={(id) => setSelectedVendor(id)}
-              requisitionId={selectedRequisition}
-              disabled={!selectedRequisition}
-              placeholder={selectedRequisition ? "Search Vendor..." : "Select Requisition First"}
-            />
+          <button
+            onClick={onClose}
+            className="p-2 text-slate-400 hover:text-red-500 hover:bg-slate-100 rounded-full transition-colors"
+          >
+            <FaTimes size={18} />
+          </button>
+        </div>
+
+        {/* CONTENT */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          
+          {/* SEARCH FILTERS */}
+          <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+              <div className="md:col-span-2 relative z-30">
+                <label className="block text-xs font-semibold text-slate-500 mb-1 ml-1">Select Requisition</label>
+                <RequisitionSelector
+                  value={selectedRequisition}
+                  onChange={(id) => {
+                    setSelectedRequisition(id);
+                    setSelectedVendor(null);
+                  }}
+                  placeholder="Search Requisition..."
+                />
+              </div>
+              <div className="md:col-span-2 relative z-20">
+                <label className="block text-xs font-semibold text-slate-500 mb-1 ml-1">Select Vendor</label>
+                <VendorSelector
+                  value={selectedVendor}
+                  onChange={(id) => setSelectedVendor(id)}
+                  requisitionId={selectedRequisition}
+                  disabled={!selectedRequisition}
+                  placeholder={selectedRequisition ? "Search Vendor..." : "Select Requisition First"}
+                />
+              </div>
+              <div className="md:col-span-1">
+                <button
+                  type="button"
+                  onClick={handleSearch}
+                  className="w-full px-4 py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-500 transition-colors flex items-center justify-center gap-2"
+                >
+                  <FaSearch className="text-xs" />
+                  Search Items
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="w-full md:w-auto">
-            <button
-              onClick={handleSearch}
-              className="w-full md:w-auto px-6 py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-500 transition-colors flex items-center justify-center gap-2"
-            >
-              <FaSearch className="text-sm" />
-              Search
-            </button>
-          </div>
-        </div>
-      </div>
 
-      {/* CONTENT AREA */}
-      {loading ? (
-        <div className="p-12 text-center text-slate-500 animate-pulse bg-white rounded-xl border border-slate-200">
-          Loading assigned items...
-        </div>
-      ) : !hasSearched ? (
-        <div className="p-12 text-center text-slate-400 bg-slate-50/50 rounded-xl border-2 border-dashed border-slate-200">
-          <FaSearch className="mx-auto text-3xl mb-3 opacity-20" />
-          <p>Select a Requisition and Vendor to start entry.</p>
-        </div>
-      ) : !contextData ? (
-        // searched but no data found (or error caught)
-        null
-      ) : (
-        <div className="animate-in fade-in slide-in-from-bottom-4 space-y-6">
+          {/* SEARCH RESULT SCREEN */}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12 space-y-3">
+              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-slate-500 font-medium">Loading items...</p>
+            </div>
+          ) : !hasSearched ? (
+            <div className="p-12 text-center text-slate-400 bg-slate-50/30 border-2 border-dashed border-slate-200 rounded-xl">
+              <FaSearch className="mx-auto text-3xl mb-2 opacity-30 text-blue-500" />
+              <p className="text-sm font-semibold">Select a Requisition and Vendor to retrieve assigned items.</p>
+            </div>
+          ) : !contextData ? (
+            <div className="p-8 text-center text-red-500 bg-red-50 rounded-xl border border-red-100">
+              No items could be loaded. Please check vendor assignments.
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              
+              {/* QUOTATION HEADER FIELDS */}
+              <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 border-b pb-2">
+                  <FaUserTie /> Quotation Details
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">Reference Number *</label>
+                    <input
+                      className="input w-full"
+                      value={referenceNumber}
+                      onChange={(e) => setReferenceNumber(e.target.value)}
+                      placeholder="e.g. VENDOR-REF-123"
+                      required
+                    />
+                  </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-300 overflow-hidden">
-            {/* Header Section */}
-            <div className="p-5 border-b border-slate-300 bg-slate-50/30">
-              <div className="flex flex-wrap justify-between gap-4 items-center">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">Validity Date *</label>
+                    <input
+                      type="date"
+                      className="input w-full"
+                      value={validityDate}
+                      onChange={(e) => setValidityDate(e.target.value)}
+                      required
+                    />
+                  </div>
 
-                {/* Left: Info */}
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <FaBoxOpen className="text-blue-600" />
-                    <span className="font-bold text-slate-800 text-lg">
-                      {contextData.requisition_number || "Requisition"}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">Currency *</label>
+                    <select
+                      className="input w-full bg-white"
+                      value={currency}
+                      onChange={(e) => setCurrency(e.target.value)}
+                    >
+                      {currencies.map((c) => (
+                        <option key={c.id} value={c.code}>
+                          {c.code} ({c.symbol})
+                        </option>
+                      ))}
+                      {currencies.length === 0 && <option value="INR">INR (₹)</option>}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">Payment Terms</label>
+                    <input
+                      className="input w-full"
+                      value={paymentTerms}
+                      onChange={(e) => setPaymentTerms(e.target.value)}
+                      placeholder="e.g. 30 days"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">Delivery Terms</label>
+                    <input
+                      className="input w-full"
+                      value={deliveryTerms}
+                      onChange={(e) => setDeliveryTerms(e.target.value)}
+                      placeholder="e.g. Ex-works"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Remarks</label>
+                  <textarea
+                    className="input w-full"
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    placeholder="e.g. Prices valid for 30 days"
+                    rows={2}
+                  />
+                </div>
+              </div>
+
+              {/* ITEMS ENTRY */}
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-5 space-y-4">
+                <div className="flex justify-between items-center border-b pb-2">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <FaClipboardList /> Quotation Items ({items.length})
+                  </h4>
+                  <div className="text-right">
+                    <span className="text-xs font-semibold text-slate-400 mr-2">Quoted Total:</span>
+                    <span className="text-lg font-black text-slate-800">
+                      {currency} {totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-4 mt-2">
-                    <div className="flex items-center gap-1.5">
-                      <FaUserTie className="text-slate-400" />
-                      <span className="font-medium text-slate-700">{contextData.vendor_name || "Vendor"}</span>
-                      <span className="text-xs bg-slate-200 px-1.5 rounded text-slate-600 font-mono">
-                        {contextData.vendor_code}
-                      </span>
-                    </div>
-                    <div className="flex gap-2 text-[10px]">
-                      {contextData.gst_number && <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 font-bold">GST: {contextData.gst_number}</span>}
-                      {contextData.pan_number && <span className="bg-slate-50 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200 font-bold">PAN: {contextData.pan_number}</span>}
-                    </div>
-                    {(contextData.bank_name || contextData.bank_account_number || contextData.account_number) && (
-                      <div className="flex gap-3 text-[10px] text-slate-500 border-l border-slate-300 pl-3 ml-2">
-                        <div><span className="font-semibold text-slate-400">Bank:</span> {contextData.bank_name || "-"}</div>
-                        <div><span className="font-semibold text-slate-400">A/C:</span> {contextData.bank_account_number || contextData.account_number || "-"}</div>
-                        <div><span className="font-semibold text-slate-400">IFSC:</span> {contextData.ifsc_code || "-"}</div>
-                      </div>
-                    )}
-                  </div>
                 </div>
 
-                {/* Currency Selection */}
-                <div className="flex items-center justify-between gap-12 bg-blue-50/50 border border-blue-100 p-3 rounded-xl">
-                  <div>
-                    <label className="text-[10px] font-bold text-blue-600 uppercase tracking-widest block mb-1.5">Currency</label>
-                    <div className="flex gap-1.5">
-                      {["INR", "USD"].map((curr) => (
-                        <button
-                          key={curr}
-                          type="button"
-                          onClick={() => setCurrency(curr)}
-                          className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                            currency === curr
-                              ? "bg-blue-600 text-white shadow-sm"
-                              : "bg-white text-slate-600 border border-slate-200"
-                          }`}
-                        >
-                          {curr}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {currency === "USD" && (
-                    <div className="flex items-center gap-3 bg-white px-3 py-2 rounded-lg border border-blue-100 shadow-sm">
-                      <div className="text-right">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase leading-none mb-1">Exchange Rate</p>
-                        <p className="text-sm font-black text-blue-600 leading-none">1 USD = ₹ {Number(exchangeRate).toFixed(2)}</p>
-                      </div>
-                      <button 
-                        type="button" 
-                        onClick={loadExchangeRate} 
-                        className="p-1.5 hover:bg-blue-50 rounded-md text-blue-400 transition-colors"
-                      >
-                        <HiRefresh className={rateLoading ? "animate-spin" : ""} size={12} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Right: Total */}
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-slate-900">
-                    <span className="text-sm text-slate-400 font-normal mr-2">Total ({currency}):</span>
-                    {totalAmount.toLocaleString('en-IN', { style: 'currency', currency: currency })}
-                  </div>
-                  {currency === "USD" && (
-                    <div className="text-sm font-semibold text-blue-600">
-                      (Approx {totalAmountINR.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })})
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Items Table */}
-            <div className="p-5">
-              <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <FaClipboardList /> Assigned Items ({items.length})
-              </h4>
-              <div className="overflow-x-auto border border-slate-300 rounded-lg">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-100 text-slate-800 font-semibold border-b border-slate-300 text-sm uppercase">
-                    <tr>
-                      <th className="px-4 py-3">Product</th>
-                      <th className="px-4 py-3 text-right">Qty</th>
-                      <th className="px-4 py-3 text-right w-40">Rate ({currency})</th>
-                      <th className="px-4 py-3 text-right">Amount ({currency})</th>
-                      {currency === "USD" && <th className="px-4 py-3 text-right">Amount (INR)</th>}
-                      <th className="px-4 py-3">Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-300 text-sm text-slate-800">
-                    {items.map((item, idx) => (
-                      <tr key={item.vendor_item_id || idx} className="odd:bg-slate-100 even:bg-white hover:bg-slate-200   ">
-                        <td className="px-4 py-3">
-                          <div className="font-bold text-slate-900 text-base">{item.product_name}</div>
-                          <div className="text-sm text-slate-500 font-mono">{item.product_code}</div>
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-slate-800">
-                          {Number(item.quantity).toFixed(2)} <span className="text-sm text-slate-500">{item.unit}</span>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            className="w-full text-right px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                            value={item.quoted_rate || ""}
-                            onChange={(e) => handleRateChange(idx, e.target.value)}
-                          />
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-slate-800">
-                          {currency === "USD" ? "$" : "₹"} {((parseFloat(item.quantity) || 0) * (parseFloat(item.quoted_rate) || 0)).toFixed(2)}
-                        </td>
-                        {currency === "USD" && (
-                          <td className="px-4 py-3 text-right font-bold text-blue-600">
-                            ₹ {((parseFloat(item.quantity) || 0) * (parseFloat(item.quoted_rate) || 0) * exchangeRate).toFixed(2)}
-                          </td>
-                        )}
-                        <td className="px-4 py-3 text-slate-600 italic max-w-37.5 truncate">
-                          {/* Display only for now as requested payload didn't include updating remarks */}
-                          {item.remarks || "-"}
-                        </td>
+                <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                  <table className="w-full text-left text-sm border-collapse">
+                    <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-3">Product Description</th>
+                        <th className="px-4 py-3 text-right">Quantity</th>
+                        <th className="px-4 py-3 text-right w-48">Quoted Rate ({currency}) *</th>
+                        <th className="px-4 py-3 text-right">Amount ({currency})</th>
                       </tr>
-                    ))}
-                    {items.length === 0 && (
-                      <tr><td colSpan={currency === "USD" ? "6" : "5"} className="p-4 text-center text-slate-500">No items found.</td></tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {items.map((item, idx) => (
+                        <tr key={item.vendor_item_id || item.id || idx} className="hover:bg-slate-50 transition">
+                          <td className="px-4 py-3">
+                            <div className="font-bold text-slate-800">{item.product_name}</div>
+                            <div className="text-xs text-slate-400 font-mono mt-0.5">{item.product_code}</div>
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-slate-700">
+                            {Number(item.quantity).toFixed(2)} <span className="text-xs text-slate-400">{item.unit}</span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              required
+                              className="w-full text-right px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-bold"
+                              value={item.quoted_rate || ""}
+                              onChange={(e) => handleRateChange(idx, e.target.value)}
+                            />
+                          </td>
+                          <td className="px-4 py-3 text-right font-bold text-slate-900 font-mono">
+                            {((parseFloat(item.quantity) || 0) * (parseFloat(item.quoted_rate) || 0)).toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
 
-            {/* Footer / Submit */}
-            <div className="bg-slate-50 px-6 py-4 border-t border-slate-300 flex justify-end">
-              <button
-                onClick={handleSubmit}
-                disabled={submitting || items.length === 0}
-                className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                {submitting ? 'Saving...' : (
-                  <>
-                    <FaSave /> Submit Quotation
-                  </>
-                )}
-              </button>
-            </div>
+              {/* ACTION BUTTONS */}
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-5 py-2 text-sm font-semibold rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting || items.length === 0}
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md hover:shadow-lg flex items-center gap-2 disabled:opacity-50 transition-all"
+                >
+                  <FaSave /> {submitting ? "Saving..." : "Submit Quotation"}
+                </button>
+              </div>
 
-          </div>
+            </form>
+          )}
+
         </div>
-      )}
-
+      </div>
+      
       <AlertToast
         open={toast.open}
         type={toast.type}

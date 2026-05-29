@@ -6,6 +6,9 @@ import {
 } from "../../services/requisition";
 import ProductSelector from "../common/ProductSelector";
 import { HiPlus, HiTrash, HiX } from "react-icons/hi";
+import { FaFilePdf } from "react-icons/fa";
+import { pdf } from "@react-pdf/renderer";
+import RequisitionPDF from "./RequisitionPDF";
 import AlertToast from "../ui/AlertToast";
 
 const emptyItem = {
@@ -25,6 +28,7 @@ const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ open: false, type: "error", message: "" });
   const [isAssigned, setIsAssigned] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -144,6 +148,40 @@ const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false
     setForm({ ...form, items: items.length ? items : [{ ...emptyItem }] });
   };
 
+  const handleDownloadPdf = async () => {
+    if (!editData?.id) return;
+    setGeneratingPdf(true);
+    try {
+      const { data } = await getRequisition(editData.id);
+      
+      const formattedItems = (data.items || []).map((i) => ({
+        product_name: i.product_name || i.product_details?.item_name || "Unknown Product",
+        product_code: i.product_code || i.product_details?.item_code || "N/A",
+        unit: i.unit || i.product_details?.unit || "UNIT",
+        quantity: i.quantity || 0,
+        remarks: i.remarks || "",
+      }));
+
+      const pdfDetails = {
+        requisition_number: data.requisition_number || editData.requisition_number,
+        requisition_date: data.requisition_date,
+        is_assigned: data.is_assigned,
+        remarks: data.remarks,
+        created_by_name: data.created_by_name || data.created_by?.name || "System Operator",
+        items: formattedItems,
+      };
+
+      const blob = await pdf(<RequisitionPDF details={pdfDetails} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      setToast({ open: true, type: "error", message: "Failed to generate PDF." });
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -211,6 +249,21 @@ const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false
               <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-full border border-green-200 uppercase tracking-wide">
                 Assigned
               </span>
+            )}
+            {editData?.id && (
+              <button
+                type="button"
+                onClick={handleDownloadPdf}
+                disabled={generatingPdf}
+                className="p-2 text-red-500 hover:bg-red-50 hover:text-red-700 rounded-full transition-colors shadow-sm border border-slate-200 flex items-center justify-center disabled:opacity-50"
+                title="Download PDF"
+              >
+                {generatingPdf ? (
+                  <div className="animate-spin h-5 w-5 border-2 border-red-500 rounded-full border-t-transparent"></div>
+                ) : (
+                  <FaFilePdf size={20} />
+                )}
+              </button>
             )}
             <button
               onClick={onClose}

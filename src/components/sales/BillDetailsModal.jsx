@@ -13,6 +13,8 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
     const [viewCurrency, setViewCurrency] = useState('INR');
     if (!isOpen) return null;
 
+    const exchangeRate = parseFloat(details?.exchange_rate || details?.conversion_rate || 1);
+
     const [exporting, setExporting] = useState(false);
     const [generatingPdf, setGeneratingPdf] = useState(false);
 
@@ -59,11 +61,11 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                 ["Status", data.status],
                 ["Created By", data.created_by],
                 [],
-                // WORK ORDER INFO
-                ["WORK ORDER DETAILS"],
-                ["WO Number", data.work_order?.wo_number],
-                ["WO Date", data.work_order?.wo_date],
-                ["WO Status", data.work_order?.status],
+                // PROFORMA INVOICE INFO
+                ["PROFORMA INVOICE DETAILS"],
+                ["PI Number", data.work_order?.wo_number || data.proforma_invoice?.pi_number],
+                ["PI Date", data.work_order?.wo_date || data.proforma_invoice?.pi_date],
+                ["PI Status", data.work_order?.status || data.proforma_invoice?.status],
                 [],
                 // CLIENT INFO
                 ["CLIENT INFORMATION"],
@@ -81,15 +83,15 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
             // Add Items
             (data.items || []).forEach(item => {
                 wsData.push([
-                    item.item_code,
+                    item.product_code || item.item_code,
                     item.item_name,
                     item.description,
                     item.hsn_code,
                     item.unit,
-                    item.ordered_quantity,
-                    item.previously_delivered,
-                    item.delivered_quantity,
-                    item.pending_quantity,
+                    item.ordered_quantity !== undefined && item.ordered_quantity !== null ? item.ordered_quantity : (item.quantity || 0),
+                    item.previously_delivered !== undefined && item.previously_delivered !== null ? item.previously_delivered : 0,
+                    item.delivered_quantity !== undefined && item.delivered_quantity !== null ? item.delivered_quantity : (item.quantity || 0),
+                    item.pending_quantity !== undefined && item.pending_quantity !== null ? item.pending_quantity : 0,
                     item.rate,
                     item.amount,
                     item.remarks
@@ -230,11 +232,11 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                 )}
 
                 {/* Exchange Rate Info (Only shown in Foreign Currency View) */}
-                {!loading && viewCurrency !== 'INR' && details?.exchange_rate && (
+                {!loading && viewCurrency !== 'INR' && (details?.exchange_rate || details?.conversion_rate) && (
                     <div className="flex justify-center py-2 bg-slate-50 border-b border-slate-100">
                         <div className="bg-blue-50 text-blue-700 px-4 py-1 rounded-full border border-blue-100 text-[10px] font-bold flex items-center gap-2 shadow-sm">
                             <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                            Exchange Rate: 1 {details.currency || 'USD'} = {Number(details.exchange_rate).toFixed(2)} INR
+                            Exchange Rate: 1 {details.currency || 'USD'} = {Number(exchangeRate).toFixed(2)} INR
                         </div>
                     </div>
                 )}
@@ -268,10 +270,10 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                     </div>
                                     <div className="w-px h-8 bg-slate-300 hidden md:block"></div>
                                     <div className="text-sm">
-                                        <span className="text-slate-500 block text-xs uppercase font-semibold">Work Order</span>
+                                        <span className="text-slate-500 block text-xs uppercase font-semibold">Proforma Invoice</span>
                                         <span className="font-medium text-slate-900 flex items-center gap-1">
                                             <FaHashtag className="text-slate-400 text-xs" />
-                                            {details.wo_number}
+                                            {details.wo_number || details.pi_number}
                                         </span>
                                     </div>
                                     <div className="w-px h-8 bg-slate-300 hidden md:block"></div>
@@ -321,43 +323,6 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                 </div>
                             </div>
 
-                            {/* Shipping Info Grid */}
-                            <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
-                                <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4 border-b border-slate-200 pb-2 flex items-center gap-2">
-                                    <FaInfoCircle className="text-slate-400" /> Shipping & Delivery Information
-                                </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-sm">
-                                    <div className="md:col-span-2 lg:col-span-2">
-                                        <p className="text-xs text-slate-500 uppercase font-bold">Importer Address</p>
-                                        <p className="text-slate-700 italic border-l-2 border-slate-300 pl-3 mt-1 py-1 bg-white rounded shadow-sm min-h-12">{details.importer_address || 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-slate-500 uppercase font-bold">Port of Loading</p>
-                                        <p className="font-medium text-slate-800 bg-white p-2 rounded shadow-sm border border-slate-100">{details.port_of_loading || 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-slate-500 uppercase font-bold">Port of Discharge</p>
-                                        <p className="font-medium text-slate-800 bg-white p-2 rounded shadow-sm border border-slate-100">{details.port_of_discharge || 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-slate-500 uppercase font-bold">Final Destination</p>
-                                        <p className="font-medium text-slate-800 bg-white p-2 rounded shadow-sm border border-slate-100">{details.final_destination || 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-slate-500 uppercase font-bold">Pre-carriage By</p>
-                                        <p className="font-medium text-slate-800 bg-white p-2 rounded shadow-sm border border-slate-100">{details.pre_carriage_by || 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-slate-500 uppercase font-bold">Vessel / Flight No</p>
-                                        <p className="font-medium text-slate-800 bg-white p-2 rounded shadow-sm border border-slate-100">{details.vessel_flight_no || 'N/A'}</p>
-                                    </div>
-                                    <div className="md:col-span-2 lg:col-span-1">
-                                        <p className="text-xs text-slate-500 uppercase font-bold">Terms of Delivery & Payment</p>
-                                        <p className="font-medium text-slate-800 bg-white p-2 rounded shadow-sm border border-slate-100">{details.terms_of_delivery_payment || 'N/A'}</p>
-                                    </div>
-                                </div>
-                            </div>
-
                             {/* Items Table */}
                             <div>
                                 <h3 className="text-lg font-bold text-slate-800 mb-4">Bill Items</h3>
@@ -379,7 +344,7 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                                         <div className="font-semibold text-slate-800">{item.item_name}</div>
                                                         <div className="flex flex-wrap gap-2 mt-1">
                                                             <span className="text-xs font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                                                                {item.item_code}
+                                                                {item.product_code || item.item_code}
                                                             </span>
                                                         </div>
                                                         <div className="text-xs text-slate-500 mt-1">{item.description}</div>
@@ -389,22 +354,24 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                                     </td>
                                                     <td className="px-5 py-3 text-right">
                                                         <div className="font-bold text-slate-800">
-                                                            {Number(item.delivered_quantity).toFixed(2)} <span className="text-xs font-normal text-slate-500">{item.unit}</span>
+                                                            {Number(item.delivered_quantity !== undefined && item.delivered_quantity !== null ? item.delivered_quantity : item.quantity || 0).toFixed(2)} <span className="text-xs font-normal text-slate-500">{item.unit}</span>
                                                         </div>
-                                                        <div className="text-[10px] text-slate-400 mt-0.5" title="Ordered / Previously Delivered / Pending">
-                                                            Order: {Number(item.ordered_quantity).toFixed(2)} | Pend: {Number(item.pending_quantity).toFixed(2)}
-                                                        </div>
+                                                        {item.ordered_quantity !== undefined && item.ordered_quantity !== null && (
+                                                            <div className="text-[10px] text-slate-400 mt-0.5" title="Ordered / Previously Delivered / Pending">
+                                                                Order: {Number(item.ordered_quantity).toFixed(2)} | Pend: {Number(item.pending_quantity || 0).toFixed(2)}
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     <td className="px-5 py-3 text-right font-mono text-slate-700">
                                                         {viewCurrency === 'INR' 
                                                             ? formatCurrency(item.rate, 'INR')
-                                                            : formatCurrency(item.original_rate || (item.rate / (details.exchange_rate || 1)), details.currency || 'USD')
+                                                            : formatCurrency(item.original_rate || (item.rate / exchangeRate), details.currency || 'USD')
                                                         }
                                                     </td>
                                                     <td className="px-5 py-3 text-right font-semibold font-mono text-slate-900">
                                                         {viewCurrency === 'INR'
                                                             ? formatCurrency(item.amount, 'INR')
-                                                            : formatCurrency(item.original_amount || (item.amount / (details.exchange_rate || 1)), details.currency || 'USD')
+                                                            : formatCurrency(item.original_amount || (item.amount / exchangeRate), details.currency || 'USD')
                                                         }
                                                     </td>
                                                 </tr>
@@ -417,7 +384,7 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                                 <td className="px-5 py-2 text-right font-mono font-medium text-slate-700">
                                                     {viewCurrency === 'INR'
                                                         ? formatCurrency(details.subtotal, 'INR')
-                                                        : formatCurrency(details.original_subtotal || (details.subtotal / (details.exchange_rate || 1)), details.currency || 'USD')
+                                                        : formatCurrency(details.original_subtotal || (details.subtotal / exchangeRate), details.currency || 'USD')
                                                     }
                                                 </td>
                                             </tr>
@@ -444,14 +411,14 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                     <div className="bg-blue-50/50 rounded-xl p-5 border border-blue-100 flex items-center justify-between">
                                         <div>
                                             <p className="text-xs text-blue-500 uppercase font-bold">Total Items</p>
-                                            <p className="text-2xl font-bold text-blue-700">{details.total_items}</p>
+                                            <p className="text-2xl font-bold text-blue-700">{details.total_items || details.items?.length || 0}</p>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-xs text-blue-500 uppercase font-bold">Balance Due ({viewCurrency})</p>
                                             <p className="text-xl font-bold text-red-600">
                                                 {viewCurrency === 'INR'
                                                     ? formatCurrency(details.balance, 'INR')
-                                                    : formatCurrency(details.original_balance || (details.balance / (details.exchange_rate || 1)), details.currency || 'USD')
+                                                    : formatCurrency(details.original_balance || (details.balance / exchangeRate), details.currency || 'USD')
                                                 }
                                             </p>
                                         </div>
@@ -465,7 +432,7 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                         <span className="font-mono font-medium">
                                             {viewCurrency === 'INR'
                                                 ? formatCurrency(details.subtotal, 'INR')
-                                                : formatCurrency(details.original_subtotal || (details.subtotal / (details.exchange_rate || 1)), details.currency || 'USD')
+                                                : formatCurrency(details.original_subtotal || (details.subtotal / exchangeRate), details.currency || 'USD')
                                             }
                                         </span>
                                     </div>
@@ -499,7 +466,7 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                         <div className="py-3 border-y border-slate-200">
                                             <div className="flex justify-between text-slate-700 font-semibold text-sm">
                                                 <span>Total Tax ({viewCurrency})</span>
-                                                <span className="font-mono">{formatCurrency(details.original_total_tax || (details.total_gst / (details.exchange_rate || 1)), viewCurrency)}</span>
+                                                <span className="font-mono">{formatCurrency(details.original_total_tax || (details.total_gst / exchangeRate), viewCurrency)}</span>
                                             </div>
                                         </div>
                                     )}
@@ -510,7 +477,7 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                         <span className="font-mono">
                                             {viewCurrency === 'INR'
                                                 ? formatCurrency(details.total_amount, 'INR')
-                                                : formatCurrency(details.original_total_amount || (details.total_amount / (details.exchange_rate || 1)), details.currency || 'USD')
+                                                : formatCurrency(details.original_total_amount || (details.total_amount / exchangeRate), details.currency || 'USD')
                                             }
                                         </span>
                                     </div>
@@ -521,7 +488,7 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                             <span>Less: Advance Deducted ({viewCurrency})</span>
                                             <span className="font-mono">- {viewCurrency === 'INR' 
                                                 ? formatCurrency(details.advance_deducted, 'INR')
-                                                : formatCurrency(details.original_advance_deducted || (details.advance_deducted / (details.exchange_rate || 1)), viewCurrency)
+                                                : formatCurrency(details.original_advance_deducted || (details.advance_deducted / exchangeRate), viewCurrency)
                                             }</span>
                                         </div>
                                         {parseFloat(details.freight_cost) > 0 && (
@@ -530,7 +497,7 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                                 <span className="font-mono font-medium">
                                                     {viewCurrency === 'INR'
                                                         ? formatCurrency(details.freight_cost, 'INR')
-                                                        : formatCurrency(details.original_freight_cost || (details.freight_cost / (details.exchange_rate || 1)), viewCurrency)
+                                                        : formatCurrency(details.original_freight_cost || (details.freight_cost / exchangeRate), viewCurrency)
                                                     }
                                                 </span>
                                             </div>
@@ -540,7 +507,7 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                             <span className="font-mono">
                                                 {viewCurrency === 'INR'
                                                     ? formatCurrency(details.amount_paid, 'INR')
-                                                    : formatCurrency(details.original_amount_paid || (details.amount_paid / (details.exchange_rate || 1)), viewCurrency)
+                                                    : formatCurrency(details.original_amount_paid || (details.amount_paid / exchangeRate), viewCurrency)
                                                 }
                                             </span>
                                         </div>
@@ -553,7 +520,7 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                             <span className="font-mono font-bold text-xl text-blue-600">
                                                 {viewCurrency === 'INR'
                                                     ? formatCurrency(details.net_payable, 'INR')
-                                                    : formatCurrency(details.original_net_payable || (details.net_payable / (details.exchange_rate || 1)), viewCurrency)
+                                                    : formatCurrency(details.original_net_payable || (details.net_payable / exchangeRate), viewCurrency)
                                                 }
                                             </span>
                                         </div>

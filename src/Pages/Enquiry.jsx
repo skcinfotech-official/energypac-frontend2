@@ -240,9 +240,8 @@ const Enquiry = () => {
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div className="overflow-x-auto">
+                <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="bg-blue-50/50 text-slate-800 uppercase text-[10px] font-bold tracking-widest">
@@ -336,6 +335,7 @@ const Enquiry = () => {
                 >
                     Next →
                 </button>
+            </div>
             </div>
             {/* Modal */}
             <EnquiryModal

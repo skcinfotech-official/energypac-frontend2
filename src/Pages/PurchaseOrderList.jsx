@@ -1,14 +1,31 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { fetchPurchaseOrders, getPurchaseOrderReport, cancelPurchaseOrder } from "../services/purchaseOrderService";
-import { FaEye, FaFileExcel, FaTimes, FaSearch } from "react-icons/fa";
+import { fetchPurchaseOrders, getPurchaseOrderReport, cancelPurchaseOrder, lockPurchaseOrder, getPurchaseOrder } from "../services/purchaseOrderService";
+import { FaEye, FaFileExcel, FaTimes, FaSearch, FaEdit } from "react-icons/fa";
 import AlertToast from "../components/ui/AlertToast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import PurchaseOrderModal from "../components/purchaseOrder/PurchaseOrderModal";
+import EditPurchaseOrderModal from "../components/purchaseOrder/EditPurchaseOrderModal";
 import VendorSelector from "../components/common/VendorSelector";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import PasswordConfirmModal from "../components/ui/PasswordConfirmModal";
+
+const formatCurrency = (amount, curr = 'INR') => {
+    const c = curr?.toString().trim().toUpperCase() || 'INR';
+    try {
+        return Number(amount || 0).toLocaleString('en-IN', {
+            style: 'currency',
+            currency: c,
+            maximumFractionDigits: 2
+        }).replace('US$', '$');
+    } catch (e) {
+        return `${c} ${Number(amount || 0).toLocaleString('en-IN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        })}`;
+    }
+};
 
 const PurchaseOrderList = () => {
     const [list, setList] = useState([]);
@@ -21,6 +38,8 @@ const PurchaseOrderList = () => {
     const [previous, setPrevious] = useState(null);
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedPO, setSelectedPO] = useState(null);
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [editPOData, setEditPOData] = useState(null);
     const [page, setPage] = useState(1);
     const [confirm, setConfirm] = useState({ open: false, action: null });
     const [passwordModal, setPasswordModal] = useState({ open: false, onConfirm: null, loading: false });
@@ -204,6 +223,28 @@ const PurchaseOrderList = () => {
         setModalOpen(true);
     };
 
+    const handleEditClick = async (row) => {
+        setLoading(true);
+        try {
+            // Attempt to obtain the concurrent edit lock
+            await lockPurchaseOrder(row.id);
+            // Lock succeeded! Fetch latest full data
+            const fullPO = await getPurchaseOrder(row.id);
+            setEditPOData(fullPO);
+            setEditModalOpen(true);
+        } catch (err) {
+            console.error("Lock sequence failed:", err);
+            const errorMsg = err.response?.data?.error || err.response?.data?.detail || err.response?.data?.message || "This Purchase Order is currently locked by another user.";
+            setToast({
+                open: true,
+                type: "error",
+                message: errorMsg
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleCancelPO = (poId) => {
         const po = list.find(p => p.id === poId);
         setConfirm({
@@ -295,6 +336,7 @@ const PurchaseOrderList = () => {
                             />
                         </div>
 
+
                         {/* Status Filter */}
                         <div className="w-40">
                             <label className="block text-xs font-semibold text-slate-600 mb-1">
@@ -353,7 +395,7 @@ const PurchaseOrderList = () => {
                                             {new Date(row.po_date).toLocaleDateString()}
                                         </td>
                                         <td className="px-6 py-4 text-right font-bold text-slate-800">
-                                            {parseFloat(row.total_amount).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                                            {formatCurrency(row.total_amount, row.currency)}
                                         </td>
                                         <td className="px-6 py-4">
                                             {(() => {
@@ -391,15 +433,23 @@ const PurchaseOrderList = () => {
                                                 >
                                                     <FaEye />
                                                 </button>
-                                                {row.status !== 'COMPLETED' && row.status !== 'CANCELLED' && (
+                                                {row.status !== 'CANCELLED' && (
                                                     <button
-                                                        onClick={() => handleCancelPO(row.id)}
-                                                        title="Cancel PO"
-                                                        className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-colors"
+                                                        className="text-blue-600 hover:text-blue-800 hover:scale-105 transition-transform"
+                                                        title="Edit PO"
+                                                        onClick={() => handleEditClick(row)}
                                                     >
-                                                        <FaTimes size={12} />
+                                                        <FaEdit />
                                                     </button>
                                                 )}
+                                                <button
+                                                    onClick={() => handleCancelPO(row.id)}
+                                                    disabled={row.status === 'COMPLETED' || row.status === 'CANCELLED'}
+                                                    title={row.status === 'COMPLETED' ? "Completed PO cannot be cancelled" : row.status === 'CANCELLED' ? "Already Cancelled" : "Cancel PO"}
+                                                    className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                                                >
+                                                    <FaTimes size={12} />
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -467,6 +517,16 @@ const PurchaseOrderList = () => {
                 onClose={() => setModalOpen(false)}
                 data={selectedPO}
                 onShowAlert={(type, message) => setToast({ open: true, type, message })}
+                onUpdate={() => loadData(page)}
+            />
+
+            <EditPurchaseOrderModal
+                open={editModalOpen}
+                onClose={() => {
+                    setEditModalOpen(false);
+                    setEditPOData(null);
+                }}
+                poData={editPOData}
                 onUpdate={() => loadData(page)}
             />
 

@@ -1,556 +1,2338 @@
-# Dual Currency Support — API Changes Documentation
+# EnergyPac ERP - Complete Purchase Flow API Documentation
 
-## Overview
-
-The system now supports **dual currency (INR + USD)**. All internal calculations and storage remain in **INR**. When a user selects USD, the system stores both the original USD amounts and the converted INR amounts.
-
-- **Product prices** remain in INR only
-- **Exchange rate** is managed by Admin via API or Django Admin Panel
-- **Quotation comparison** always happens in INR (USD quotations auto-converted)
-- Currency flows downstream automatically: `SalesQuotation → WorkOrder → Bill` and `VendorQuotation → PurchaseOrder`
+Base URL: `/api/`  
+Authentication: JWT Bearer Token (8-hour expiry)  
+Header: `Authorization: Bearer <access_token>`
 
 ---
 
-## 1. Exchange Rate Admin APIs (Admin Only)
+## Step 1: Create Requisition (Purchase Request)
 
-### 1.1 Get Current Active Rate
+A requisition is the starting point. It contains items that need to be purchased.  
+When items are added to a requisition, they are automatically linked in the Item Master (`requisition_number` is saved on the product).
 
+**Create Requisition**
 ```
-GET /api/exchange-rate
-Authorization: Bearer <token>
+POST /api/requisitions
 ```
-
-**Response (200):**
 ```json
 {
-  "currency_from": "USD",
-  "currency_to": "INR",
-  "rate": 83.5,
-  "effective_date": "2026-05-08",
-  "updated_at": "2026-05-08T10:30:00+05:30"
+  "requisition_number": "EEL/2026/001",
+  "requisition_date": "2026-05-22",
+  "remarks": "Urgent requirement for project X",
+  "items": [
+    {
+      "product": "product-uuid",
+      "quantity": 100,
+      "remarks": "Need high quality"
+    }
+  ]
 }
 ```
+- `requisition_number` is optional — auto-generates as `EEL/YEAR/NUMBER` if not provided
+- If provided, it must be unique
+- Each product used in the requisition gets `requisition_number` saved in the Item Master automatically
 
-**Response (404) — No rate configured:**
+**List Requisitions**
+```
+GET /api/requisitions
+```
+Query params: `?is_assigned=true&requisition_date=2026-05-22&search=EEL&ordering=-requisition_date`
+
+**Get Requisition Detail**
+```
+GET /api/requisitions/{id}
+```
+
+**Get Requisition Items**
+```
+GET /api/requisitions/{id}/items
+```
+
+---
+
+## Item Master (Products)
+
+Every item in the system is stored in the Item Master. Each item tracks which requisition it belongs to.
+
+**Create Item in Item Master**
+```
+POST /api/products
+```
 ```json
 {
-  "error": "No active USD to INR exchange rate configured. Please set one in Admin."
+  "item_name": "Steel Rod 10mm",
+  "description": "High tensile steel rod",
+  "hsn_code": "7214",
+  "unit": "KG",
+  "rate": 250.00,
+  "requisition_number": "EEL/2026/001"
+}
+```
+- `item_code` is auto-generated (e.g., `ITEM/0001`)
+- `requisition_number` links this item to a requisition
+
+**List All Items**
+```
+GET /api/products
+```
+Query params: `?is_active=true&unit=KG&requisition_number=EEL/2026/001&search=steel`
+
+**Get Items by Requisition Number**
+```
+GET /api/products/by_requisition?requisition_number=EEL/2026/001
+```
+Returns all items linked to a specific requisition.
+
+**Get Single Item**
+```
+GET /api/products/{id}
+```
+
+**Update Item**
+```
+PATCH /api/products/{id}
+```
+
+**Low Stock Items**
+```
+GET /api/products/low_stock
+```
+
+---
+
+## Step 2: Assign Vendors to Requisition
+
+Assign one or more vendors to a requisition so they can quote prices.
+
+**Create Vendor Assignment**
+```
+POST /api/vendor-assignments
+```
+```json
+{
+  "requisition": "requisition-uuid",
+  "vendor": "vendor-uuid",
+  "remarks": "Request quotation for all items",
+  "items": [
+    {
+      "requisition_item": "requisition-item-uuid",
+      "quantity": 100
+    }
+  ]
+}
+```
+- One requisition can have multiple vendor assignments
+- Each vendor can only be assigned once per requisition (unique constraint)
+
+**List Assignments for a Requisition**
+```
+GET /api/requisitions/{id}/assignments
+```
+
+**Get Items Available for Quotation Entry**
+```
+GET /api/vendor-assignments/{id}/items_for_quotation
+```
+Returns the items the vendor needs to quote on.
+
+---
+
+## Step 3: Enter Vendor Quotation
+
+After vendor submits their pricing, enter their quotation.
+
+**Create Vendor Quotation**
+```
+POST /api/vendor-quotations
+```
+```json
+{
+  "requisition": "requisition-uuid",
+  "vendor": "vendor-uuid",
+  "currency": "INR",
+  "reference_number": "VENDOR-REF-123",
+  "validity_date": "2026-06-22",
+  "payment_terms": "30 days",
+  "delivery_terms": "Ex-works",
+  "remarks": "Prices valid for 30 days",
+  "items": [
+    {
+      "vendor_item": "vendor-requisition-item-uuid",
+      "quoted_rate": 250.50
+    }
+  ]
+}
+```
+- `currency` can be "INR" or "USD" (each vendor quotes in their preferred currency)
+- `amount` is auto-calculated: quantity x quoted_rate
+- `total_amount` is auto-calculated: sum of all item amounts
+
+**List Quotations**
+```
+GET /api/vendor-quotations
+
+```
+Query params: `?assignment=uuid&is_selected=true`
+
+**Filter by Vendor**
+```
+GET /api/vendor-quotations/by_vendor?vendor=vendor-uuid
+```
+
+**Filter by Requisition**
+```
+GET /api/vendor-quotations/by_requisition?requisition=requisition-uuid
+```
+
+**Filter by Requisition + Vendor**
+```
+GET /api/vendor-quotations/by_requisition_vendor?requisition=uuid&vendor=uuid
+```
+
+---
+
+## Step 4: Price Comparison
+
+Compare all vendor quotations for a requisition. All vendors shown together with their currency — cross-currency comparison allowed.
+
+**Get Comparison**
+```
+GET /api/requisitions/{id}/comparison
+```
+
+**Response:**
+```json
+{
+  "requisition_number": "EEL/2026/001",
+  "requisition_date": "2026-05-22",
+  "vendors": [
+    {
+      "vendor_id": "uuid",
+      "vendor_name": "Aloka Industries",
+      "vendor_code": "VND001",
+      "currency": "INR",
+      "quotation_number": "VQ/2026/001",
+      "quotation_date": "2026-05-20",
+      "total_amount": 25000.00,
+      "is_selected": false,
+      "items": [
+        {
+          "id": "item-uuid",
+          "product_code": "PRD001",
+          "product_name": "Steel Rod 10mm",
+          "quantity": 100,
+          "unit": "KG",
+          "quoted_rate": 250.00,
+          "amount": 25000.00
+        }
+      ]
+    },
+    {
+      "vendor_id": "uuid",
+      "vendor_name": "Global Supplies",
+      "vendor_code": "VND002",
+      "currency": "USD",
+      "quotation_number": "VQ/2026/002",
+      "quotation_date": "2026-05-21",
+      "total_amount": 300.00,
+      "is_selected": false,
+      "items": [
+        {
+          "id": "item-uuid",
+          "product_code": "PRD001",
+          "product_name": "Steel Rod 10mm",
+          "quantity": 100,
+          "unit": "KG",
+          "quoted_rate": 3.00,
+          "amount": 300.00
+        }
+      ]
+    }
+  ]
+}
+```
+- All vendors shown together regardless of currency
+- Each vendor entry has its `currency` field
+- Frontend can group/filter by currency for display
+
+---
+
+## Step 5: Select Vendor (Mark Quotation as Selected)
+
+After comparing, select items from specific vendors.
+
+**Select a Quotation**
+```
+POST /api/vendor-quotations/{id}/select
+```
+No body needed. Marks this quotation as selected and deselects others for the same requisition.
+
+---
+
+## Step 6: Generate Purchase Order
+
+Generate PO(s) from the comparison. Select specific quotation items — system creates separate PO per vendor automatically.
+
+**Generate PO from Comparison**
+```
+POST /api/purchase-orders/generate_from_comparison
+```
+```json
+{
+  "requisition": "requisition-uuid",
+  "po_date": "2026-05-22",
+  "subject": "Steel materials for Phase 2",
+  "project_name": "Kolkata Metro Phase 2",
+  "bill_to": "EnergyPac Engineering Ltd, 12 Park Street, Kolkata 700016",
+  "ship_to": "Site Office, Kolkata Metro Phase 2, Salt Lake, Kolkata 700091",
+  "selections": [
+    "quotation-item-uuid-1",
+    "quotation-item-uuid-2",
+    "quotation-item-uuid-3"
+  ],
+  "discount_amount": 20.00,
+  "cgst_percentage": 9.00,
+  "sgst_percentage": 9.00,
+  "igst_percentage": 0.00,
+  "conversion_rate": 83.50
+}
+```
+- `subject` = optional — PO subject line
+- `project_name` = optional — project this PO belongs to
+- `bill_to` = optional — billing address
+- `ship_to` = optional — shipping/delivery address
+- `selections` = array of VendorQuotationItem UUIDs (pick items from any vendor)
+- System groups items by vendor and creates one PO per vendor
+- PO Number format: `EEL/IND/<VENDOR_PREFIX>/<NUMBER>` (e.g., `EEL/IND/ALOKA/100`)
+- `discount_amount` = vendor discount in PO currency (default 0). Subtracted from total: `total = items_total + GST - discount`
+- GST is calculated on items_total
+- Currency is inherited from the vendor's quotation
+- `conversion_rate` = current INR rate at PO creation time (e.g., 1 USD = 83.50 INR). Stored for record only, no conversion applied. For INR POs, leave null or skip.
+
+**Response:**
+```json
+{
+  "message": "2 Purchase Order(s) created",
+  "purchase_orders": [
+    {
+      "id": "uuid",
+      "po_number": "EEL/IND/ALOKA/100",
+      "vendor_name": "Aloka Industries",
+      "currency": "USD",
+      "conversion_rate": 83.50,
+      "items_total": 300.00,
+      "discount_amount": 20.00,
+      "cgst_amount": 27.00,
+      "sgst_amount": 27.00,
+      "igst_amount": 0.00,
+      "total_amount": 334.00,
+      "status": "PENDING"
+    }
+  ]
 }
 ```
 
 ---
 
-### 1.2 List All Exchange Rates (History)
+## Step 7: Update GST on PO
+
+Update GST percentages after PO creation.
 
 ```
-GET /api/admin/exchange-rates
-Authorization: Bearer <admin-token>
-Permission: ADMIN role required
+POST /api/purchase-orders/{id}/update_gst
+```
+```json
+{
+  "cgst_percentage": 9.00,
+  "sgst_percentage": 9.00,
+  "igst_percentage": 0.00
+}
+```
+Recalculates all amounts automatically.
+
+---
+
+## Step 8: Edit PO (Full Edit with Lock & Revision Tracking)
+
+PO is fully editable — items, quantities, rates, GST, remarks, date. Everything can be changed.
+
+### 8a. Acquire Lock Before Editing
+```
+POST /api/purchase-orders/{id}/lock
+```
+- Lock expires after 30 minutes
+- Returns 409 if another user holds the lock
+
+### 8b. Edit PO (Full Edit)
+```
+PATCH /api/purchase-orders/{id}
+```
+```json
+{
+  "po_date": "2026-05-25",
+  "remarks": "Updated delivery terms",
+  "discount_amount": 500.00,
+  "cgst_percentage": 12.00,
+  "sgst_percentage": 12.00,
+  "igst_percentage": 0.00,
+  "items": [
+    {
+      "id": "existing-item-uuid",
+      "product": "product-uuid",
+      "quantity": 150,
+      "rate": 275.00
+    },
+    {
+      "product": "new-product-uuid",
+      "quantity": 50,
+      "rate": 300.00
+    }
+  ]
+}
 ```
 
-**Response (200):**
+**What can be edited:**
+- `po_date` — PO date
+- `subject` — PO subject line
+- `project_name` — project name
+- `bill_to` — billing address
+- `ship_to` — shipping address
+- `remarks` — any notes
+- `discount_amount` — vendor discount (in PO currency)
+- `cgst_percentage`, `sgst_percentage`, `igst_percentage` — GST rates
+- `items` — full item list (add new, modify existing, remove items)
+
+**Item edit rules:**
+- Send `id` to update an existing item (change product, quantity, rate)
+- Omit `id` to add a new item
+- Items not included in the array are deleted
+- Items already marked as "received" cannot be edited or removed
+
+**Auto behavior on edit:**
+- On first edit: PO number gets "R" suffix (e.g., `EEL/IND/ALOKA/100R`)
+- `revision_number` increments on each edit
+- `items_total`, GST amounts, `total_amount` (items + GST - discount) all recalculated automatically
+- Audit log entry created with old vs new values
+- Must hold the lock to edit
+
+### 8c. Release Lock After Editing
+```
+POST /api/purchase-orders/{id}/unlock
+```
+
+---
+
+## Step 9: Mark Items as Purchased (Received)
+
+When goods are received from vendor.
+
+**Mark Single Item**
+```
+POST /api/purchase-orders/{id}/mark_item_purchased
+```
+```json
+{
+  "item_id": "po-item-uuid"
+}
+```
+- Updates inventory stock automatically
+- PO status changes: PENDING -> PARTIALLY_RECEIVED -> COMPLETED
+
+**Mark All Items**
+```
+POST /api/purchase-orders/{id}/mark_all_purchased
+```
+
+---
+
+## Step 10: Cancel PO (Password Protected)
+
+```
+POST /api/purchase-orders/{id}/cancel
+```
+```json
+{
+  "confirm_password": "your-password",
+  "reason": "Vendor could not supply on time"
+}
+```
+- Requires password confirmation
+- If items were already received, stock is reversed
+- Audit log entry created
+
+---
+
+## Step 11: View PO List & Details
+
+**List All POs**
+```
+GET /api/purchase-orders
+```
+Query params: `?requisition=uuid&vendor=uuid&status=PENDING&search=EEL/IND&ordering=-po_number`
+
+**Get PO Detail**
+```
+GET /api/purchase-orders/{id}
+```
+Response includes: items, discount, GST breakdown, revision info, lock status, currency.
+
+---
+
+## Step 12: Audit Logs (Unified for All Modules)
+
+Single API for all modules — Purchase Orders, Transport, Bills, etc. Filter by module, user, or action.
+
+---
+
+### 12a. List All Audit Logs
+
+```
+GET /api/audit-logs
+```
+
+**Query Parameters:**
+| Param | Description | Example |
+|-------|-------------|---------|
+| `model_name` | Filter by module | `PurchaseOrder`, `TransportEntry`, `Bill` |
+| `user` | Filter by user UUID | `user-uuid` |
+| `action` | Filter by action type | `CREATE`, `UPDATE`, `DELETE` |
+| `object_id` | Filter by specific object | `object-uuid` |
+| `search` | Search in object name / user name | `EEL/IND`, `Raju` |
+| `ordering` | Sort | `-timestamp` (default, newest first) |
+
+**Response:**
+```json
+{
+  "count": 45,
+  "next": "http://api/audit-logs?page=2",
+  "previous": null,
+  "results": [
+    {
+      "id": "log-uuid",
+      "user": "user-uuid",
+      "user_name": "Soumyajit Das",
+      "action": "UPDATE",
+      "model_name": "PurchaseOrder",
+      "object_id": "po-uuid",
+      "object_repr": "EEL/IND/ALOKA/100R - Aloka Industries",
+      "changes": {
+        "old": {
+          "po_number": "EEL/IND/ALOKA/100",
+          "remarks": "",
+          "revision_number": 0,
+          "items_total": "25000.00",
+          "total_amount": "29500.00"
+        },
+        "new": {
+          "po_number": "EEL/IND/ALOKA/100R",
+          "remarks": "Updated delivery terms",
+          "revision_number": 1,
+          "items_total": "30000.00",
+          "total_amount": "35400.00"
+        }
+      },
+      "timestamp": "2026-05-22T10:30:00Z"
+    },
+    {
+      "id": "log-uuid-2",
+      "user": "user-uuid",
+      "user_name": "Soumyajit Das",
+      "action": "CREATE",
+      "model_name": "TransportEntry",
+      "object_id": "transport-uuid",
+      "object_repr": "TRN/2026/0001 - EEL/IND/ALOKA/100R",
+      "changes": {
+        "transport_number": "TRN/2026/0001",
+        "po_number": "EEL/IND/ALOKA/100R",
+        "transporter": "Blue Dart Logistics",
+        "total_cost": "5300.00"
+      },
+      "timestamp": "2026-05-22T11:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### 12b. Filter by Module (Examples)
+
+**Purchase Order logs only:**
+```
+GET /api/audit-logs?model_name=PurchaseOrder
+```
+
+**Transport logs only:**
+```
+GET /api/audit-logs?model_name=TransportEntry
+```
+
+**Bill logs only:**
+```
+GET /api/audit-logs?model_name=Bill
+```
+
+**All actions by a specific user:**
+```
+GET /api/audit-logs?user=user-uuid
+```
+
+**Only CREATE actions:**
+```
+GET /api/audit-logs?action=CREATE
+```
+
+**Combine filters (PO updates by a specific user):**
+```
+GET /api/audit-logs?model_name=PurchaseOrder&action=UPDATE&user=user-uuid
+```
+
+---
+
+### 12c. Audit History for a Specific Object
+
+```
+GET /api/audit-logs/{model_name}/{object_id}
+```
+
+**Example — PO history:**
+```
+GET /api/audit-logs/PurchaseOrder/po-uuid-here
+```
+
+**Response:**
+```json
+[
+  {
+    "id": "log-uuid-1",
+    "user": "user-uuid",
+    "user_name": "Soumyajit Das",
+    "action": "CREATE",
+    "model_name": "PurchaseOrder",
+    "object_id": "po-uuid-here",
+    "object_repr": "EEL/IND/ALOKA/100 - Aloka Industries",    
+    "changes": {
+      "po_number": "EEL/IND/ALOKA/100",
+      "vendor": "Aloka Industries",
+      "total_amount": "29500.00",
+      "currency": "INR"
+    },
+    "timestamp": "2026-05-22T09:00:00Z"
+  },
+  {
+    "id": "log-uuid-2",
+    "user": "user-uuid",
+    "user_name": "Soumyajit Das",
+    "action": "UPDATE",
+    "model_name": "PurchaseOrder",
+    "object_id": "po-uuid-here",
+    "object_repr": "EEL/IND/ALOKA/100R - Aloka Industries",
+    "changes": {
+      "old": {
+        "po_number": "EEL/IND/ALOKA/100",
+        "remarks": "",
+        "revision_number": 0,
+        "items_total": "25000.00",
+        "total_amount": "29500.00"
+      },
+      "new": {
+        "po_number": "EEL/IND/ALOKA/100R",
+        "remarks": "Rate revised per vendor email",
+        "revision_number": 1,
+        "items_total": "30000.00",
+        "total_amount": "35400.00"
+      }
+    },
+    "timestamp": "2026-05-22T10:30:00Z"
+  },
+  {
+    "id": "log-uuid-3",
+    "user": "user-uuid",
+    "user_name": "Soumyajit Das",
+    "action": "UPDATE",
+    "model_name": "PurchaseOrder",
+    "object_id": "po-uuid-here",
+    "object_repr": "EEL/IND/ALOKA/100R - Aloka Industries",
+    "changes": {
+      "action": "CANCEL",
+      "reason": "Vendor could not supply on time",
+      "stock_reversed": [
+        {
+          "item_id": "item-uuid",
+          "product_code": "ITEM/0001",
+          "product_name": "Steel Rod 10mm",
+          "quantity": 100.0
+        }
+      ]
+    },
+    "timestamp": "2026-05-22T14:00:00Z"
+  }
+]
+```
+
+**Example — Transport entry history:**
+```
+GET /api/audit-logs/TransportEntry/transport-uuid-here
+```
+
+**Response:**
+```json
+[
+  {
+    "id": "log-uuid-1",
+    "user": "user-uuid",
+    "user_name": "Soumyajit Das",
+    "action": "CREATE",
+    "model_name": "TransportEntry",
+    "object_id": "transport-uuid-here",
+    "object_repr": "TRN/2026/0001 - EEL/IND/ALOKA/100R",
+    "changes": {
+      "transport_number": "TRN/2026/0001",
+      "po_number": "EEL/IND/ALOKA/100R",
+      "transporter": "Blue Dart Logistics",
+      "total_cost": "5300.00"
+    },
+    "timestamp": "2026-05-22T11:00:00Z"
+  },
+  {
+    "id": "log-uuid-2",
+    "user": "user-uuid",
+    "user_name": "Soumyajit Das",
+    "action": "UPDATE",
+    "model_name": "TransportEntry",
+    "object_id": "transport-uuid-here",
+    "object_repr": "TRN/2026/0001 - EEL/IND/ALOKA/100R",
+    "changes": {
+      "old": {
+        "transporter": "Blue Dart Logistics",
+        "status": "IN_TRANSIT",
+        "total_cost": "5300.00"
+      },
+      "new": {
+        "transporter": "Blue Dart Logistics",
+        "status": "DELIVERED",
+        "total_cost": "5500.00"
+      }
+    },
+    "timestamp": "2026-05-22T15:00:00Z"
+  },
+  {
+    "id": "log-uuid-3",
+    "user": "user-uuid",
+    "user_name": "Soumyajit Das",
+    "action": "UPDATE",
+    "model_name": "TransportEntry",
+    "object_id": "transport-uuid-here",
+    "object_repr": "TRN/2026/0001 - EEL/IND/ALOKA/100R",
+    "changes": {
+      "action": "MARK_DELIVERED",
+      "actual_delivery_date": "2026-05-25"
+    },
+    "timestamp": "2026-05-25T09:00:00Z"
+  }
+]
+```
+
+---
+
+### 12d. What Gets Logged Automatically
+
+| Module | Action | When |
+|--------|--------|------|
+| PurchaseOrder | CREATE | PO generated from comparison |
+| PurchaseOrder | UPDATE | PO edited (items/rates/GST/remarks changed) |
+| PurchaseOrder | UPDATE (CANCEL) | PO cancelled (includes stock reversal details) |
+| TransportEntry | CREATE | New transport entry created |
+| TransportEntry | UPDATE | Transport entry edited (cost items, status, etc.) |
+| TransportEntry | UPDATE (MARK_DELIVERED) | Shipment marked as delivered |
+
+---
+
+### 12e. Audit Log Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Unique log entry ID |
+| `user` | UUID | User who performed the action |
+| `user_name` | string | Full name of the user |
+| `action` | string | `CREATE` / `UPDATE` / `DELETE` |
+| `model_name` | string | Module name (`PurchaseOrder`, `TransportEntry`, etc.) |
+| `object_id` | string | UUID of the affected object |
+| `object_repr` | string | Human-readable name (e.g., PO number + vendor) |
+| `changes` | JSON | Old/new values or action-specific details |
+| `timestamp` | datetime | When the action happened (ISO 8601) |
+
+---
+
+## Complete Flow (Requisition to PO)
+
+Get the entire flow for a requisition in one API call:
+
+```
+GET /api/requisitions/{id}/flow
+```
+Returns: Requisition -> Assignments -> Vendors -> Quotations -> Items (nested)
+
+---
+
+## Transport Module (Landed Cost Tracking)
+
+Track all transport/logistics costs per PO — freight, loading, unloading, insurance, customs, etc. Calculates landed cost per item for profit/loss analysis.
+
+### Create Transport Entry
+```
+POST /api/transport
+```
+```json
+{
+  "purchase_order": "po-uuid",
+  "transporter_name": "Blue Dart Logistics",
+  "transporter_contact": "9876543210",
+  "vehicle_number": "MH12AB1234",
+  "driver_name": "Raju",
+  "driver_contact": "9876543211",
+  "dispatch_date": "2026-05-22",
+  "expected_delivery_date": "2026-05-25",
+  "dispatch_from": "Mumbai",
+  "dispatch_to": "Pune",
+  "remarks": "Handle with care",
+  "cost_items": [
+    {
+      "cost_type": "FREIGHT",
+      "description": "Mumbai to Pune transport",
+      "amount": 3500.00
+    },
+    {
+      "cost_type": "LOADING",
+      "amount": 500.00
+    },
+    {
+      "cost_type": "UNLOADING",
+      "amount": 500.00
+    },
+    {
+      "cost_type": "INSURANCE",
+      "description": "Transit insurance",
+      "amount": 800.00
+    }
+  ]
+}
+```
+- Transport number auto-generated: `TRN/YEAR/NUMBER`
+- `total_cost` auto-calculated from cost items
+- One PO can have multiple transport entries (multiple shipments)
+- Cost types: `FREIGHT`, `LOADING`, `UNLOADING`, `INSURANCE`, `CUSTOMS`, `OCTROI`, `HANDLING`, `PACKAGING`, `TOLL`, `OTHER`
+
+### List Transport Entries
+```
+GET /api/transport
+```
+Query params: `?purchase_order=uuid&status=IN_TRANSIT&search=TRN&ordering=-dispatch_date`
+
+### Get Transport by PO
+```
+GET /api/transport/by_po?purchase_order=po-uuid
+```
+
+### Update Transport Entry (Full Edit)
+```
+PATCH /api/transport/{id}
+```
+```json
+{
+  "status": "IN_TRANSIT",
+  "vehicle_number": "MH12CD5678",
+  "cost_items": [
+    {
+      "id": "existing-cost-item-uuid",
+      "cost_type": "FREIGHT",
+      "amount": 4000.00
+    },
+    {
+      "cost_type": "TOLL",
+      "amount": 200.00
+    }
+  ]
+}
+```
+- Send `id` to update existing cost item, omit to add new
+- Items not in array are deleted
+- `total_cost` recalculated automatically
+- Audit log created on every update
+
+### Mark as Delivered
+```
+POST /api/transport/{id}/mark_delivered
+```
+Sets status to DELIVERED and records actual delivery date.
+
+### Landed Cost (Per PO Item Breakdown)
+```
+GET /api/transport/landed_cost?purchase_order=po-uuid
+```
+**Response:**
+```json
+{
+  "po_number": "EEL/IND/ALOKA/100",
+  "vendor_name": "Aloka Industries",
+  "currency": "INR",
+  "items_total": 100000.00,
+  "gst_total": 18000.00,
+  "po_total_amount": 118000.00,
+  "total_transport_cost": 5300.00,
+  "grand_total_with_transport": 123300.00,
+  "transport_entries": [
+    {
+      "transport_number": "TRN/2026/0001",
+      "transporter_name": "Blue Dart",
+      "dispatch_date": "2026-05-22",
+      "status": "DELIVERED",
+      "total_cost": 5300.00,
+      "cost_breakdown": {
+        "Freight Charges": 3500.00,
+        "Loading Charges": 500.00,
+        "Unloading Charges": 500.00,
+        "Insurance": 800.00
+      }
+    }
+  ],
+  "items": [
+    {
+      "item_id": "uuid",
+      "product_code": "ITEM/0001",
+      "product_name": "Steel Rod 10mm",
+      "quantity": 100,
+      "unit": "KG",
+      "purchase_rate": 600.00,
+      "purchase_amount": 60000.00,
+      "value_percentage": 60.00,
+      "allocated_transport": 3180.00,
+      "landed_cost": 63180.00,
+      "landed_rate_per_unit": 631.80
+    },
+    {
+      "item_id": "uuid",
+      "product_code": "ITEM/0002",
+      "product_name": "Copper Wire 5mm",
+      "quantity": 200,
+      "unit": "MTR",
+      "purchase_rate": 200.00,
+      "purchase_amount": 40000.00,
+      "value_percentage": 40.00,
+      "allocated_transport": 2120.00,
+      "landed_cost": 42120.00,
+      "landed_rate_per_unit": 210.60
+    }
+  ]
+}
+```
+Transport cost is allocated proportionally to each item based on its value percentage.
+
+### Transport Reports
+
+**Transport Cost by PO**
+```
+GET /api/reports/transport/by-po
+```
+Shows total transport cost per PO, transport as % of PO value.
+
+**Transport Cost by Vendor**
+```
+GET /api/reports/transport/by-vendor
+```
+Shows total transport cost per vendor across all POs.
+
+**Cost Type Breakdown**
+```
+GET /api/reports/transport/cost-breakdown
+```
+Shows total spend by cost type (freight, loading, insurance, etc.) with percentages.
+
+**Landed Cost Report (Item-wise)**
+```
+GET /api/reports/transport/landed-cost
+```
+Query params: `?vendor=uuid&status=COMPLETED`
+Item-wise landed cost across all POs — purchase price + allocated transport.
+
+**Transport Dashboard**
+```
+GET /api/dashboard/transport
+```
+Returns: summary stats (pending/in-transit/delivered counts, total cost), cost by type, recent entries.
+
+### Audit Logs for Transport
+All transport create/update/mark_delivered actions are logged. View via:
+```
+GET /api/audit-logs/TransportEntry/{transport-uuid}
+```
+
+---
+
+## Currency Master
+
+Manage supported currencies in the system. Currencies are used in quotations, POs, bills, etc.
+
+### List All Currencies
+```
+GET /api/currencies
+```
+Query params: `?is_active=true&search=dollar&ordering=code`
+
+Returns all currencies. Available to all authenticated users.
+
+**Response:**
 ```json
 {
   "count": 3,
   "results": [
     {
-      "id": "uuid-here",
-      "rate": 83.5000,
-      "effective_date": "2026-05-08",
+      "id": "uuid",
+      "code": "INR",
+      "name": "Indian Rupee",
+      "symbol": "₹",
       "is_active": true,
-      "remarks": "Updated as per RBI reference rate",
-      "updated_by": "uuid",
-      "updated_by_name": "Admin User",
-      "created_at": "2026-05-08T10:30:00+05:30",
-      "updated_at": "2026-05-08T10:30:00+05:30"
+      "created_at": "2026-05-23T10:00:00Z",
+      "updated_at": "2026-05-23T10:00:00Z"
     },
     {
-      "id": "uuid-here",
-      "rate": 83.2500,
-      "effective_date": "2026-05-01",
-      "is_active": false,
-      "remarks": "Previous rate",
-      "updated_by": "uuid",
-      "updated_by_name": "Admin User",
-      "created_at": "2026-05-01T09:00:00+05:30",
-      "updated_at": "2026-05-08T10:30:00+05:30"
-    }
-  ]
-}
-```
-
----
-
-### 1.3 Create New Exchange Rate
-
-```
-POST /api/admin/exchange-rates
-Authorization: Bearer <admin-token>
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "rate": 84.2500,
-  "effective_date": "2026-05-09",
-  "is_active": true,
-  "remarks": "Rate updated per market"
-}
-```
-
-> **Note:** Setting `is_active: true` will automatically deactivate the previously active rate.
-
-**Response (201):**
-```json
-{
-  "id": "new-uuid",
-  "rate": 84.2500,
-  "effective_date": "2026-05-09",
-  "is_active": true,
-  "remarks": "Rate updated per market",
-  "updated_by": "admin-uuid",
-  "updated_by_name": "Admin User",
-  "created_at": "2026-05-09T08:00:00+05:30",
-  "updated_at": "2026-05-09T08:00:00+05:30"
-}
-```
-
----
-
-### 1.4 Get Single Exchange Rate
-
-```
-GET /api/admin/exchange-rates/{id}
-Authorization: Bearer <admin-token>
-```
-
-**Response (200):** Same as single item in list response.
-
----
-
-### 1.5 Update Exchange Rate (Full)
-
-```
-PUT /api/admin/exchange-rates/{id}
-Authorization: Bearer <admin-token>
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "rate": 84.5000,
-  "effective_date": "2026-05-09",
-  "is_active": true,
-  "remarks": "Corrected rate"
-}
-```
-
----
-
-### 1.6 Update Exchange Rate (Partial)
-
-```
-PATCH /api/admin/exchange-rates/{id}
-Authorization: Bearer <admin-token>
-Content-Type: application/json
-```
-
-**Request Body (only fields to update):**
-```json
-{
-  "rate": 85.0000
-}
-```
-
----
-
-### 1.7 Delete Exchange Rate
-
-```
-DELETE /api/admin/exchange-rates/{id}
-Authorization: Bearer <admin-token>
-```
-
-> **Restriction:** Cannot delete the active rate. Deactivate it first or set another rate as active.
-
-**Response (204):** No content.
-
-**Response (400) — If active:**
-```json
-{
-  "error": "Cannot delete the active exchange rate. Deactivate it first or set another rate as active."
-}
-```
-
----
-
-## 2. Vendor Quotation API Changes
-
-### 2.1 Create Vendor Quotation
-
-```
-POST /api/vendor-quotations
-```
-
-**New field in request:**
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `currency` | string | `"INR"` | `"INR"` or `"USD"` |
-
-**Example (USD quotation):**
-```json
-{
-  "requisition": "req-uuid",
-  "vendor": "vendor-uuid",
-  "currency": "USD",
-  "reference_number": "VQ-2026-001",
-  "items": [
+      "id": "uuid",
+      "code": "USD",
+      "name": "US Dollar",
+      "symbol": "$",
+      "is_active": true,
+      "created_at": "2026-05-23T10:00:00Z",
+      "updated_at": "2026-05-23T10:00:00Z"
+    },
     {
-      "vendor_item": "item-uuid",
-      "quoted_rate": 120.00
+      "id": "uuid",
+      "code": "EUR",
+      "name": "Euro",
+      "symbol": "€",
+      "is_active": true,
+      "created_at": "2026-05-23T10:00:00Z",
+      "updated_at": "2026-05-23T10:00:00Z"
     }
   ]
 }
 ```
 
-> When `currency: "USD"`, the system:
-> 1. Fetches current active exchange rate
-> 2. Stores `quoted_rate` as original USD rate
-> 3. Converts to INR: `quoted_rate_inr = 120.00 × 83.50 = 10,020.00`
-> 4. Stores both values
-
----
-
-### 2.2 Get Vendor Quotation Response
-
-**New fields in response:**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `currency` | string | `"INR"` or `"USD"` |
-| `exchange_rate` | decimal | USD to INR rate used (1.0 if INR) |
-| `original_total_amount` | decimal | Total in original currency |
-| `items[].original_quoted_rate` | decimal | Rate in original currency |
-| `items[].original_amount` | decimal | Amount in original currency |
-
-**Example Response:**
+### Create Currency (Admin Only)
+```
+POST /api/currencies
+```
 ```json
 {
-  "id": "uuid",
-  "quotation_number": "VQ/2026/0001",
-  "currency": "USD",
-  "exchange_rate": 83.5000,
-  "total_amount": 100200.00,
-  "original_total_amount": 1200.00,
-  "items": [
-    {
-      "product_name": "Motor Unit",
-      "quantity": 10.00,
-      "quoted_rate": 10020.00,
-      "amount": 100200.00,
-      "original_quoted_rate": 120.00,
-      "original_amount": 1200.00
-    }
-  ]
+  "code": "EUR",
+  "name": "Euro",
+  "symbol": "€",
+  "is_active": true
 }
+```
+- `code` is auto-uppercased and must be unique
+- Only admin users can create/update/delete currencies
+
+### Get Single Currency
+```
+GET /api/currencies/{id}
+```
+
+### Update Currency (Admin Only)
+```
+PATCH /api/currencies/{id}
+```
+```json
+{
+  "name": "Euro (European Union)",
+  "is_active": false
+}
+```
+
+### Delete Currency (Admin Only)
+```
+DELETE /api/currencies/{id}
 ```
 
 ---
 
-## 3. Sales Quotation API Changes
+## Finance APIs
 
-### 3.1 Create Sales Quotation
+### Record Payment to Vendor
+```
+POST /api/finance/purchase-orders/{id}/record_payment
+```
+```json
+{
+  "confirm_password": "your-password",
+  "amount": 15000.00,
+  "payment_date": "2026-05-22",
+  "payment_mode": "NEFT",
+  "reference_number": "UTR123456",
+  "remarks": "First installment"
+}
+```
+Payment modes: `CASH`, `NEFT`, `RTGS`, `CHEQUE`, `UPI`, `CARD`
+
+### Payment History (Vendor)
+```
+GET /api/finance/purchase-orders/{id}/payment_history
+```
+
+### Purchased Items Report
+```
+GET /api/finance/purchase-orders/{id}/purchased_items
+```
+
+### Pending Payments (Vendors)
+```
+GET /api/finance/purchase-orders/pending_payments
+```
+
+### Record Incoming Payment (From Client)
+```
+POST /api/finance/bills/{id}/record_payment
+```
+```json
+{
+  "confirm_password": "your-password",
+  "amount": 50000.00,
+  "payment_date": "2026-05-22",
+  "payment_mode": "CASH",
+  "reference_number": "REC-001",
+  "remarks": "Partial payment"
+}
+```
+
+### Payment History (Client)
+```
+GET /api/finance/bills/{id}/payment_history
+```
+
+### Finance Dashboard
+```
+GET /api/finance/dashboard
+```
+Returns: outgoing totals, incoming totals, cash flow, purchase item stats, recent transactions.
+
+---
+
+## Key Business Rules
+
+| Rule | Description |
+|------|-------------|
+| Currency | Managed via Currency Master. Each vendor quotes in their own currency. No conversion. |
+| Comparison | All vendors shown together with their currency. Cross-currency visible. |
+| Item Master | Every item tracks its `requisition_number`. Items auto-linked when requisition is created. |
+| PO Number | Format: `EEL/IND/<VENDOR_FIRST_WORD>/<NUMBER>` starting from 100 |
+| PO Discount | Vendor discount (in PO currency) subtracted from total. Default 0. |
+| PO Edit | Fully editable — items, rates, quantities, GST, discount, date, remarks. Received items protected. |
+| PO Revision | First edit appends "R" to PO number. revision_number increments each edit. |
+| Edit Lock | 30-minute timeout. Must lock before editing. |
+| Item Code | Auto-generated, must be unique across the system |
+| Deletion | Requisitions, Assignments, Quotations, POs cannot be deleted (audit trail) |
+| Password | Cancel PO and Record Payment require `confirm_password` in body |
+| GST | CGST + SGST (intra-state) OR IGST (inter-state). Applied on items_total. Total = items_total + GST - discount. |
+| Stock | Auto-updated when PO item marked as purchased. Reversed on PO cancel. |
+| Transport | Multiple shipments per PO. Cost allocated proportionally to items by value. |
+| Landed Cost | Item landed cost = purchase price + allocated transport cost |
+| Audit | All PO/Transport create/update/cancel actions logged with user + timestamp + changes |
+
+---
+
+## Status Flow
+
+### Purchase Order Status
+```
+PENDING -> PARTIALLY_RECEIVED -> COMPLETED
+    |
+    v
+CANCELLED (with stock reversal if needed)
+```
+
+### Bill Status
+```
+DRAFT -> SENT -> PAID
+          |
+          v
+      CANCELLED
+```
+
+
+
+
+updates
+
+
+
+# EnergyPac ERP - Complete API & Flow Documentation
+
+Base URL: `/api/`  
+Authentication: JWT Bearer Token (8-hour expiry)  
+Header: `Authorization: Bearer <access_token>`
+
+---
+
+## Complete Business Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         EnergyPac ERP Flow                                 │
+│                                                                            │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                  │
+│  │  Client Query │───▶│    Sales     │───▶│  Requisition │                  │
+│  │  (Lead Entry) │    │  Quotation   │    │(Items Needed)│                  │
+│  └──────────────┘    └──────────────┘    └──────┬───────┘                  │
+│                                                  │                         │
+│                    ┌─────────────────────────────┼──────────────┐           │
+│                    │                             │              │           │
+│                    ▼                             ▼              ▼           │
+│  ┌──────────────────────┐   ┌──────────────────────┐  ┌─────────────────┐  │
+│  │ Vendor Assignment    │   │  Proforma Invoice     │  │  Purchase Order │  │
+│  │ + Quotation          │   │  (Sell to Client)     │  │  (Buy from      │  │
+│  │ + Price Comparison   │   │  PI = Items Total     │  │   Vendor)       │  │
+│  └──────────┬───────────┘   │  No GST, No Discount  │  │  GST + Discount │  │
+│             │               └──────────┬────────────┘  └────────┬────────┘  │
+│             ▼                          │                        │           │
+│  ┌─────────────────┐                  │                        │           │
+│  │  PO Generation  │◀─── from ────────┤                        │           │
+│  │  (from Vendor   │     comparison   │                        │           │
+│  │   Quotations)   │                  │                        │           │
+│  └─────────────────┘                  │                        │           │
+│                                       ▼                        ▼           │
+│                          ┌──────────────────┐      ┌──────────────────┐    │
+│                          │     PI Bill      │      │    Transport     │    │
+│                          │  (GST + Discount │      │  (PO or PI)     │    │
+│                          │   applied here)  │      │  Landed Cost    │    │
+│                          └────────┬─────────┘      └────────┬────────┘    │
+│                                   │                         │             │
+│                                   ▼                         ▼             │
+│                          ┌──────────────────────────────────────────┐      │
+│                          │              Finance Module              │      │
+│                          │                                          │      │
+│                          │  ▸ PO Payments (outgoing to vendors)    │      │
+│                          │  ▸ PI Payments (incoming from clients)  │      │
+│                          │  ▸ Advance Payments (against PI)        │      │
+│                          │  ▸ PI Bill Payments (against bills)     │      │
+│                          │  ▸ P&L Reports (all in INR)            │      │
+│                          │  ▸ Due Date Tracking                    │      │
+│                          │  ▸ Reconciliation                       │      │
+│                          └──────────────────────────────────────────┘      │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Concepts
+
+| Concept | Detail |
+|---------|--------|
+| **PI (Proforma Invoice)** | Simple items total — NO GST, NO discount. Sent to client for acceptance. |
+| **PI Bill** | Generated AFTER client accepts PI. GST + discount applied here. This is the actual billing document. |
+| **Advance Payment** | Always against a PI. Currency & conversion_rate auto-inherited from PI. |
+| **Multi-Currency** | Amounts in original currency + immutable conversion_rate. All P&L in INR. |
+
+---
+
+## Authentication
+
+### Login
+```
+POST /api/auth/login
+```
+```json
+{
+  "email": "user@company.com",
+  "password": "your-password"
+}
+```
+Returns: `access` (8hr), `refresh` tokens, user profile.
+
+### Refresh Token
+```
+POST /api/auth/refresh
+```
+```json
+{ "refresh": "refresh-token" }
+```
+
+### Profile
+```
+GET /api/auth/profile
+```
+
+### Forgot / Reset Password
+```
+POST /api/auth/forgot-password     → { "email": "..." }
+POST /api/auth/verify-otp          → { "email": "...", "otp": "123456" }
+POST /api/auth/reset-password      → { "email": "...", "otp": "...", "new_password": "..." }
+```
+
+---
+
+## Step 1: Client Query (Lead Entry)
+
+```
+POST /api/client-queries
+```
+```json
+{
+  "client_name": "ABC International",
+  "client_email": "abc@client.com",
+  "client_phone": "+91-9876543210",
+  "client_address": "Dubai, UAE",
+  "query_date": "2026-05-20",
+  "requirements": "Need steel rods and copper wire",
+  "priority": "HIGH"
+}
+```
+
+```
+GET /api/client-queries                    → List all queries
+GET /api/client-queries/{id}               → Query detail
+PATCH /api/client-queries/{id}             → Update
+```
+
+---
+
+## Step 2: Sales Quotation
 
 ```
 POST /api/quotations
 ```
-
-**New field in request:**
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `currency` | string | `"INR"` | `"INR"` or `"USD"` |
-
-**Example (USD):**
 ```json
 {
   "client_query": "query-uuid",
-  "quotation_date": "2026-05-08",
+  "quotation_date": "2026-05-21",
   "currency": "USD",
-  "cgst_percentage": 0,
-  "sgst_percentage": 0,
-  "igst_percentage": 0,
+  "conversion_rate": 84.50,
+  "validity_days": 30,
+  "remarks": "As per your inquiry"
+}
+```
+
+### Add Items to Quotation
+```
+POST /api/quotation-items
+```
+```json
+{
+  "sales_quotation": "quotation-uuid",
+  "product": "product-uuid",
+  "quantity": 100,
+  "unit_price": 250.00
+}
+```
+
+```
+GET /api/quotations                        → List quotations
+GET /api/quotations/{id}                   → Detail
+PATCH /api/quotations/{id}                 → Update
+GET /api/quotation-items?sales_quotation=uuid → Items for a quotation
+```
+
+---
+
+## Step 3: Create Requisition (Purchase Request)
+
+A requisition is the central entity linking procurement and sales.
+
+```
+POST /api/requisitions
+```
+```json
+{
+  "requisition_number": "EEL/2026/001",
+  "requisition_date": "2026-05-22",
+  "remarks": "Urgent requirement for project X",
   "items": [
     {
       "product": "product-uuid",
-      "quantity": 5,
-      "rate": 200.00
+      "quantity": 100,
+      "remarks": "Need high quality"
+    }
+  ]
+}
+```
+- `requisition_number` is optional — auto-generates as `EEL/YEAR/NUMBER` if not provided
+- Each product used gets `requisition_number` saved in the Item Master
+
+```
+GET /api/requisitions                      → List (filter: ?is_assigned=true&search=EEL)
+GET /api/requisitions/{id}                 → Detail
+GET /api/requisitions/{id}/items           → Requisition items
+GET /api/requisitions/{id}/flow            → Complete flow (Requisition → Assignments → Quotations)
+```
+
+---
+
+## Step 4: Assign Vendors to Requisition
+
+```
+POST /api/vendor-assignments
+```
+```json
+{
+  "requisition": "requisition-uuid",
+  "vendor": "vendor-uuid",
+  "remarks": "Request quotation for all items",
+  "items": [
+    {
+      "requisition_item": "requisition-item-uuid",
+      "quantity": 100
+    }
+  ]
+}
+```
+- One vendor per requisition (unique constraint)
+
+```
+GET /api/requisitions/{id}/assignments             → Assignments for requisition
+GET /api/vendor-assignments/{id}/items_for_quotation → Items for quotation entry
+```
+
+---
+
+## Step 5: Enter Vendor Quotation
+
+```
+POST /api/vendor-quotations
+```
+```json
+{
+  "requisition": "requisition-uuid",
+  "vendor": "vendor-uuid",
+  "currency": "INR",
+  "reference_number": "VENDOR-REF-123",
+  "validity_date": "2026-06-22",
+  "payment_terms": "30 days",
+  "delivery_terms": "Ex-works",
+  "items": [
+    {
+      "vendor_item": "vendor-requisition-item-uuid",
+      "quoted_rate": 250.50
     }
   ]
 }
 ```
 
-> `rate: 200.00` is in USD. System converts to INR internally.
+```
+GET /api/vendor-quotations                          → List all
+GET /api/vendor-quotations/by_vendor?vendor=uuid     → By vendor
+GET /api/vendor-quotations/by_requisition?requisition=uuid → By requisition
+GET /api/vendor-quotations/by_requisition_vendor?requisition=uuid&vendor=uuid
+```
 
 ---
 
-### 3.2 Update Sales Quotation
+## Step 6: Price Comparison
 
 ```
-PUT /PATCH /api/quotations/{id}
+GET /api/requisitions/{id}/comparison
 ```
+Returns all vendors with their quotations side-by-side. Each vendor entry has its `currency`. Cross-currency visible — frontend groups by currency.
 
-Currency can be changed during update. When changed from INR to USD (or vice versa), the exchange rate is automatically fetched.
+---
 
+## Step 7: Select Vendor
+
+```
+POST /api/vendor-quotations/{id}/select
+```
+Marks this quotation as selected (deselects others for the same requisition).
+
+---
+
+## Step 8: Generate Purchase Order
+
+```
+POST /api/purchase-orders/generate_from_comparison
+```
 ```json
 {
-  "currency": "USD"
+  "requisition": "requisition-uuid",
+  "po_date": "2026-05-22",
+  "subject": "Steel materials for Phase 2",
+  "project_name": "Kolkata Metro Phase 2",
+  "bill_to": "EnergyPac Engineering Ltd, 12 Park Street, Kolkata",
+  "ship_to": "Site Office, Kolkata Metro Phase 2, Salt Lake",
+  "terms_and_conditions": [
+    "Delivery within 30 days from PO date",
+    "Payment: 50% advance, 50% on delivery",
+    {"type": "warranty", "value": "12 months from delivery"}
+  ],
+  "selections": [
+    "quotation-item-uuid-1",
+    "quotation-item-uuid-2"
+  ],
+  "discount_amount": 20.00,
+  "cgst_percentage": 9.00,
+  "sgst_percentage": 9.00,
+  "igst_percentage": 0.00,
+  "conversion_rate": 83.50
+}
+```
+- System groups items by vendor → creates one PO per vendor
+- PO Number: `EEL/IND/<VENDOR_PREFIX>/<NUMBER>` (starts from 100)
+- GST calculated on `items_total`. Total = `items_total + GST - discount`
+- Currency inherited from vendor's quotation
+- `conversion_rate` = INR rate at PO creation (immutable)
+
+---
+
+## Step 9: Edit PO (Full Edit with Lock & Revision)
+
+### Acquire Lock
+```
+POST /api/purchase-orders/{id}/lock
+```
+30-minute lock. Returns 409 if locked by another user.
+
+### Edit PO
+```
+PATCH /api/purchase-orders/{id}
+```
+```json
+{
+  "po_date": "2026-05-25",
+  "discount_amount": 500.00,
+  "cgst_percentage": 12.00,
+  "sgst_percentage": 12.00,
+  "items": [
+    { "id": "existing-item-uuid", "product": "uuid", "quantity": 150, "rate": 275.00 },
+    { "product": "new-product-uuid", "quantity": 50, "rate": 300.00 }
+  ]
+}
+```
+
+**Editable:** `po_date`, `subject`, `project_name`, `bill_to`, `ship_to`, `terms_and_conditions`, `remarks`, `discount_amount`, GST percentages, `items`.
+
+**Rules:**
+- Send `id` → update existing item. Omit `id` → add new. Missing items → deleted.
+- Items marked as "received" cannot be edited/removed.
+- First edit: PO number gets "R" suffix. `revision_number` increments each edit.
+- Audit log created on every update.
+
+### Release Lock
+```
+POST /api/purchase-orders/{id}/unlock
+```
+
+---
+
+## Step 10: Update GST on PO
+
+```
+POST /api/purchase-orders/{id}/update_gst
+```
+```json
+{
+  "cgst_percentage": 9.00,
+  "sgst_percentage": 9.00,
+  "igst_percentage": 0.00
 }
 ```
 
 ---
 
-### 3.3 Get Sales Quotation Response
+## Step 11: Mark Items as Purchased (Received)
 
-**New fields:**
+```
+POST /api/purchase-orders/{id}/mark_item_purchased
+```
+```json
+{ "item_id": "po-item-uuid" }
+```
+Updates inventory stock. PO status: PENDING → PARTIALLY_RECEIVED → COMPLETED.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `currency` | string | `"INR"` or `"USD"` |
-| `exchange_rate` | decimal | Rate used at creation time |
-| `original_subtotal` | decimal | Subtotal in original currency |
-| `original_cgst_amount` | decimal | CGST in original currency |
-| `original_sgst_amount` | decimal | SGST in original currency |
-| `original_igst_amount` | decimal | IGST in original currency |
-| `original_total_amount` | decimal | Total in original currency |
-| `items[].original_rate` | decimal | Item rate in original currency |
-| `items[].original_amount` | decimal | Item amount in original currency |
+```
+POST /api/purchase-orders/{id}/mark_all_purchased    → Mark all items
+```
 
 ---
 
-## 4. Purchase Order API Changes
-
-### 4.1 Generate PO
+## Step 12: Cancel PO (Password Protected)
 
 ```
-POST /api/purchase-orders/generate-po
+POST /api/purchase-orders/{id}/cancel
 ```
-
-**No change in request.** Currency is automatically inherited from the vendor quotation.
+```json
+{
+  "confirm_password": "your-password",
+  "reason": "Vendor could not supply on time"
+}
+```
+If items were received, stock is reversed.
 
 ---
 
-### 4.2 Get PO Response
+## Step 13: Create Proforma Invoice (PI)
 
-**New fields:**
+PI is a simple items total — **NO GST, NO discount** on PI. Those are applied later on the PI Bill.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `currency` | string | Inherited from vendor quotation |
-| `exchange_rate` | decimal | Rate used |
-| `original_items_total` | decimal | Items total in original currency |
-| `original_freight_cost` | decimal | Freight in original currency |
-| `original_total_amount` | decimal | Total in original currency |
-| `items[].original_rate` | decimal | Item rate in original currency |
-| `items[].original_amount` | decimal | Item amount in original currency |
+### Check Requisition Items Purchase Status
+```
+GET /api/proforma-invoices/requisition_items?requisition=uuid
+```
+Shows which items are COMPLETED / PO_CREATED / PENDING.
+
+### Create PI
+```
+POST /api/proforma-invoices
+```
+```json
+{
+  "requisition": "requisition-uuid",
+  "pi_date": "2026-05-25",
+  "currency": "USD",
+  "conversion_rate": 84.5000,
+  "payment_due_date": "2026-06-25",
+  "lc_number": "LC-2026-001",
+  "exporter_beneficiary": "EnergyPac Engineering Ltd",
+  "consignee": "ABC Corp, Dubai",
+  "applicant_importer": "ABC Trading LLC, UAE",
+  "port_of_loading": "Kolkata Port",
+  "port_of_discharge": "Jebel Ali",
+  "terms_of_delivery": "FOB Kolkata",
+  "terms_of_payment": "Irrevocable L/C at sight",
+  "items": [
+    {
+      "product": "product-uuid-1",
+      "hsn_code": "254125",
+      "quantity": 100,
+      "unit_price": 250.00
+    }
+  ],
+  "terms_and_conditions": ["Shipment within 45 days", "Inspection certificate required"],
+  "notes": "Priority handling"
+}
+```
+
+- PI Number: `EEL/IND/PI/{YEAR}/{NUMBER}` (e.g., `EEL/IND/PI/2026/0001`)
+- `grand_total` = sum of all items (quantity × unit_price). **No GST, no discount.**
+- `conversion_rate` is immutable after creation
+- All header fields are optional. Only `requisition`, `pi_date`, `currency`, `items` are required.
+
+```
+GET /api/proforma-invoices                 → List (filter: ?requisition=uuid&status=DRAFT&currency=USD)
+GET /api/proforma-invoices/{id}            → Detail
+```
+
+### Edit PI (Lock + Revision)
+```
+POST /api/proforma-invoices/{id}/lock      → Acquire lock
+PATCH /api/proforma-invoices/{id}          → Edit (same rules as PO edit)
+POST /api/proforma-invoices/{id}/unlock    → Release lock
+```
+First edit appends "R" to PI number. `revision_number` increments.
+
+### PI Status Flow
+```
+DRAFT → SENT → ACCEPTED → CANCELLED
+```
+*Allowed Transitions:**
+| Current Status | Can Move To |
+|----------------|-------------|
+| DRAFT | SENT, CANCELLED |
+| SENT | ACCEPTED, CANCELLED |
+| ACCEPTED | CANCELLED |
+| CANCELLED | _(dead end)_ |
+
+#### Send PI to Client
+```
+POST /api/proforma-invoices/{id}/send
+```
+Moves status from `DRAFT` → `SENT`. No body required.
+
+#### Client Accepts PI
+```
+POST /api/proforma-invoices/{id}/accept
+```
+Moves status from `SENT` → `ACCEPTED`. No body required.
+
+#### Cancel PI (Password Protected)
+```
+POST /api/proforma-invoices/{id}/cancel
+```
+```json
+{
+  "confirm_password": "your-password"
+}
+```
 
 ---
 
-## 5. Work Order API Changes
+## Step 14: Generate PI Bill (GST + Discount applied here)
 
-### 5.1 Create Work Order
+PI Bill is generated when client accepts the PI. This is where GST and discount get applied.
 
+### Create PI Bill
 ```
-POST /api/work-orders
+POST /api/pi-bills
 ```
-
-**No change in request.** Currency is automatically inherited from the sales quotation.
-
----
-
-### 5.2 Get Work Order Response
-
-**New fields:**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `currency` | string | Inherited from sales quotation |
-| `exchange_rate` | decimal | Rate used |
-| `original_subtotal` | decimal | Subtotal in original currency |
-| `original_cgst_amount` | decimal | CGST in original currency |
-| `original_sgst_amount` | decimal | SGST in original currency |
-| `original_igst_amount` | decimal | IGST in original currency |
-| `original_total_amount` | decimal | Total in original currency |
-| `items[].original_rate` | decimal | Item rate in original currency |
-| `items[].original_amount` | decimal | Item amount in original currency |
-
----
-
-## 6. Bill / Invoice API Changes
-
-### 6.1 Create Bill
-
-```
-POST /api/bills
-```
-
-**No change in request.** Currency is automatically inherited from the work order.
-
----
-
-### 6.2 Get Bill Response
-
-**New fields:**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `currency` | string | Inherited from work order |
-| `exchange_rate` | decimal | Rate used |
-| `original_subtotal` | decimal | Subtotal in original currency |
-| `original_cgst_amount` | decimal | CGST in original currency |
-| `original_sgst_amount` | decimal | SGST in original currency |
-| `original_igst_amount` | decimal | IGST in original currency |
-| `original_total_amount` | decimal | Total in original currency |
-| `original_freight_cost` | decimal | Freight in original currency |
-| `original_net_payable` | decimal | Net payable in original currency |
-| `items[].original_rate` | decimal | Item rate in original currency |
-| `items[].original_amount` | decimal | Item amount in original currency |
-
----
-
-## 7. Finance API Changes
-
-### 7.1 Finance PO Summary
-
-```
-GET /api/finance/purchase-orders
+```json
+{
+  "proforma_invoice": "pi-uuid",
+  "bill_date": "2026-05-26",
+  "bill_type": "INTERNATIONAL",
+  "client_name": "ABC International, Dubai",
+  "contact_person": "Mr. Ahmed",
+  "phone": "+971-555-1234",
+  "email": "ahmed@abc.com",
+  "address": "Dubai, UAE",
+  "cgst_percentage": 0,   
+  "sgst_percentage": 0,
+  "igst_percentage": 18,
+  "discount_amount": 500.00,
+  "remarks": "Against PI EEL/IND/PI/2026/0001",
+  "items": [
+    {
+      "pi_item": "pi-item-uuid",
+      "item_name": "Steel Rod 10mm",
+      "hsn_code": "7214",
+      "unit": "KG",
+      "quantity": 100,
+      "rate": 250.00
+    },
+    {
+      "product": "product-uuid",
+      "item_name": "Copper Wire 5mm",
+      "hsn_code": "7408",
+      "unit": "MTR",
+      "quantity": 200,
+      "rate": 150.00
+    }
+  ]
+}
 ```
 
-**New fields in response:** `currency`, `exchange_rate`, `original_items_total`, `original_freight_cost`, `original_total_amount`
+**Auto behavior:**
+- Bill Number: `PIB/{YEAR}/{NUMBER}` (e.g., `PIB/2026/0001`)
+- `currency` and `conversion_rate` auto-inherited from PI
+- `subtotal` = sum of items (quantity × rate)
+- GST calculated on subtotal
+- `total_amount = subtotal + GST - discount`
+- `net_payable = total_amount`
+- `balance = net_payable - amount_paid`
 
----
-
-### 7.2 Finance Bill Summary
-
-```
-GET /api/finance/bills
-```
-
-**New fields in response:** `currency`, `exchange_rate`, `original_subtotal`, `original_cgst_amount`, `original_sgst_amount`, `original_igst_amount`, `original_total_amount`, `original_freight_cost`, `original_net_payable`
-
----
-
-## 8. Reports — Quotation Comparison
-
-### 8.1 Vendor Quotation Comparison
-
-```
-GET /api/reports/vendors/quotation-comparison?requisition={id}
-```
-
-**Changes:**
-- All comparisons happen in **INR** (USD quotations are auto-converted)
-- New field: `comparison_currency: "INR"`
-- Renamed fields for clarity
+**Item linking:**
+- `pi_item` = link to specific PI item (optional). If provided, product is auto-resolved.
+- `product` = link to product directly (if pi_item not provided)
+- Both are optional — but at least one is recommended for traceability
 
 **Response:**
 ```json
 {
-  "report_type": "Vendor Quotation Comparison",
-  "comparison_currency": "INR",
-  "requisition_number": "EEL/2026/001",
-  "quotations": [
-    {
-      "vendor_name": "ABC International",
-      "vendor_code": "VEN/0001",
-      "quotation_number": "VQ/2026/0001",
-      "currency": "USD",
-      "exchange_rate": 83.50,
-      "total_amount_inr": 100200.00,
-      "original_total_amount": 1200.00,
-      "is_selected": false,
-      "items": [
-        {
-          "product_code": "ITEM/0001",
-          "product_name": "Motor Unit",
-          "quantity": 10.0,
-          "quoted_rate_inr": 10020.00,
-          "amount_inr": 100200.00,
-          "original_quoted_rate": 120.00,
-          "original_amount": 1200.00
-        }
-      ]
-    },
-    {
-      "vendor_name": "XYZ Domestic",
-      "vendor_code": "VEN/0002",
-      "quotation_number": "VQ/2026/0002",
-      "currency": "INR",
-      "exchange_rate": 1.0,
-      "total_amount_inr": 95000.00,
-      "original_total_amount": 95000.00,
-      "is_selected": true,
-      "items": [
-        {
-          "product_code": "ITEM/0001",
-          "product_name": "Motor Unit",
-          "quantity": 10.0,
-          "quoted_rate_inr": 9500.00,
-          "amount_inr": 95000.00,
-          "original_quoted_rate": 9500.00,
-          "original_amount": 95000.00
-        }
-      ]
-    }
-  ],
-  "analysis": {
-    "lowest_quote": { "vendor_name": "XYZ Domestic", "total_amount_inr": 95000.00 },
-    "highest_quote": { "vendor_name": "ABC International", "total_amount_inr": 100200.00 },
-    "selected_quote": { "vendor_name": "XYZ Domestic", "total_amount_inr": 95000.00 },
-    "savings_achieved_inr": 5200.00,
-    "savings_percentage": 5.19
-  }
+  "id": "uuid",
+  "bill_number": "PIB/2026/0001",
+  "bill_type": "INTERNATIONAL",
+  "proforma_invoice": "pi-uuid",
+  "pi_number": "EEL/IND/PI/2026/0001",
+  "bill_date": "2026-05-26",
+  "client_name": "ABC International, Dubai",
+  "currency": "USD",
+  "conversion_rate": 84.5000,
+  "subtotal": 55000.00,
+  "cgst_percentage": 0,
+  "sgst_percentage": 0,
+  "igst_percentage": 18,
+  "cgst_amount": 0,
+  "sgst_amount": 0,
+  "igst_amount": 9900.00,
+  "total_gst": 9900.00,
+  "discount_amount": 500.00,
+  "total_amount": 64400.00,
+  "net_payable": 64400.00,
+  "amount_paid": 0,
+  "balance": 64400.00,
+  "status": "GENERATED",
+  "items": [...]
 }
 ```
 
----
-
-## 9. Currency Flow Diagram
-
+### List PI Bills
 ```
-                    USER SELECTS CURRENCY
-                           |
-          +----------------+----------------+
-          |                                 |
-   Sales Quotation                  Vendor Quotation
-   (currency: USD/INR)              (currency: USD/INR)
-          |                                 |
-          | auto-inherit                    | auto-inherit
-          v                                 v
-     Work Order                       Purchase Order
-   (currency from SQ)              (currency from VQ)
-          |
-          | auto-inherit
-          v
-        Bill
-   (currency from WO)
+GET /api/pi-bills
+```
+Query params: `?status=GENERATED&proforma_invoice=uuid&bill_type=DOMESTIC&search=PIB`
+
+### Get PI Bill Detail
+```
+GET /api/pi-bills/{id}
 ```
 
+### Bills by PI
+```
+GET /api/pi-bills/by_pi?proforma_invoice=pi-uuid
+```
+
+### Pending Payment Bills
+```
+GET /api/pi-bills/pending_payment
+```
+
+### Record Payment on PI Bill (Password Protected)
+```
+POST /api/pi-bills/{id}/mark_paid
+```
+```json
+{
+  "confirm_password": "your-password",
+  "amount_paid": 30000.00,
+  "payment_date": "2026-05-28"
+}
+```
+When `balance = 0`, status auto-set to `PAID`.
+
+### Cancel PI Bill (Password Protected)
+```
+POST /api/pi-bills/{id}/cancel
+```
+```json
+{
+  "confirm_password": "your-password"
+}
+```
+Cannot cancel a paid bill.
+
+### PI Bill Status Flow
+```
+GENERATED → PAID
+    |
+    v
+CANCELLED
+```
+
 ---
 
-## 10. Important Notes
+## Item Master (Products)
 
-1. **Payments are always in INR** — BillPayment, PurchasePayment, IncomingPayment amounts are always INR.
+```
+POST /api/products                         → Create item
+GET /api/products                          → List (filter: ?is_active=true&unit=KG&search=steel)
+GET /api/products/{id}                     → Detail
+PATCH /api/products/{id}                   → Update
+GET /api/products/by_requisition?requisition_number=EEL/2026/001 → By requisition
+GET /api/products/low_stock                → Low stock items
+POST /api/products/bulk-upload             → Bulk upload (Excel)
+GET /api/products/bulk-upload-template     → Download template
+```
 
-2. **Exchange rate is a snapshot** — The rate at the time of document creation is stored. If the admin changes the rate later, existing documents are NOT affected.
+```json
+{
+  "item_name": "Steel Rod 10mm",
+  "description": "High tensile steel rod",
+  "hsn_code": "7214",
+  "unit": "KG",
+  "rate": 250.00,
+  "requisition_number": "EEL/2026/001"
+}
+```
+`item_code` auto-generated (e.g., `ITEM/0001`).
 
-3. **Backward compatible** — All existing data works as-is. Default values: `currency = "INR"`, `exchange_rate = 1.0000`, `original_* = same as INR amounts`.
+---
 
-4. **Admin must set a rate before using USD** — If no active exchange rate exists and user tries to create a USD document, the API returns an error.
+## Vendor Master
 
-5. **Rate validation** — Rate must be greater than 0. Only one rate can be active at a time.
+```
+POST /api/vendors                          → Create vendor
+GET /api/vendors                           → List
+GET /api/vendors/{id}                      → Detail
+PATCH /api/vendors/{id}                    → Update
+```
 
-6. **Existing fields unchanged** — All existing amount fields (`subtotal`, `total_amount`, `balance`, etc.) remain in INR. New `original_*` fields hold the original currency values.
+---
+
+## Transport Module (PO + PI Support)
+
+Track transport/logistics costs. Calculates landed cost per item.
+
+### Create Transport Entry
+```
+POST /api/transport
+```
+```json
+{
+  "purchase_order": "po-uuid",
+  "transporter_name": "Blue Dart Logistics",
+  "transporter_contact": "9876543210",
+  "vehicle_number": "MH12AB1234",
+  "driver_name": "Raju",
+  "driver_contact": "9876543211",
+  "dispatch_date": "2026-05-22",
+  "expected_delivery_date": "2026-05-25",
+  "dispatch_from": "Mumbai",
+  "dispatch_to": "Pune",
+  "cost_items": [
+    { "cost_type": "FREIGHT", "description": "Mumbai to Pune", "amount": 3500.00 },
+    { "cost_type": "LOADING", "amount": 500.00 },
+    { "cost_type": "INSURANCE", "description": "Transit insurance", "amount": 800.00 }
+  ]
+}
+```
+- Use `purchase_order` for PO transport, `proforma_invoice` for PI transport
+- Transport number auto-generated: `TRN/YEAR/NUMBER`
+- Cost types: `FREIGHT`, `LOADING`, `UNLOADING`, `INSURANCE`, `CUSTOMS`, `OCTROI`, `HANDLING`, `PACKAGING`, `TOLL`, `OTHER`
+
+```
+GET /api/transport                                → List
+PATCH /api/transport/{id}                         → Update
+POST /api/transport/{id}/mark_delivered           → Mark delivered
+GET /api/transport/by_po?purchase_order=uuid      → By PO
+GET /api/transport/by_pi?proforma_invoice=uuid    → By PI
+GET /api/transport/landed_cost?purchase_order=uuid → Landed cost (PO)
+GET /api/transport/landed_cost_pi?proforma_invoice=uuid → Landed cost (PI)
+```
+
+### Transport Reports
+```
+GET /api/reports/transport/by-po           → Transport cost by PO
+GET /api/reports/transport/by-vendor       → Transport cost by vendor
+GET /api/reports/transport/cost-breakdown  → By cost type
+GET /api/reports/transport/landed-cost     → Item-wise landed cost
+GET /api/dashboard/transport               → Transport dashboard
+```
+
+---
+
+## Finance Module
+
+### Record Payment to Vendor (against PO)
+```
+POST /api/finance/purchase-orders/{id}/record_payment
+```
+```json
+{
+  "confirm_password": "your-password",
+  "amount": 15000.00,
+  "payment_date": "2026-05-22",
+  "payment_mode": "NEFT",
+  "reference_number": "UTR123456",
+  "remarks": "First installment"
+}
+```
+Payment modes: `CASH`, `CHEQUE`, `NEFT`, `RTGS`, `IMPS`, `UPI`, `OTHER`
+
+### Record Payment from Client (against PI)
+```
+POST /api/finance/proforma-invoices/{id}/record_payment
+```
+```json
+{
+  "confirm_password": "your-password",
+  "amount": 5000.00,
+  "payment_date": "2026-05-25",
+  "payment_mode": "TT",
+  "reference_number": "SWIFT-REF-123",
+  "remarks": "Advance payment"
+}
+```
+Payment modes: `CASH`, `CHEQUE`, `NEFT`, `RTGS`, `IMPS`, `UPI`, `LC`, `TT`, `OTHER`
+
+When `amount_received == grand_total`, PI status auto-set to `ACCEPTED`.
+
+### Advance Payment (Always against PI)
+
+Client advance is always against a specific PI. Currency and conversion_rate are **auto-inherited from the linked PI** — you don't send them.
+
+**Create Advance Payment:**
+```
+POST /api/finance/advance-payments
+```
+```json
+{
+  "proforma_invoice": "pi-uuid",
+  "client_name": "ABC International",
+  "amount": 100000.00,
+  "payment_date": "2026-05-25",
+  "payment_mode": "TT",
+  "reference_number": "TT-REF-001",
+  "remarks": "30% advance as per PI terms"
+}
+```
+
+**Auto-populated from PI:**
+- `currency` — inherited from PI's currency
+- `conversion_rate` — inherited from PI's conversion_rate
+
+**Auto-calculated:**
+- `amount_inr` = amount × conversion_rate (or just amount if INR)
+- `remaining` = amount - amount_used
+- `advance_number` = `ADV/2026/0001` (auto)
+
+**Response:**
+```json
+{
+  "id": "uuid",
+  "advance_number": "ADV/2026/0001",
+  "proforma_invoice": "pi-uuid",
+  "pi_number": "EEL/IND/PI/2026/0001",
+  "client_name": "ABC International",
+  "amount": 100000.00,
+  "currency": "USD",
+  "conversion_rate": 84.5000,
+  "amount_inr": 8450000.00,
+  "amount_used": 0,
+  "remaining": 100000.00,
+  "payment_date": "2026-05-25",
+  "payment_mode": "TT",
+  "status": "ACTIVE"
+}
+```
+
+**List Advance Payments:**
+```
+GET /api/finance/advance-payments
+GET /api/finance/advance-payments?status=ACTIVE&proforma_invoice=uuid&currency=USD
+```
+
+**Adjust (Use) Advance:**
+```
+POST /api/finance/advance-payments/{id}/adjust
+```
+```json
+{
+  "amount": 50000.00
+}
+```
+Deducts from remaining. When remaining = 0, status = `FULLY_USED`.
+
+**Note:** Advance payments cannot be deleted.
+
+---
+
+### PO Finance Views
+```
+GET /api/finance/purchase-orders                    → List POs with finance summary
+GET /api/finance/purchase-orders/{id}              → PO finance detail
+GET /api/finance/purchase-orders/{id}/record_payment   → Pay vendor
+GET /api/finance/purchase-orders/{id}/payment_history  → PO payment history
+GET /api/finance/purchase-orders/{id}/purchased_items  → Items received
+GET /api/finance/purchase-orders/pending_payments      → POs with outstanding
+GET /api/finance/purchase-orders/overdue               → POs past due date
+```
+
+### PI Finance Views
+```
+GET /api/finance/proforma-invoices                 → List PIs with finance summary
+GET /api/finance/proforma-invoices/{id}            → PI finance detail
+POST /api/finance/proforma-invoices/{id}/record_payment → Record client payment
+GET /api/finance/proforma-invoices/{id}/payment_history → PI payment history
+GET /api/finance/proforma-invoices/pending_payments    → PIs with outstanding
+GET /api/finance/proforma-invoices/overdue             → PIs past due date
+```
+
+### Flat Payment Lists
+```
+GET /api/finance/all-purchase-payments             → All vendor payments
+GET /api/finance/all-pi-payments                   → All PI payments
+```
+
+### Profit & Loss (INR)
+```
+GET /api/finance/profit-loss                       → P&L per requisition
+GET /api/finance/profit-loss?requisition=uuid       → P&L for specific requisition
+GET /api/finance/profit-loss/items?requisition=uuid → P&L per item (with transport allocation)
+POST /api/finance/profit-preview                    → Real-time profit check during PI creation
+```
+
+**Conversion Logic:**
+- PO cost → INR = `po.total_amount × po.conversion_rate`
+- PI revenue → INR = `pi.grand_total × pi.conversion_rate`
+- True Cost = Purchase Cost (INR) + Transport (allocated by value %)
+- Alerts: `LOSS` if profit < 0, `LOW_MARGIN` if margin < 10%
+
+### Item Analytics
+```
+GET /api/finance/items/analytics                   → Per-item purchase/sale stats
+GET /api/finance/items/insights                    → Most/least sold, most profitable
+GET /api/finance/items/aging?threshold_days=90     → Slow-moving & dead stock
+```
+
+### Due Dates & Tracking
+```
+GET /api/finance/due-dates?upcoming_days=7         → Upcoming & overdue payments (vendor + client)
+```
+
+### Reconciliation & Validation
+```
+GET /api/finance/reconciliation                    → Detect overpayment, duplicates, missing transport
+GET /api/finance/validation                        → Purchased-unpaid, paid-not-purchased, anomalies
+```
+
+### Finance Dashboard
+```
+GET /api/finance/dashboard
+```
+Returns: outgoing (vendor) totals, incoming (client) totals, transport costs, P&L summary, cash flow, advance status, purchase item stats, recent transactions.
+
+---
+
+## Currency Master
+
+```
+GET /api/currencies                                → List all (any authenticated user)
+POST /api/currencies                               → Create (admin only)
+PATCH /api/currencies/{id}                         → Update (admin only)
+DELETE /api/currencies/{id}                         → Delete (admin only)
+```
+```json
+{ "code": "EUR", "name": "Euro", "symbol": "€", "is_active": true }
+```
+
+### Exchange Rates
+```
+GET /api/exchange-rate                             → Current rates
+GET /api/admin/exchange-rates                      → Admin: list rates
+POST /api/admin/exchange-rates                     → Admin: create rate
+PATCH /api/admin/exchange-rates/{id}               → Admin: update rate
+```
+
+---
+
+## Audit Logs
+
+Single API for all modules.
+
+```
+GET /api/audit-logs                                → List all logs
+GET /api/audit-logs?model_name=PurchaseOrder       → Filter by module
+GET /api/audit-logs?model_name=PurchaseOrder&action=UPDATE&user=uuid → Combined filters
+GET /api/audit-logs/{model_name}/{object_id}       → History for specific object
+```
+
+**Logged automatically:** PO create/update/cancel, PI create/update, Transport create/update/deliver, Bill create/update.
+
+---
+
+## Reports
+
+### Requisition Reports
+```
+GET /api/reports/requisitions                      → Requisition report
+GET /api/reports/requisitions/{id}/detailed         → Detailed report
+```
+
+### Vendor Reports
+```
+GET /api/reports/vendors/performance               → Vendor performance
+GET /api/reports/vendors/quotation-comparison       → Quotation comparison
+```
+
+### Purchase Order Reports
+```
+GET /api/reports/purchase-orders                   → PO report
+```
+
+### Inventory Reports
+```
+GET /api/reports/inventory/stock                   → Stock report
+GET /api/reports/inventory/movement                → Movement report
+```
+
+### Financial Reports
+```
+GET /api/reports/financial/spending                → Spending analysis
+```
+
+### Sales Reports
+```
+GET /api/reports/sales/client-queries              → Client query report
+GET /api/reports/sales/client-queries/{id}/detailed
+GET /api/reports/sales/quotations                  → Quotation report
+GET /api/reports/sales/quotation-items             → Quotation items
+GET /api/reports/sales/analytics                   → Sales analytics
+GET /api/reports/sales/performance                 → Sales performance
+GET /api/reports/sales/products                    → Product sales analysis
+```
+
+### Dashboards
+```
+GET /api/dashboard/stats                           → Main dashboard
+GET /api/dashboard/sales/stats                     → Sales dashboard
+GET /api/dashboard/transport                       → Transport dashboard
+GET /api/finance/dashboard                         → Finance dashboard
+```
+
+---
+
+## Admin
+
+```
+GET /api/admin/users                               → List users
+POST /api/admin/users                              → Create user
+PATCH /api/admin/users/{id}                        → Update user
+```
+
+---
+
+## Key Business Rules
+
+| Rule | Description |
+|------|-------------|
+| **PI = Items Only** | PI has no GST, no discount. Only `grand_total` = sum of items. |
+| **PI Bill = GST + Discount** | PI Bill is where GST and discount are applied. Generated after PI acceptance. |
+| **Advance = Always PI** | Advance payments are always against a PI. Currency/conversion_rate auto-inherited from PI. |
+| **Multi-Currency** | All amounts in original currency + immutable conversion_rate. P&L always in INR. |
+| **PO Number** | `EEL/IND/<VENDOR_PREFIX>/<NUMBER>` starting from 100 |
+| **PI Number** | `EEL/IND/PI/{YEAR}/{NUMBER}` starting from 0001 |
+| **PI Bill Number** | `PIB/{YEAR}/{NUMBER}` starting from 0001 |
+| **Advance Number** | `ADV/{YEAR}/{NUMBER}` starting from 0001 |
+| **Revision** | First edit appends "R" to number. `revision_number` increments. |
+| **Edit Lock** | 30-minute timeout. Must lock before editing PO/PI. |
+| **Password** | Cancel PO, Cancel PI Bill, Record PO Payment, Mark PI Bill Paid — all require `confirm_password`. |
+| **GST** | CGST + SGST (intra-state) OR IGST (inter-state). Applied on items_total/subtotal. |
+| **Stock** | Auto-updated when PO item marked as purchased. Reversed on PO cancel. |
+| **Transport** | Multiple shipments per PO/PI. Cost allocated proportionally by item value. |
+| **Deletion** | Requisitions, Assignments, Quotations, POs, PI Bills, Advance Payments cannot be deleted. |
+
+---
+
+## Status Flows
+
+### Purchase Order
+```
+PENDING → PARTIALLY_RECEIVED → COMPLETED
+    |
+    └──→ CANCELLED (stock reversed)
+```
+
+### Proforma Invoice
+```
+DRAFT → SENT → ACCEPTED
+                  |
+                  └──→ CANCELLED
+```
+
+### PI Bill
+```
+GENERATED → PAID
+    |
+    └──→ CANCELLED
+```
+
+### Advance Payment
+```
+ACTIVE → FULLY_USED
+    |
+    └──→ REFUNDED
+```
+
+---
+
+## All API Endpoints Summary
+
+### Auth
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/auth/login` | POST | Login |
+| `/api/auth/refresh` | POST | Refresh token |
+| `/api/auth/profile` | GET | User profile |
+| `/api/auth/forgot-password` | POST | Forgot password |
+| `/api/auth/verify-otp` | POST | Verify OTP |
+| `/api/auth/reset-password` | POST | Reset password |
+
+### Sales
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/client-queries` | GET/POST | Client queries CRUD |
+| `/api/quotations` | GET/POST | Sales quotations CRUD |
+| `/api/quotation-items` | GET/POST | Quotation items |
+| `/api/proforma-invoices` | GET/POST | PI CRUD |
+| `/api/proforma-invoices/{id}/lock` | POST | Lock PI for editing |
+| `/api/proforma-invoices/{id}/unlock` | POST | Release lock |
+
+### Procurement
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/requisitions` | GET/POST | Requisitions CRUD |
+| `/api/requisitions/{id}/items` | GET | Requisition items |
+| `/api/requisitions/{id}/flow` | GET | Complete flow |
+| `/api/requisitions/{id}/comparison` | GET | Price comparison |
+| `/api/requisitions/{id}/assignments` | GET | Vendor assignments |
+| `/api/vendor-assignments` | GET/POST | Assignments CRUD |
+| `/api/vendor-quotations` | GET/POST | Vendor quotations CRUD |
+| `/api/vendor-quotations/{id}/select` | POST | Select quotation |
+| `/api/purchase-orders` | GET | List POs |
+| `/api/purchase-orders/generate_from_comparison` | POST | Generate PO |
+| `/api/purchase-orders/{id}` | GET/PATCH | PO detail/edit |
+| `/api/purchase-orders/{id}/lock` | POST | Lock PO |
+| `/api/purchase-orders/{id}/unlock` | POST | Unlock PO |
+| `/api/purchase-orders/{id}/update_gst` | POST | Update GST |
+| `/api/purchase-orders/{id}/mark_item_purchased` | POST | Mark item received |
+| `/api/purchase-orders/{id}/mark_all_purchased` | POST | Mark all received |
+| `/api/purchase-orders/{id}/cancel` | POST | Cancel PO |
+
+### Billing
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/pi-bills` | GET/POST | PI Bills CRUD |
+| `/api/pi-bills/{id}` | GET/PATCH | Detail/update |
+| `/api/pi-bills/{id}/mark_paid` | POST | Record payment (password) |
+| `/api/pi-bills/{id}/cancel` | POST | Cancel bill (password) |
+| `/api/pi-bills/by_pi?proforma_invoice=uuid` | GET | Bills by PI |
+| `/api/pi-bills/pending_payment` | GET | Pending payment bills |
+
+### Finance
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/finance/purchase-orders` | GET | POs with finance summary |
+| `/api/finance/purchase-orders/{id}` | GET | PO finance detail |
+| `/api/finance/purchase-orders/{id}/record_payment` | POST | Pay vendor |
+| `/api/finance/purchase-orders/{id}/payment_history` | GET | PO payment history |
+| `/api/finance/purchase-orders/{id}/purchased_items` | GET | Items received |
+| `/api/finance/purchase-orders/pending_payments` | GET | POs with outstanding |
+| `/api/finance/purchase-orders/overdue` | GET | POs past due date |
+| `/api/finance/proforma-invoices` | GET | PIs with finance summary |
+| `/api/finance/proforma-invoices/{id}` | GET | PI finance detail |
+| `/api/finance/proforma-invoices/{id}/record_payment` | POST | Record client payment |
+| `/api/finance/proforma-invoices/{id}/payment_history` | GET | PI payment history |
+| `/api/finance/proforma-invoices/pending_payments` | GET | PIs with outstanding |
+| `/api/finance/proforma-invoices/overdue` | GET | PIs past due date |
+| `/api/finance/advance-payments` | GET/POST | Advance payments CRUD |
+| `/api/finance/advance-payments/{id}` | GET/PATCH | View/update advance |
+| `/api/finance/advance-payments/{id}/adjust` | POST | Use advance amount |
+| `/api/finance/all-purchase-payments` | GET | All vendor payments |
+| `/api/finance/all-pi-payments` | GET | All PI payments |
+| `/api/finance/dashboard` | GET | Finance dashboard |
+| `/api/finance/profit-loss` | GET | P&L by requisition (INR) |
+| `/api/finance/profit-loss/items` | GET | P&L per item (INR) |
+| `/api/finance/profit-preview` | POST | Real-time profit check |
+| `/api/finance/items/analytics` | GET | Item analytics |
+| `/api/finance/items/insights` | GET | Most/least sold |
+| `/api/finance/items/aging` | GET | Slow-moving & dead stock |
+| `/api/finance/due-dates` | GET | Upcoming & overdue |
+| `/api/finance/reconciliation` | GET | Auto-detect mismatches |
+| `/api/finance/validation` | GET | Identify anomalies |
+
+### Transport
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/transport` | GET/POST | Transport entries CRUD |
+| `/api/transport/{id}` | GET/PATCH | Detail/update |
+| `/api/transport/{id}/mark_delivered` | POST | Mark delivered |
+| `/api/transport/by_po?purchase_order=uuid` | GET | Filter by PO |
+| `/api/transport/by_pi?proforma_invoice=uuid` | GET | Filter by PI |
+| `/api/transport/landed_cost?purchase_order=uuid` | GET | Landed cost (PO) |
+| `/api/transport/landed_cost_pi?proforma_invoice=uuid` | GET | Landed cost (PI) |
+
+### Inventory
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/products` | GET/POST | Products CRUD |
+| `/api/products/{id}` | GET/PATCH | Detail/update |
+| `/api/products/by_requisition` | GET | By requisition number |
+| `/api/products/low_stock` | GET | Low stock items |
+| `/api/products/bulk-upload` | POST | Bulk upload (Excel) |
+| `/api/products/bulk-upload-template` | GET | Download template |
+
+### Other
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/vendors` | GET/POST | Vendors CRUD |
+| `/api/currencies` | GET/POST | Currency master |
+| `/api/exchange-rate` | GET | Current exchange rate |
+| `/api/audit-logs` | GET | All audit logs |
+| `/api/audit-logs/{model}/{id}` | GET | Object audit history |
+| `/api/dashboard/stats` | GET | Main dashboard |
+| `/api/dashboard/sales/stats` | GET | Sales dashboard |
+| `/api/docs` | GET | Swagger UI |
+| `/api/playground` | GET | Redoc |

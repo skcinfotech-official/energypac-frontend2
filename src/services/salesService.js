@@ -213,27 +213,6 @@ export const getClientQuotationItemsReport = async (params = {}) => {
         throw error;
     }
 };
-
-export const getWorkOrderByQuotation = async (quotationId) => {
-    try {
-        const response = await axiosSecure.get(`/api/work-orders/by_quotation?quotation=${quotationId}`);
-        return response.data;
-    } catch (error) {
-        console.error("Error fetching work order by quotation:", error);
-        throw error;
-    }
-};
-
-export const createWorkOrder = async (payload) => {
-    try {
-        const response = await axiosSecure.post("/api/work-orders", payload);
-        return response.data;
-    } catch (error) {
-        console.error("Error creating work order:", error);
-        throw error;
-    }
-};
-
 export const getWorkOrders = async (page = 1, searchQuery = "", status = "") => {
     try {
         let url = "/api/work-orders";
@@ -247,7 +226,6 @@ export const getWorkOrders = async (page = 1, searchQuery = "", status = "") => 
 
         const response = await axiosSecure.get(url, { params });
 
-        // Handle case where specific endpoints return a flat array instead of paginated result
         if (Array.isArray(response.data)) {
             return {
                 results: response.data,
@@ -277,19 +255,6 @@ export const getActiveWorkOrders = async () => {
     }
 };
 
-export const getAllWorkOrders = async () => {
-    try {
-        const response = await axiosSecure.get("/api/work-orders", { params: { page_size: 1000 } });
-        if (Array.isArray(response.data)) {
-            return response.data;
-        }
-        return response.data.results || [];
-    } catch (error) {
-        console.error("Error fetching all work orders:", error);
-        throw error;
-    }
-};
-
 export const getWorkOrderById = async (id) => {
     try {
         const response = await axiosSecure.get(`/api/work-orders/${id}`);
@@ -300,39 +265,10 @@ export const getWorkOrderById = async (id) => {
     }
 };
 
-export const getWorkOrderReport = async (params = {}) => {
-    try {
-        const response = await axiosSecure.get("/api/reports/work-orders", { params });
-        return response.data;
-    } catch (error) {
-        console.error("Error fetching work order report:", error);
-        throw error;
-    }
-};
-
-export const getWorkOrderDeliveryAnalysis = async (params = {}) => {
-    try {
-        const response = await axiosSecure.get("/api/reports/work-orders/delivery-analysis", { params });
-        return response.data;
-    } catch (error) {
-        console.error("Error fetching work order delivery analysis:", error);
-        throw error;
-    }
-};
-
-export const getWorkOrderDetailReport = async (id) => {
-    try {
-        const response = await axiosSecure.get(`/api/reports/work-orders/${id}/detailed`);
-        return response.data;
-    } catch (error) {
-        console.error("Error fetching work order detail report:", error);
-        throw error;
-    }
-};
 
 export const validateBillStock = async (payload) => {
     try {
-        const response = await axiosSecure.post("/api/bills/validate_stock", payload);
+        const response = await axiosSecure.post("/api/pi-bills/validate_stock", payload);
         return response.data;
     } catch (error) {
         console.error("Error validating bill stock:", error);
@@ -342,7 +278,7 @@ export const validateBillStock = async (payload) => {
 
 export const createBill = async (payload) => {
     try {
-        const response = await axiosSecure.post("/api/bills", payload);
+        const response = await axiosSecure.post("/api/pi-bills", payload);
         return response.data;
     } catch (error) {
         console.error("Error creating bill:", error);
@@ -352,7 +288,7 @@ export const createBill = async (payload) => {
 
 export const getBillById = async (id) => {
     try {
-        const response = await axiosSecure.get(`/api/bills/${id}`);
+        const response = await axiosSecure.get(`/api/pi-bills/${id}`);
         return response.data;
     } catch (error) {
         console.error("Error fetching bill by ID:", error);
@@ -369,7 +305,7 @@ export const getBills = async (page = 1, searchQuery = "", workOrderId = "") => 
         if (workOrderId) {
             params.work_order = workOrderId;
         }
-        const response = await axiosSecure.get("/api/bills", { params });
+        const response = await axiosSecure.get("/api/pi-bills", { params });
         return response.data;
     } catch (error) {
         console.error("Error fetching bills:", error);
@@ -383,7 +319,7 @@ export const getBillsByWorkOrder = async (workOrderId, page = 1) => {
             work_order: workOrderId,
             page
         };
-        const response = await axiosSecure.get("/api/bills/by_work_order", { params });
+        const response = await axiosSecure.get("/api/pi-bills/by_work_order", { params });
         return response.data;
     } catch (error) {
         console.error("Error fetching bills by work order:", error);
@@ -423,7 +359,7 @@ export const getBillDetailedReport = async (billId) => {
 
 export const getBillPaymentHistory = async (id) => {
     try {
-        const response = await axiosSecure.get(`/api/bills/${id}/payment_history`);
+        const response = await axiosSecure.get(`/api/pi-bills/${id}/payment_history`);
         return response.data;
     } catch (error) {
         console.error("Error fetching bill payment history:", error);
@@ -451,23 +387,12 @@ export const getBillingAnalytics = async (params) => {
     }
 };
 
-export const updateWorkOrderAdvance = async (id, advanceAmount) => {
-    try {
-        const response = await axiosSecure.post(
-            `/api/work-orders/${id}/update_advance`,
-            { advance_amount: advanceAmount }
-        );
-        return response.data;
-    } catch (error) {
-        console.error("Error updating work order advance:", error);
-        throw error;
-    }
-};
+
 
 export const markBillAsPaid = async (id, payload) => {
     try {
         const response = await axiosSecure.post(
-            `/api/bills/${id}/mark_paid`,
+            `/api/pi-bills/${id}/mark_paid`,
             payload
         );
         return response.data;
@@ -479,10 +404,151 @@ export const markBillAsPaid = async (id, payload) => {
 
 export const cancelBill = async (id, payload = {}) => {
     try {
-        const response = await axiosSecure.post(`/api/bills/${id}/cancel`, payload);
+        const response = await axiosSecure.post(`/api/pi-bills/${id}/cancel`, payload);
         return response.data;
     } catch (error) {
         console.error("Error canceling bill:", error);
         throw error;
     }
 };
+
+// Proforma Invoices API
+export const getProformaInvoices = async (page = 1, searchQuery = "") => {
+    try {
+        const params = {
+            page,
+            search: searchQuery,
+        };
+        const response = await axiosSecure.get(`/api/proforma-invoices`, { params });
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching proforma invoices:", error);
+        throw error;
+    }
+};
+
+export const getProformaInvoiceById = async (id) => {
+    try {
+        const response = await axiosSecure.get(`/api/proforma-invoices/${id}`);
+        return response.data;
+    } catch (error) {
+        console.error(`Error fetching proforma invoice ${id}:`, error);
+        throw error;
+    }
+};
+
+export const createProformaInvoice = async (payload) => {
+    try {
+        const response = await axiosSecure.post(`/api/proforma-invoices`, payload);
+        return response.data;
+    } catch (error) {
+        console.error("Error creating proforma invoice:", error);
+        throw error;
+    }
+};
+
+export const getRequisitionItemsForPi = async (requisitionId) => {
+    try {
+        const response = await axiosSecure.get(`/api/proforma-invoices/requisition_items`, {
+            params: { requisition: requisitionId }
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching requisition items for PI:", error);
+        throw error;
+    }
+};
+
+export const lockProformaInvoice = async (id) => {
+    try {
+        const response = await axiosSecure.post(`/api/proforma-invoices/${id}/lock`);
+        return response.data;
+    } catch (error) {
+        console.error(`Error acquiring lock on proforma invoice ${id}:`, error);
+        throw error;
+    }
+};
+
+export const unlockProformaInvoice = async (id) => {
+    try {
+        const response = await axiosSecure.post(`/api/proforma-invoices/${id}/unlock`);
+        return response.data;
+    } catch (error) {
+        console.error(`Error releasing lock on proforma invoice ${id}:`, error);
+        throw error;
+    }
+};
+
+export const updateProformaInvoice = async (id, payload) => {
+    try {
+        const response = await axiosSecure.patch(`/api/proforma-invoices/${id}`, payload);
+        return response.data;
+    } catch (error) {
+        console.error(`Error updating proforma invoice ${id}:`, error);
+        throw error;
+    }
+};
+
+export const sendProformaInvoice = async (id) => {
+    try {
+        const response = await axiosSecure.post(`/api/proforma-invoices/${id}/send`);
+        return response.data;
+    } catch (error) {
+        console.error(`Error sending proforma invoice ${id}:`, error);
+        throw error;
+    }
+};
+
+export const acceptProformaInvoice = async (id) => {
+    try {
+        const response = await axiosSecure.post(`/api/proforma-invoices/${id}/accept`);
+        return response.data;
+    } catch (error) {
+        console.error(`Error accepting proforma invoice ${id}:`, error);
+        throw error;
+    }
+};
+
+export const cancelProformaInvoice = async (id, payload) => {
+    try {
+        const response = await axiosSecure.post(`/api/proforma-invoices/${id}/cancel`, payload);
+        return response.data;
+    } catch (error) {
+        console.error(`Error canceling proforma invoice ${id}:`, error);
+        throw error;
+    }
+};
+
+// Advance Payments API
+export const getAdvancePayments = async (params = {}) => {
+    try {
+        const response = await axiosSecure.get("/api/finance/advance-payments", { params });
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching advance payments:", error);
+        throw error;
+    }
+};
+
+export const createAdvancePayment = async (payload) => {
+    try {
+        const response = await axiosSecure.post("/api/finance/advance-payments", payload);
+        return response.data;
+    } catch (error) {
+        console.error("Error creating advance payment:", error);
+        throw error;
+    }
+};
+
+export const adjustAdvancePayment = async (id, payload) => {
+    try {
+        const response = await axiosSecure.post(`/api/finance/advance-payments/${id}/adjust`, payload);
+        return response.data;
+    } catch (error) {
+        console.error("Error adjusting advance payment:", error);
+        throw error;
+    }
+};
+
+
+

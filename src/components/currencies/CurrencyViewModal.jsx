@@ -1,7 +1,7 @@
 import { useRef, useEffect } from "react";
-import { FaTimes, FaBox, FaInfoCircle, FaRuler, FaTags, FaClock, FaCheckCircle } from "react-icons/fa";
+import { FaTimes, FaGlobe, FaTag, FaClock, FaCheckCircle } from "react-icons/fa";
 
-const ProductViewModal = ({ open, onClose, data, loading }) => {
+const CurrencyViewModal = ({ open, onClose, data, loading }) => {
     const modalRef = useRef(null);
 
     // Close on escape key
@@ -32,17 +32,17 @@ const ProductViewModal = ({ open, onClose, data, loading }) => {
         >
             <div
                 ref={modalRef}
-                className="bg-white w-full max-w-2xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                className="bg-white w-full max-w-lg max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
             >
                 {/* HEADER */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
                     <div className="flex items-center gap-3">
                         <div className="bg-blue-100 text-blue-600 p-2 rounded-lg">
-                            <FaBox className="text-xl" />
+                            <FaGlobe className="text-xl" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-bold text-slate-800">Product Details</h3>
-                            {data && <p className="text-sm text-slate-500 font-mono">{data.item_code}</p>}
+                            <h3 className="text-lg font-bold text-slate-800">Currency Details</h3>
+                            {data && <p className="text-sm text-slate-500 font-mono">{data.code}</p>}
                         </div>
                     </div>
                     <button
@@ -66,45 +66,20 @@ const ProductViewModal = ({ open, onClose, data, loading }) => {
                             {/* BASIC INFO */}
                             <div className="grid grid-cols-2 gap-4">
                                 <DetailItem
-                                    label="Item Name"
-                                    value={data.item_name}
-                                    icon={<FaTags className="text-slate-400" />}
+                                    label="Currency Code"
+                                    value={data.code}
+                                    icon={<FaTag className="text-slate-400" />}
+                                />
+                                <DetailItem
+                                    label="Symbol"
+                                    value={data.symbol}
+                                    icon={<span className="text-slate-400 font-bold font-mono">{data.symbol}</span>}
+                                />
+                                <DetailItem
+                                    label="Currency Name"
+                                    value={data.name}
                                     fullWidth
                                 />
-                                <DetailItem
-                                    label="HSN Code"
-                                    value={data.hsn_code}
-                                />
-                                <DetailItem
-                                    label="Unit"
-                                    value={data.unit}
-                                    icon={<FaRuler className="text-slate-400" />}
-                                />
-                                <DetailItem
-                                    label="Requisition Number"
-                                    value={data.requisition_number}
-                                />
-                            </div>
-
-                            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
-                                <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                                    <FaInfoCircle /> Pricing Information
-                                </h4>
-                                <div className="grid grid-cols-1 gap-4">
-                                    <div>
-                                        <p className="text-xs text-slate-500">Rate</p>
-                                        <p className="font-bold text-blue-600 text-lg">
-                                            ₹ {parseFloat(data.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-1">
-                                <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Description</h5>
-                                <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 text-slate-700 text-sm leading-relaxed">
-                                    {data.description || <span className="text-slate-400 italic">No description provided</span>}
-                                </div>
                             </div>
 
                             {/* META DATA */}
@@ -117,14 +92,14 @@ const ProductViewModal = ({ open, onClose, data, loading }) => {
                                 </div>
                                 <div className="flex items-center gap-2 text-xs text-slate-400">
                                     <FaClock />
-                                    <span>Created: {new Date(data.created_at).toLocaleDateString()}</span>
+                                    <span>Created: {new Date(data.created_at || data.created_time).toLocaleDateString()}</span>
                                 </div>
                             </div>
 
                         </div>
                     ) : (
                         <div className="py-12 text-center text-slate-500">
-                            Failed to load product details.
+                            Failed to load currency details.
                         </div>
                     )}
                 </div>
@@ -148,10 +123,10 @@ const DetailItem = ({ label, value, icon, fullWidth }) => (
         <span className="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1">
             {icon} {label}
         </span>
-        <span className="text-sm font-medium text-slate-800 wrap-break-words">
+        <span className="text-sm font-medium text-slate-800 break-words">
             {value || "-"}
         </span>
     </div>
 );
 
-export default ProductViewModal;
+export default CurrencyViewModal;

@@ -25,3 +25,20 @@ export const getFinanceDashboard = async () => {
     const res = await axiosSecure.get("/api/finance/dashboard");
     return res.data;
 };
+
+export const getProfitLossList = async (params = {}) => {
+    const res = await axiosSecure.get("/api/finance/profit-loss", { params });
+    return res.data;
+};
+
+export const getProfitLossItems = async (requisitionId) => {
+    const res = await axiosSecure.get("/api/finance/profit-loss/items", {
+        params: { requisition: requisitionId }
+    });
+    return res.data;
+};
+
+export const previewProfit = async (payload) => {
+    const res = await axiosSecure.post("/api/finance/profit-preview", payload);
+    return res.data;
+};

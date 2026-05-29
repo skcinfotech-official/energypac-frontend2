@@ -20,6 +20,7 @@ const SalesStatistics = () => {
         fetchAnalytics();
     }, [filters]);
 
+
     const fetchAnalytics = async () => {
         setLoading(true);
         try {
@@ -38,9 +39,11 @@ const SalesStatistics = () => {
         }
     };
 
+
     const handleFilterChange = (key, value) => {
         setFilters(prev => ({ ...prev, [key]: value }));
     };
+
 
     // Colors for charts
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
@@ -53,6 +56,7 @@ const SalesStatistics = () => {
         );
     }
 
+    
     return (
         <div className="space-y-6 animate-in fade-in duration-700">
             {/* Header & Filters */}

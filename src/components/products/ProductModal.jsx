@@ -11,14 +11,12 @@ export default function ProductModal({
     product = null,      // product object for edit
 }) {
     const [form, setForm] = useState({
-        item_code: "",
         item_name: "",
         description: "",
         hsn_code: "",
         unit: "PCS",
-        current_stock: "",
-        reorder_level: "",
         rate: "",
+        requisition_number: "",
     });
 
     const [loading, setLoading] = useState(false);
@@ -28,33 +26,29 @@ export default function ProductModal({
        PREFILL FORM (EDIT MODE)
        ========================= */
     useEffect(() => {
-    if (!open) return;
+        if (!open) return;
 
-    if (mode === "edit" && product) {
-        setForm({
-            item_code: product.item_code || "",
-            item_name: product.item_name || "",
-            description: product.description || "",
-            hsn_code: product.hsn_code || "",
-            unit: product.unit || "PCS",
-            current_stock: product.current_stock ?? "",
-            reorder_level: product.reorder_level ?? "",
-            rate: product.rate ?? "",
-        });
-    } else {
-        // ADD MODE → CLEAR FORM
-        setForm({
-            item_code: "",
-            item_name: "",
-            description: "",
-            hsn_code: "",
-            unit: "PCS",
-            current_stock: "",
-            reorder_level: "",
-            rate: "",
-        });
-    }
-}, [open, mode, product]);
+        if (mode === "edit" && product) {
+            setForm({
+                item_name: product.item_name || "",
+                description: product.description || "",
+                hsn_code: product.hsn_code || "",
+                unit: product.unit || "PCS",
+                rate: product.rate ?? "",
+                requisition_number: product.requisition_number || "",
+            });
+        } else {
+            // ADD MODE → CLEAR FORM
+            setForm({
+                item_name: "",
+                description: "",
+                hsn_code: "",
+                unit: "PCS",
+                rate: "",
+                requisition_number: "",
+            });
+        }
+    }, [open, mode, product]);
 
 
 
@@ -78,8 +72,6 @@ export default function ProductModal({
 
             const payload = {
                 ...form,
-                current_stock: Number(form.current_stock),
-                reorder_level: Number(form.reorder_level),
                 rate: Number(form.rate),
             };
 
@@ -120,21 +112,6 @@ export default function ProductModal({
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-                        {/* <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                Item Code *
-                            </label>
-                            <input
-                                name="item_code"
-                                value={form.item_code}
-                                placeholder="e.g. ITEM007"
-                                onChange={handleChange}
-                                // required
-                                className="input"
-                            />
-
-                        </div> */}
-
                         <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1">
                                 Item Name *
@@ -142,12 +119,11 @@ export default function ProductModal({
                             <input
                                 name="item_name"
                                 value={form.item_name}
-                                placeholder="e.g. Industrial Cable"
+                                placeholder="e.g. Steel Rod 10mm"
                                 onChange={handleChange}
                                 required
                                 className="input"
                             />
-
                         </div>
 
                         <div>
@@ -157,55 +133,23 @@ export default function ProductModal({
                             <input
                                 name="hsn_code"
                                 value={form.hsn_code}
-                                placeholder="e.g. 1234"
+                                placeholder="e.g. 7214"
                                 onChange={handleChange}
                                 className="input"
                             />
-
                         </div>
 
                         <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                Unit ( in PCS / KG etc)
+                                Unit (e.g. KG, PCS)
                             </label>
                             <input
                                 name="unit"
                                 value={form.unit}
-                                placeholder="e.g. PCS / KG"
+                                placeholder="e.g. KG"
                                 onChange={handleChange}
                                 className="input"
                             />
-
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                Current Stock
-                            </label>
-                            <input
-                                type="number"
-                                name="current_stock"
-                                value={form.current_stock}
-                                placeholder="e.g. 100"
-                                onChange={handleChange}
-                                className="input"
-                            />
-
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                Reorder Level
-                            </label>
-                            <input
-                                type="number"
-                                name="reorder_level"
-                                value={form.reorder_level}
-                                placeholder="e.g. 20"
-                                onChange={handleChange}
-                                className="input"
-                            />
-
                         </div>
 
                         <div>
@@ -217,11 +161,23 @@ export default function ProductModal({
                                 step="0.01"
                                 name="rate"
                                 value={form.rate}
-                                placeholder="e.g. 150.00"
+                                placeholder="e.g. 250.00"
                                 onChange={handleChange}
                                 className="input"
                             />
+                        </div>
 
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                Requisition Number
+                            </label>
+                            <input
+                                name="requisition_number"
+                                value={form.requisition_number}
+                                placeholder="e.g. EEL/2026/001"
+                                onChange={handleChange}
+                                className="input"
+                            />
                         </div>
 
                     </div>

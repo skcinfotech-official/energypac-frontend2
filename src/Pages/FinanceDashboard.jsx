@@ -92,6 +92,7 @@ const FinanceDashboard = () => {
                 )} */}
             </div>
 
+
             {/* MAIN STATS GRID */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard 
@@ -132,7 +133,7 @@ const FinanceDashboard = () => {
                         <h3 className="font-bold text-slate-800 flex items-center gap-2">
                             <FaHandHoldingUsd className="text-indigo-600" /> {stats?.incoming?.label}
                         </h3>
-                        <Link to="/finance/wo-bills" className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+                        <Link to="/finance/pi-bills" className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
                             MANAGE BILLS <FaArrowRight size={10} />
                         </Link>
                     </div>
@@ -322,7 +323,7 @@ const FinanceDashboard = () => {
                     </div>
                 </div>
                 <div className="flex gap-4">
-                    <Link to="/finance/wo-bills" className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 transition-all active:scale-95">
+                    <Link to="/finance/pi-bills" className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 transition-all active:scale-95">
                         RECIEVE PAYMENT
                     </Link>
                     <Link to="/finance/purchase-orders" className="px-5 py-2.5 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95">

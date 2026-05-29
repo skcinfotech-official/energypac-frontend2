@@ -12,8 +12,10 @@ import Requisition from "./Pages/Requisition.jsx";
 import Login from "./Pages/Login.jsx";
 import Products from "./Pages/Products.jsx";
 import Vendor from "./Pages/Vendor.jsx";
+import Currency from "./Pages/Currency.jsx";
 import VendorAssignment from "./Pages/VendorAssignment.jsx";
 import VendorQuotations from "./Pages/VendorQuotation.jsx";
+import VendorQuotationComparison from "./Pages/VendorQuotationComparison.jsx";
 import PurchaseOrderList from "./Pages/PurchaseOrderList.jsx";
 import SalesStatistics from "./Pages/SalesStatistics.jsx";
 import SalesPerformance from "./Pages/SalesPerformance.jsx";
@@ -22,16 +24,16 @@ import Pending from "./Pages/pending.jsx";
 import Enquiry from "./Pages/Enquiry.jsx";
 import DirectPurchase from "./Pages/DirectPurchase.jsx";
 import ClientQuotation from "./Pages/ClientQuotation.jsx";
-import CreateWorkOrder from "./Pages/CreateWorkOrder.jsx";
-import WorkOrderList from "./Pages/WorkOrderList.jsx";
 import CreateBill from "./Pages/CreateBill.jsx";
 import BillList from "./Pages/BillList.jsx";
-import BillingDashboard from "./Pages/BillingDashboard.jsx";
-import BillingAnalytics from "./Pages/BillingAnalytics.jsx";
 import FinancePOList from "./Pages/FinancePOList.jsx";
 import FinanceDashboard from "./Pages/FinanceDashboard.jsx";
+import PiAdvance from "./Pages/PiAdvance.jsx";
+import RevenueAnalysis from "./Pages/RevenueAnalysis.jsx";
 import ManageUsers from "./Pages/ManageUsers.jsx";
-import ExchangeRates from "./Pages/ExchangeRates.jsx";
+import AuditLogs from "./Pages/AuditLogs.jsx";
+import TransportList from "./Pages/TransportList.jsx";
+import TransportDashboard from "./Pages/TransportDashboard.jsx";
 import { useAuth } from "./context/AuthContext";
 
 
@@ -56,21 +58,25 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route path="/" element={<HomeRedirect />} />
+              <Route path="/audit-logs" element={<AuditLogs />} />
               <Route path="/master/item" element={<Products />} />
               <Route path="/master/vendor" element={<Vendor />} />
+              <Route path="/master/currency" element={<Currency />} />
               <Route path="/sales/dashboard" element={<SalesDashboard />} />
               <Route path="/requisition" element={<Requisition />} />
               <Route path="/vendor-assignment" element={<VendorAssignment />} />
               <Route path="/vendor-quotation" element={<VendorQuotations />} />
+              <Route path="/vendor-quotation-comparison" element={<VendorQuotationComparison />} />
               <Route path="/purchase-order" element={<PurchaseOrderList />} />
               <Route path="/sales/client-query" element={<Enquiry />} />
-              <Route path="/sales/client-quotation" element={<ClientQuotation />} />
-              <Route path="/sales/create-work-order" element={<CreateWorkOrder />} />
-              <Route path="/sales/work-orders" element={<WorkOrderList />} />
-              <Route path="/sales/create-wo-bill" element={<CreateBill />} />
-              <Route path="/finance/wo-bills" element={<BillList />} />
-              <Route path="/sales/billing-dashboard" element={<BillingDashboard />} />
-              <Route path="/sales/billing-analytics" element={<BillingAnalytics />} />
+              <Route path="/sales/proforma-invoice" element={<ClientQuotation />} />
+              <Route path="/sales/create-bill" element={<CreateBill />} />
+              <Route path="/finance/pi-bills" element={<BillList />} />
+              <Route path="/finance/pi-advanced" element={<PiAdvance />} />
+              <Route path="/finance/revenue-analysis" element={<RevenueAnalysis />} />
+              <Route path="/finance/wo-bills" element={<Navigate to="/finance/pi-bills" replace />} />
+              <Route path="/transport" element={<TransportList />} />
+              <Route path="/transport/dashboard" element={<TransportDashboard />} />
 
               <Route path="/sales/sales-statistics" element={<SalesStatistics />} />
               <Route path="/sales/sales-performance" element={<SalesPerformance />} />
@@ -90,7 +96,6 @@ export default function App() {
             <Route element={<AdminLayout />}>
               <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
               <Route path="/admin/users" element={<ManageUsers />} />
-              <Route path="/admin/exchange-rates" element={<ExchangeRates />} />
             </Route>
           </Route>
         </Routes>

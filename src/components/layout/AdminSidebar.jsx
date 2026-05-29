@@ -11,7 +11,6 @@ import {
   FaShieldAlt,
   FaKey,
   FaLock,
-  FaMoneyBillWave,
 } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
 
@@ -50,7 +49,6 @@ export default function AdminSidebar({ isOpen }) {
         </div>
 
         <AdminSidebarLink to="/admin/users" label="User Control" icon={<FaUsers />} isOpen={isOpen} />
-        <AdminSidebarLink to="/admin/exchange-rates" label="Exchange Rates" icon={<FaMoneyBillWave />} isOpen={isOpen} />
 
         {/* <AdminSidebarDropdown
           label="Master Data"

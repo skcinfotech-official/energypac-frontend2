@@ -472,6 +472,7 @@ const Requisition = () => {
           </div>
         </div>
 
+        {/* TABLE */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>

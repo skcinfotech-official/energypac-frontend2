@@ -27,6 +27,7 @@ const MODULES = [
   { id: "PURCHASE", label: "Purchase" },
   { id: "SALES", label: "Sales" },
   { id: "FINANCE", label: "Finance" },
+  { id: "TRANSPORT", label: "Transport" },
 ];
 
 export default function ManageUsers() {
@@ -62,7 +63,7 @@ export default function ManageUsers() {
     department: "",
     role: "EMPLOYEE",
     password: "",
-    permissions: MODULES.map(m => ({ module: m.id, can_read: true, can_write: false }))
+    permissions: MODULES.map(m => ({ module: m.id, module_label: m.label, can_read: true, can_write: false }))
   });
 
   useEffect(() => {
@@ -113,8 +114,8 @@ export default function ManageUsers() {
       role: newRole,
       // If Admin, auto-set all permissions to true. If Employee, keep existing or reset.
       permissions: newRole === "ADMIN" 
-        ? MODULES.map(m => ({ module: m.id, can_read: true, can_write: true }))
-        : MODULES.map(m => ({ module: m.id, can_read: false, can_write: false }))
+        ? MODULES.map(m => ({ module: m.id, module_label: m.label, can_read: true, can_write: true }))
+        : MODULES.map(m => ({ module: m.id, module_label: m.label, can_read: false, can_write: false }))
 
     }));
   };
@@ -132,7 +133,7 @@ export default function ManageUsers() {
       department: "",
       role: "EMPLOYEE",
       password: "",
-      permissions: MODULES.map(m => ({ module: m.id, can_read: false, can_write: false }))
+      permissions: MODULES.map(m => ({ module: m.id, module_label: m.label, can_read: false, can_write: false }))
 
     });
     setIsModalOpen(true);
@@ -154,10 +155,15 @@ export default function ManageUsers() {
         department: userData.department || "",
         role: userData.role,
         password: "", // Password is optional on update
-        permissions: userData.permissions && userData.permissions.length > 0 
-          ? userData.permissions 
-          : MODULES.map(m => ({ module: m.id, can_read: false, can_write: false }))
-
+        permissions: MODULES.map(m => {
+          const existing = userData.permissions?.find(p => p.module === m.id);
+          return {
+            module: m.id,
+            module_label: m.label,
+            can_read: existing ? existing.can_read : false,
+            can_write: existing ? existing.can_write : false
+          };
+        })
       });
       setIsModalOpen(true);
     } catch (error) {

@@ -3,6 +3,25 @@ import { getRequisitionFlow } from "../../services/vendorQuotationService";
 import { FaBoxOpen, FaUserTie, FaCalendarAlt, FaInfoCircle, FaSearch } from "react-icons/fa";
 import RequisitionSelector from "../common/RequisitionSelector";
 
+const getCurrencySymbol = (currencyCode) => {
+    switch (currencyCode?.toString().toUpperCase()) {
+        case "USD": return "$";
+        case "INR": return "₹";
+        case "EUR": return "€";
+        case "GBP": return "£";
+        case "JPY": return "¥";
+        case "CAD": return "C$";
+        case "AUD": return "A$";
+        default: return currencyCode || "₹";
+    }
+};
+
+const formatAmount = (amount, currencyCode) => {
+    const num = Number(amount) || 0;
+    const locale = currencyCode?.toString().toUpperCase() === "INR" ? "en-IN" : "en-US";
+    return num.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
 const RequisitionFlow = ({ requisitionId: propRequisitionId }) => {
     const [selectedRequisition, setSelectedRequisition] = useState(propRequisitionId || "");
     const [data, setData] = useState(null);
@@ -215,7 +234,7 @@ const RequisitionFlow = ({ requisitionId: propRequisitionId }) => {
                                                                             </div>
                                                                             <div className="text-right">
                                                                                 <div className="font-bold text-slate-900 text-base">
-                                                                                    ₹ {Number(q.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                                    {getCurrencySymbol(q.currency)} {formatAmount(q.total_amount, q.currency)}
                                                                                 </div>
                                                                                 <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Total</div>
                                                                             </div>
@@ -246,10 +265,10 @@ const RequisitionFlow = ({ requisitionId: propRequisitionId }) => {
                                                                                                 {/* <span className="text-xs text-slate-500 ml-1">{qItem.unit}</span> */}
                                                                                             </td>
                                                                                             <td className="py-1 px-2 text-right align-top text-slate-800">
-                                                                                                {parseFloat(qItem.quoted_rate) === 0 ? "N/A" : `₹ ${Number(qItem.quoted_rate).toFixed(2)}`}
+                                                                                                {parseFloat(qItem.quoted_rate) === 0 ? "N/A" : `${getCurrencySymbol(q.currency)} ${formatAmount(qItem.quoted_rate, q.currency)}`}
                                                                                             </td>
                                                                                             <td className="py-1 px-2 text-right align-top font-semibold text-slate-900">
-                                                                                                ₹ {Number(qItem.amount).toFixed(2)}
+                                                                                                {getCurrencySymbol(q.currency)} {formatAmount(qItem.amount, q.currency)}
                                                                                             </td>
                                                                                         </tr>
                                                                                     ))}

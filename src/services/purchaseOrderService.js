@@ -5,6 +5,11 @@ export const generatePOFromComparison = async (payload) => {
     return res.data;
 };
 
+export const fetchPurchaseOrdersByRequisition = async (requisitionId) => {
+    const res = await axiosSecure.get(`/api/purchase-orders?requisition=${requisitionId}`);
+    return res.data;
+};
+
 export const fetchPurchaseOrders = async (page = 1, search = "", vendor = "", status = "") => {
     let url = `/api/purchase-orders?page=${page}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
@@ -33,5 +38,20 @@ export const getPurchaseOrder = async (id) => {
 
 export const cancelPurchaseOrder = async (id, payload = {}) => {
     const res = await axiosSecure.post(`/api/purchase-orders/${id}/cancel`, payload);
+    return res.data;
+};
+
+export const lockPurchaseOrder = async (id) => {
+    const res = await axiosSecure.post(`/api/purchase-orders/${id}/lock`);
+    return res.data;
+};
+
+export const unlockPurchaseOrder = async (id) => {
+    const res = await axiosSecure.post(`/api/purchase-orders/${id}/unlock`);
+    return res.data;
+};
+
+export const updatePurchaseOrder = async (id, payload) => {
+    const res = await axiosSecure.patch(`/api/purchase-orders/${id}`, payload);
     return res.data;
 };

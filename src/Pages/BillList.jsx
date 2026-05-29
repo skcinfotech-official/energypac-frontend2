@@ -169,21 +169,19 @@ const BillList = () => {
                 setPasswordModal(prev => ({ ...prev, loading: true }));
                 try {
                     let finalAmount = parseFloat(paymentModal.amount);
-                    if (paymentModal.currency !== 'INR' && paymentModal.bill?.exchange_rate) {
-                        finalAmount = finalAmount * parseFloat(paymentModal.bill.exchange_rate);
+                    const billExchRate = parseFloat(paymentModal.bill?.exchange_rate || paymentModal.bill?.conversion_rate || 1);
+                    if (paymentModal.currency !== 'INR') {
+                        finalAmount = finalAmount * billExchRate;
                     }
 
                     const payload = {
-                        amount_paid: finalAmount,
-                        payment_date: paymentModal.payment_date,
-                        payment_mode: paymentModal.payment_mode,
-                        reference_number: paymentModal.reference_number,
-                        remarks: paymentModal.remarks + (paymentModal.currency !== 'INR' ? ` (Collected: ${paymentModal.amount} ${paymentModal.currency})` : ""),
-                        confirm_password: password
+                        confirm_password: password,
+                        amount_paid: Number(finalAmount.toFixed(2)),
+                        payment_date: paymentModal.payment_date
                     };
                     const res = await markBillAsPaid(paymentModal.bill.id, payload);
                     setAlert({ open: true, type: "success", message: res.message || "Payment recorded successfully" });
-                    setPaymentModal({ open: false, bill: null, amount: "", currency: "INR", payment_date: "", payment_mode: "NEFT", reference_number: "", remarks: "" });
+                    setPaymentModal({ open: false, bill: null, amount: "", currency: "INR", payment_date: "", payment_mode: "CASH", reference_number: "", remarks: "" });
                     fetchBills(page);
                     setPasswordModal({ open: false });
                 } catch (error) {
@@ -226,9 +224,9 @@ const BillList = () => {
                     ["Summary: Total Quantity", summary.total_outstanding_bills || 0],
                     ["Summary: Total Amount", summary.total_outstanding_amount || 0],
                     [],
-                    ["Bill Number", "Date", "WO Number", "Client Name", "Contact Person", "Phone", "Email", "Total Amount", "Paid Amount", "Balance Due", "Days Outstanding", "Status"]
+                    ["Bill Number", "Date", "PI Number", "Client Name", "Contact Person", "Phone", "Email", "Total Amount", "Paid Amount", "Balance Due", "Days Outstanding", "Status"]
                 ];
-                billsList.forEach(b => sheetData.push([b.bill_number, b.bill_date, b.wo_number, b.client_name, b.contact_person, b.phone, b.email, b.total_amount, b.amount_paid, b.balance, b.days_outstanding, b.status]));
+                billsList.forEach(b => sheetData.push([b.bill_number, b.bill_date, b.pi_number || b.wo_number, b.client_name, b.contact_person, b.phone, b.email, b.total_amount, b.amount_paid, b.balance, b.days_outstanding, b.status]));
                 const ws = XLSX.utils.aoa_to_sheet(sheetData);
                 XLSX.utils.book_append_sheet(wb, ws, "Outstanding");
             } else {
@@ -237,14 +235,14 @@ const BillList = () => {
                 const summary = data.summary || {};
                 const billsList = data.bills || [];
                 const sheetData = [
-                    ["WORK ORDER BILL REPORT"],
+                    ["PI BILL REPORT"],
                     ["Date Range:", `${data.date_range?.start_date} to ${data.date_range?.end_date}`],
                     ["Summary: Total Records", summary.total_bills],
                     ["Summary: Total Amount", summary.total_amount],
                     [],
-                    ["Bill Number", "Date", "WO Number", "Client Name", "Amount", "Paid", "Balance", "Status"]
+                    ["Bill Number", "Date", "PI Number", "Client Name", "Amount", "Paid", "Balance", "Status"]
                 ];
-                billsList.forEach(b => sheetData.push([b.bill_number, b.bill_date, b.wo_number, b.client_name, b.total_amount, b.amount_paid, b.balance, b.status]));
+                billsList.forEach(b => sheetData.push([b.bill_number, b.bill_date, b.pi_number || b.wo_number, b.client_name, b.total_amount, b.amount_paid, b.balance, b.status]));
                 const ws = XLSX.utils.aoa_to_sheet(sheetData);
                 XLSX.utils.book_append_sheet(wb, ws, "Bills");
             }
@@ -268,6 +266,17 @@ const BillList = () => {
         }).replace('US$', '$');
     };
 
+    const formatDate = (dateStr) => {
+        if (!dateStr) return "N/A";
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            const [year, month, day] = dateStr.split("-");
+            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            return `${day} ${monthNames[parseInt(month, 10) - 1]} ${year}`;
+        }
+        const date = new Date(dateStr);
+        return isNaN(date.getTime()) ? dateStr : date.toLocaleDateString();
+    };
+
     const getStatusStyle = (status) => {
         switch (status) {
             case 'GENERATED': return 'bg-blue-100 text-blue-700 border-blue-200';
@@ -285,9 +294,9 @@ const BillList = () => {
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
                         <FaFileInvoiceDollar className="text-emerald-600" />
-                        Work Order Bills (Finance)
+                        PI Bills (Finance)
                     </h1>
-                    <p className="text-slate-500 mt-1 font-medium ">Track client billing, outstanding balances, and financial records for all active work orders</p>
+                    <p className="text-slate-500 mt-1 font-medium ">Track client billing, outstanding balances, and financial records for all active proforma invoices</p>
                 </div>
                 <div className="flex items-center gap-4">
                     <button
@@ -331,7 +340,7 @@ const BillList = () => {
                     {/* WO Filter */}
                     <div className="lg:col-span-2">
                         <div className="flex items-end justify-between mb-2">
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest">Filter by Work Order</label>
+                            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest">Filter by Proforma Invoice</label>
                             {(filterWorkOrder || searchQuery) && (
                                 <button
                                     onClick={() => {setFilterWorkOrder(""); setSearchQuery(""); setPage(1);}}
@@ -344,7 +353,7 @@ const BillList = () => {
                         <WorkOrderSelector
                             value={filterWorkOrder}
                             onChange={(id) => {setFilterWorkOrder(id); setPage(1);}}
-                            placeholder="All Work Orders (Search by WO Number or Client)"
+                            placeholder="All Proforma Invoices (Search by PI Number or Client)"
                         />
                     </div>
                 </div>
@@ -381,7 +390,7 @@ const BillList = () => {
                                                     {bill.bill_number}
                                                 </span>
                                                 <span className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
-                                                    WO: <span className="text-slate-600 ">{bill.wo_number}</span>
+                                                    PI: <span className="text-slate-600 ">{bill.wo_number || bill.pi_number}</span>
                                                 </span>
                                                 <span className="text-[10px] text-slate-400 flex items-center gap-1.5 mt-1">
                                                     <FaCalendarAlt size={10} />
@@ -402,7 +411,7 @@ const BillList = () => {
                                             <div className="text-sm font-bold text-slate-800">{formatCurrency(bill.total_amount)}</div>
                                             {bill.currency && bill.currency !== 'INR' && (
                                                 <div className="text-[10px] text-blue-600 font-bold">
-                                                    {formatCurrency(bill.original_total_amount || (bill.total_amount / bill.exchange_rate), bill.currency)}
+                                                    {formatCurrency(bill.original_total_amount || (bill.total_amount / (bill.exchange_rate || bill.conversion_rate || 1)), bill.currency)}
                                                 </div>
                                             )}
                                             <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Net Payable</div>
@@ -411,7 +420,7 @@ const BillList = () => {
                                             <div className="text-sm font-bold text-emerald-600">{formatCurrency(bill.amount_paid)}</div>
                                             {bill.currency && bill.currency !== 'INR' && (
                                                 <div className="text-[10px] text-emerald-500 font-bold">
-                                                    {formatCurrency(bill.original_amount_paid || (bill.amount_paid / bill.exchange_rate), bill.currency)}
+                                                    {formatCurrency(bill.original_amount_paid || (bill.amount_paid / (bill.exchange_rate || bill.conversion_rate || 1)), bill.currency)}
                                                 </div>
                                             )}
                                             <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Total Collected</div>
@@ -422,7 +431,7 @@ const BillList = () => {
                                             </div>
                                             {bill.currency && bill.currency !== 'INR' && (
                                                 <div className={`text-[10px] font-bold ${parseFloat(bill.balance) > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                                                    {formatCurrency(bill.original_balance || (bill.balance / bill.exchange_rate), bill.currency)}
+                                                    {formatCurrency(bill.original_balance || (bill.balance / (bill.exchange_rate || bill.conversion_rate || 1)), bill.currency)}
                                                 </div>
                                             )}
                                             {parseFloat(bill.balance) > 0 && (
@@ -452,24 +461,30 @@ const BillList = () => {
                                                 >
                                                     <FaHistory size={14} />
                                                 </button>
-                                                {bill.status !== 'PAID' && bill.status !== 'CANCELLED' && (
-                                                    <>
-                                                        <button
-                                                            onClick={() => openPaymentModal(bill)}
-                                                            className="p-2 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm active:scale-90"
-                                                            title="Record Payment"
-                                                        >
-                                                            <FaMoneyBillWave />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleCancelBill(bill.id)}
-                                                            className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm active:scale-90"
-                                                            title="Void Bill"
-                                                        >
-                                                            <FaTimes />
-                                                        </button>
-                                                    </>
-                                                )}
+                                                <button
+                                                    onClick={() => openPaymentModal(bill)}
+                                                    disabled={bill.status === 'PAID' || bill.status === 'CANCELLED'}
+                                                    className={`p-2 rounded-lg transition-all shadow-sm active:scale-90 ${
+                                                        bill.status === 'PAID' || bill.status === 'CANCELLED'
+                                                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-50'
+                                                            : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
+                                                    }`}
+                                                    title={bill.status === 'PAID' ? "Bill Already Paid" : bill.status === 'CANCELLED' ? "Cannot Pay Cancelled Bill" : "Record Payment"}
+                                                >
+                                                    <FaMoneyBillWave />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleCancelBill(bill.id)}
+                                                    disabled={bill.status === 'PAID' || bill.status === 'CANCELLED'}
+                                                    className={`p-2 rounded-lg transition-all shadow-sm active:scale-90 ${
+                                                        bill.status === 'PAID' || bill.status === 'CANCELLED'
+                                                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-50'
+                                                            : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'
+                                                    }`}
+                                                    title={bill.status === 'PAID' ? "Cannot Cancel Paid Bill" : bill.status === 'CANCELLED' ? "Bill Already Cancelled" : "Void Bill"}
+                                                >
+                                                    <FaTimes />
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -587,7 +602,10 @@ const BillList = () => {
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    onClick={() => setPaymentModal({ ...paymentModal, currency: paymentModal.bill.currency, amount: paymentModal.bill.original_balance || (paymentModal.bill.balance / paymentModal.bill.exchange_rate) })}
+                                                    onClick={() => {
+                                                        const rate = parseFloat(paymentModal.bill?.exchange_rate || paymentModal.bill?.conversion_rate || 1);
+                                                        setPaymentModal({ ...paymentModal, currency: paymentModal.bill.currency, amount: paymentModal.bill.original_balance || (paymentModal.bill.balance / rate) });
+                                                    }}
                                                     className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${paymentModal.currency !== 'INR' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
                                                 >
                                                     {paymentModal.bill.currency}
@@ -606,52 +624,26 @@ const BillList = () => {
                                             className="w-full pl-10 pr-5 py-3.5 bg-white border border-slate-200 rounded-xl text-xl font-black focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
                                         />
                                     </div>
-                                    {paymentModal.currency !== 'INR' && paymentModal.bill?.exchange_rate && (
+                                    {paymentModal.currency !== 'INR' && (paymentModal.bill?.exchange_rate || paymentModal.bill?.conversion_rate) && (
                                         <p className="mt-2 text-[10px] text-slate-400 font-bold uppercase italic">
-                                            Approx. {formatCurrency(parseFloat(paymentModal.amount || 0) * paymentModal.bill.exchange_rate)} (Exch: {Number(paymentModal.bill.exchange_rate).toFixed(2)})
+                                            Approx. {formatCurrency(parseFloat(paymentModal.amount || 0) * parseFloat(paymentModal.bill?.exchange_rate || paymentModal.bill?.conversion_rate || 1))} (Exch: {Number(paymentModal.bill?.exchange_rate || paymentModal.bill?.conversion_rate || 1).toFixed(2)})
                                         </p>
                                     )}
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Collection Date *</label>
-                                        <input
-                                            type="date" required
-                                            value={paymentModal.payment_date}
-                                            onChange={(e) => setPaymentModal({ ...paymentModal, payment_date: e.target.value })}
-                                            className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-emerald-500 outline-none transition-all"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Mode *</label>
-                                        <select
-                                            required value={paymentModal.payment_mode}
-                                            onChange={(e) => setPaymentModal({ ...paymentModal, payment_mode: e.target.value })}
-                                            className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-emerald-500 outline-none transition-all"
-                                        >
-                                            <option value="CASH">Cash</option>
-                                            <option value="CHEQUE">Cheque</option>
-                                            <option value="NEFT">NEFT</option>
-                                            <option value="RTGS">RTGS</option>
-                                            <option value="UPI">UPI</option>
-                                        </select>
-                                    </div>
-                                </div>
                                 <div>
-                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Reference / Transaction ID</label>
+                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Collection Date *</label>
                                     <input
-                                        type="text"
-                                        value={paymentModal.reference_number}
-                                        onChange={(e) => setPaymentModal({ ...paymentModal, reference_number: e.target.value })}
-                                        placeholder="UTR Number, Check No, etc."
-                                        className="w-full px-5 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-emerald-500 outline-none transition-all"
+                                        type="date" required
+                                        value={paymentModal.payment_date}
+                                        onChange={(e) => setPaymentModal({ ...paymentModal, payment_date: e.target.value })}
+                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-emerald-500 outline-none transition-all"
                                     />
                                 </div>
                             </div>
                             <div className="flex gap-3 pt-4 border-t border-slate-200">
                                 <button
                                     type="button"
-                                    onClick={() => setPaymentModal({ open: false, bill: null, amount: "", payment_date: "", payment_mode: "NEFT", reference_number: "", remarks: "" })}
+                                    onClick={() => setPaymentModal({ open: false, bill: null, amount: "", payment_date: "", payment_mode: "CASH", reference_number: "", remarks: "" })}
                                     className="flex-1 py-3 text-xs font-black text-slate-500 uppercase tracking-widest hover:bg-slate-100 rounded-xl transition-all active:scale-95"
                                 >
                                     Cancel
@@ -695,7 +687,7 @@ const BillList = () => {
                                             <p className="text-xl font-black text-slate-800">{formatCurrency(historyModal.data.net_payable)}</p>
                                             {historyModal.data.currency && historyModal.data.currency !== 'INR' && (
                                                 <p className="text-[10px] font-bold text-blue-600 mt-1">
-                                                    {formatCurrency(historyModal.data.original_net_payable || (historyModal.data.net_payable / (historyModal.data.exchange_rate || 1)), historyModal.data.currency)}
+                                                    {formatCurrency(historyModal.data.original_net_payable || (historyModal.data.net_payable / (historyModal.data.exchange_rate || historyModal.data.conversion_rate || 1)), historyModal.data.currency)}
                                                 </p>
                                             )}
                                         </div>
@@ -704,7 +696,7 @@ const BillList = () => {
                                             <p className="text-xl font-black text-emerald-700">{formatCurrency(historyModal.data.total_paid)}</p>
                                             {historyModal.data.currency && historyModal.data.currency !== 'INR' && (
                                                 <p className="text-[10px] font-bold text-emerald-500 mt-1">
-                                                    {formatCurrency(historyModal.data.original_total_paid || (historyModal.data.total_paid / (historyModal.data.exchange_rate || 1)), historyModal.data.currency)}
+                                                    {formatCurrency(historyModal.data.original_total_paid || (historyModal.data.total_paid / (historyModal.data.exchange_rate || historyModal.data.conversion_rate || 1)), historyModal.data.currency)}
                                                 </p>
                                             )}
                                         </div>
@@ -713,7 +705,7 @@ const BillList = () => {
                                             <p className="text-xl font-black text-orange-700">{formatCurrency(historyModal.data.balance)}</p>
                                             {historyModal.data.currency && historyModal.data.currency !== 'INR' && (
                                                 <p className="text-[10px] font-bold text-orange-400 mt-1">
-                                                    {formatCurrency(historyModal.data.original_balance || (historyModal.data.balance / (historyModal.data.exchange_rate || 1)), historyModal.data.currency)}
+                                                    {formatCurrency(historyModal.data.original_balance || (historyModal.data.balance / (historyModal.data.exchange_rate || historyModal.data.conversion_rate || 1)), historyModal.data.currency)}
                                                 </p>
                                             )}
                                         </div>
@@ -749,7 +741,7 @@ const BillList = () => {
                                                             <td className="px-5 py-4">
                                                                 <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5 whitespace-nowrap">
                                                                     <FaCalendarAlt size={12} className="text-slate-300" />
-                                                                    {new Date(payment.created_at).toLocaleDateString()}
+                                                                    {formatDate(payment.payment_date || payment.created_at)}
                                                                 </span>
                                                             </td>
                                                             <td className="px-5 py-4">
@@ -758,16 +750,23 @@ const BillList = () => {
                                                                 </span>
                                                             </td>
                                                             <td className="px-5 py-4">
-                                                                <span className="text-xs font-mono font-bold text-slate-500">
-                                                                    {payment.reference_number || "N/A"}
-                                                                </span>
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-xs font-mono font-bold text-slate-700">
+                                                                        {payment.reference_number || "N/A"}
+                                                                    </span>
+                                                                    {payment.remarks && (
+                                                                        <span className="text-[10px] text-slate-400 font-medium italic mt-0.5 max-w-[200px] truncate" title={payment.remarks}>
+                                                                            {payment.remarks}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             </td>
                                                             <td className="px-5 py-4 text-right">
                                                                 <div className="flex flex-col items-end">
                                                                     <span className="text-sm font-black text-slate-800">{formatCurrency(payment.amount)}</span>
                                                                     {historyModal.data.currency && historyModal.data.currency !== 'INR' && (
                                                                         <span className="text-[10px] font-bold text-emerald-600">
-                                                                            {formatCurrency(payment.original_amount || (payment.amount / (historyModal.data.exchange_rate || 1)), historyModal.data.currency)}
+                                                                            {formatCurrency(payment.original_amount || (payment.amount / (historyModal.data.exchange_rate || historyModal.data.conversion_rate || 1)), historyModal.data.currency)}
                                                                         </span>
                                                                     )}
                                                                 </div>
@@ -777,7 +776,7 @@ const BillList = () => {
                                                                     <span className="text-xs font-bold text-slate-400">{formatCurrency(payment.balance_after)}</span>
                                                                     {historyModal.data.currency && historyModal.data.currency !== 'INR' && (
                                                                         <span className="text-[10px] font-medium text-slate-400">
-                                                                            {formatCurrency(payment.original_balance_after || (payment.balance_after / (historyModal.data.exchange_rate || 1)), historyModal.data.currency)}
+                                                                            {formatCurrency(payment.original_balance_after || (payment.balance_after / (historyModal.data.exchange_rate || historyModal.data.conversion_rate || 1)), historyModal.data.currency)}
                                                                         </span>
                                                                     )}
                                                                 </div>

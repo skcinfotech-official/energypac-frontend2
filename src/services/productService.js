@@ -43,9 +43,13 @@ export const getLowStockProducts = () => {
     return axiosSecure.get("/api/products/low_stock");
 };
 
-export const getInventoryReport = (status = "") => {
+export const getStockReport = (status = "") => {
     const params = status ? { status } : {};
     return axiosSecure.get(`/api/reports/inventory/stock`, { params });
+};
+
+export const getMovementReport = () => {
+    return axiosSecure.get(`/api/reports/inventory/movement`);
 };
 
 // BULK UPLOAD

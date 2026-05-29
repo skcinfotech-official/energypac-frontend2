@@ -3,6 +3,25 @@ import { getVendorQuotationById } from "../../services/vendorQuotationService";
 import { HiX, HiInformationCircle } from "react-icons/hi";
 import { FaFileInvoiceDollar, FaUserTie, FaBoxOpen, FaClipboardList, FaCalendarAlt } from "react-icons/fa";
 
+const getCurrencySymbol = (currencyCode) => {
+    switch (currencyCode?.toString().toUpperCase()) {
+        case "USD": return "$";
+        case "INR": return "₹";
+        case "EUR": return "€";
+        case "GBP": return "£";
+        case "JPY": return "¥";
+        case "CAD": return "C$";
+        case "AUD": return "A$";
+        default: return currencyCode || "₹";
+    }
+};
+
+const formatAmount = (amount, currencyCode) => {
+    const num = Number(amount) || 0;
+    const locale = currencyCode?.toString().toUpperCase() === "INR" ? "en-IN" : "en-US";
+    return num.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
 const VendorQuotationViewModal = ({ open, onClose, quotationId }) => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -34,7 +53,7 @@ const VendorQuotationViewModal = ({ open, onClose, quotationId }) => {
 
     return (
         <div
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-100 p-4 animate-in fade-in duration-300"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center  justify-center z-100 p-4 animate-in fade-in duration-300"
             onClick={onClose}
         >
             <div
@@ -71,60 +90,89 @@ const VendorQuotationViewModal = ({ open, onClose, quotationId }) => {
                     ) : data ? (
                         <>
                             {/* Top Card: Info */}
-                            <div className="bg-white border boundary-slate-200 rounded-xl p-5 shadow-sm">
-                                <div className="flex flex-wrap justify-between gap-6">
-                                    {/* Left: General Info */}
-                                    <div className="space-y-3">
-                                        <div className="flex items-center gap-2 text-lg font-bold text-slate-800">
+                            <div className="bg-white border boundary-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {/* Column 1: General Info */}
+                                    <div className="space-y-2 text-sm">
+                                        
+                                        <div className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                            <FaFileInvoiceDollar className="text-blue-600" />
                                             <span>{data.quotation_number || "Draft Quotation"}</span>
                                         </div>
-
-                                        <div className="space-y-1 text-sm text-slate-600">
-                                            <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-1">
                                                 <FaCalendarAlt className="text-slate-400 w-4" />
-                                                <span className="font-semibold">Quoted Date:</span> {data.quotation_date}
+                                                <span className="font-semibold text-slate-500">Quoted Date:</span>{" "}
+                                                <span className="text-slate-800">{data.quotation_date}</span>
                                             </div>
-                                            <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
-                                                {(data.gst_number || data?.vendor?.gst_number) && (
-                                                    <div className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-100">
-                                                        <span className="font-bold">GST:</span> {data.gst_number || data?.vendor?.gst_number}
-                                                    </div>
-                                                )}
-                                                {(data.pan_number || data?.vendor?.pan_number) && (
-                                                    <div className="text-[10px] px-1.5 py-0.5 bg-slate-50 text-slate-700 rounded border border-slate-200">
-                                                        <span className="font-bold">PAN:</span> {data.pan_number || data?.vendor?.pan_number}
-                                                    </div>
-                                                )}
+                                        <div className="space-y-1.5 text-slate-600">
+                                            <div>
+                                                <span className="font-semibold text-slate-500">Requisition:</span>{" "}
+                                                <span className="font-mono text-slate-800">{data.requisition_number}</span>
+                                            </div>
+                                            
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Currency:</span>
+                                                <span className="bg-blue-600 text-white text-xs font-black px-2 py-0.5 rounded">
+                                                    {data.currency} ({getCurrencySymbol(data.currency)})
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Right: Terms & Validity */}
-                                    <div className="text-right space-y-2 text-sm">
-                                        <div className="flex flex-col items-start bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 mb-2">
-                                            <span className="text-[9px] font-bold text-blue-400 uppercase tracking-tighter">Input Currency</span>
-                                            <span className="text-sm font-black text-blue-700 leading-none">
-                                                {data.currency?.toString().toUpperCase()}
-                                            </span>
+                                    {/* Column 2: Vendor Details */}
+                                    <div className="space-y-1.5 text-sm text-slate-600">
+                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                                            <FaUserTie /> Vendor Details
+                                        </h4>
+                                        <div>
+                                            <span className="font-semibold text-slate-500">Vendor:</span>{" "}
+                                            <span className="font-bold text-slate-800">{data.vendor_name}</span>
                                         </div>
-                                        {data.currency?.toString().trim().toUpperCase() !== 'INR' && (
-                                            <div className="flex flex-col items-start bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Exchange Rate</span>
-                                                <span className="text-sm font-bold text-slate-600 leading-none">1 {data.currency} = ₹ {Number(data.exchange_rate).toFixed(2)}</span>
-                                            </div>
-                                        )}
-                                        {/* <div className="bg-amber-50 text-amber-900 px-3 py-1 rounded-lg border border-amber-100 inline-block mb-2">
-                                            <span className="font-semibold">Valid Until:</span> {data.validity_date}
+                                        <div>
+                                            <span className="font-semibold text-slate-500">Code:</span>{" "}
+                                            <span className="font-mono text-slate-800">{data.vendor_code}</span>
                                         </div>
-                                        <div><span className="text-slate-500 font-semibold">Ref No:</span> {data.reference_number || "-"}</div>
-                                        <div><span className="text-slate-500 font-semibold">Payment:</span> {data.payment_terms || "-"}</div>
-                                        <div><span className="text-slate-500 font-semibold">Delivery:</span> {data.delivery_terms || "-"}</div> */}
+                                        <div className="flex flex-wrap gap-2 pt-1">
+                                            {(data.gst_number || data?.vendor?.gst_number) && (
+                                                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                                                    GST: {data.gst_number || data?.vendor?.gst_number}
+                                                </span>
+                                            )}
+                                            {(data.pan_number || data?.vendor?.pan_number) && (
+                                                <span className="text-[10px] font-bold text-slate-700 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
+                                                    PAN: {data.pan_number || data?.vendor?.pan_number}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Column 3: Terms & Reference */}
+                                    <div className="space-y-1.5 text-sm text-slate-600">
+                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                                            <FaClipboardList /> Quotation Terms
+                                        </h4>
+                                        <div>
+                                            <span className="font-semibold text-slate-500">Ref No:</span>{" "}
+                                            <span className="text-slate-800 font-bold">{data.reference_number || "-"}</span>
+                                        </div>
+                                        <div>
+                                            <span className="font-semibold text-slate-500">Valid Until:</span>{" "}
+                                            <span className="text-slate-800">{data.validity_date || "-"}</span>
+                                        </div>
+                                        <div>
+                                            <span className="font-semibold text-slate-500">Payment:</span>{" "}
+                                            <span className="text-slate-800">{data.payment_terms || "-"}</span>
+                                        </div>
+                                        <div>
+                                            <span className="font-semibold text-slate-500">Delivery:</span>{" "}
+                                            <span className="text-slate-800">{data.delivery_terms || "-"}</span>
+                                        </div>
                                     </div>
                                 </div>
 
                                 {data.remarks && (
-                                    <div className="mt-4 pt-4 border-t border-slate-100 text-sm text-slate-600 italic bg-slate-50/50 p-2 rounded">
-                                        <span className="font-semibold not-italic text-slate-500 mr-1">Remarks:</span> {data.remarks}
+                                    <div className="pt-3 border-t border-slate-100 text-sm text-slate-600 italic bg-slate-50/50 p-2.5 rounded-lg">
+                                        <span className="font-bold not-italic text-slate-500 mr-1.5">Remarks:</span> {data.remarks}
                                     </div>
                                 )}
 
@@ -178,14 +226,8 @@ const VendorQuotationViewModal = ({ open, onClose, quotationId }) => {
                                         <tr>
                                             <th className="px-5 py-3">Product</th>
                                             <th className="px-5 py-3 text-right">Quantity</th>
-                                            <th className="px-5 py-3 text-right">Rate (INR)</th>
-                                            <th className="px-5 py-3 text-right">Amount (INR)</th>
-                                            {data.currency?.toString().trim().toUpperCase() !== 'INR' && (
-                                                <>
-                                                    <th className="px-5 py-3 text-right bg-blue-50/20">Original Rate</th>
-                                                    <th className="px-5 py-3 text-right bg-blue-50/20">Original Amount</th>
-                                                </>
-                                            )}
+                                            <th className="px-5 py-3 text-right">Rate ({data.currency})</th>
+                                            <th className="px-5 py-3 text-right">Amount ({data.currency})</th>
                                             <th className="px-5 py-3">Remarks</th>
                                         </tr>
                                     </thead>
@@ -200,21 +242,11 @@ const VendorQuotationViewModal = ({ open, onClose, quotationId }) => {
                                                     {Number(item.quantity).toFixed(2)} <span className="text-xs text-slate-400">{item.unit}</span>
                                                 </td>
                                                 <td className="px-5 py-3 text-right text-slate-700">
-                                                    {parseFloat(item.quoted_rate) === 0 ? "N/A" : `₹ ${Number(item.quoted_rate).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                                                    {parseFloat(item.quoted_rate) === 0 ? "N/A" : `${getCurrencySymbol(data.currency)} ${formatAmount(item.quoted_rate, data.currency)}`}
                                                 </td>
                                                 <td className="px-5 py-3 text-right font-bold text-slate-900">
-                                                    ₹ {Number(item.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    {getCurrencySymbol(data.currency)} {formatAmount(item.amount, data.currency)}
                                                 </td>
-                                                {data.currency?.toString().trim().toUpperCase() !== 'INR' && (
-                                                    <>
-                                                        <td className="px-5 py-3 text-right text-blue-600 bg-blue-50/10">
-                                                            {parseFloat(item.original_rate || item.original_quoted_rate || item.quoted_rate) === 0 ? "N/A" : `${data.currency?.toString().trim().toUpperCase() === 'USD' ? '$' : '₹'} ${Number(item.original_rate || item.original_quoted_rate || item.quoted_rate).toFixed(2)}`}
-                                                        </td>
-                                                        <td className="px-5 py-3 text-right font-bold text-blue-700 bg-blue-50/10">
-                                                            {data.currency?.toString().trim().toUpperCase() === 'USD' ? '$' : '₹'} {Number(item.original_amount || item.amount).toFixed(2)}
-                                                        </td>
-                                                    </>
-                                                )}
                                                 <td className="px-5 py-3 text-slate-500 italic max-w-xs truncate">
                                                     {item.remarks || "-"}
                                                 </td>
@@ -224,18 +256,10 @@ const VendorQuotationViewModal = ({ open, onClose, quotationId }) => {
                                     {/* Table Footer Total */}
                                     <tfoot className="bg-slate-50 font-bold text-slate-900">
                                         <tr>
-                                            <td colSpan="3" className="px-5 py-3 text-right text-slate-600 uppercase text-xs tracking-wider border-t border-slate-200">Total (INR)</td>
+                                            <td colSpan="3" className="px-5 py-3 text-right text-slate-600 uppercase text-xs tracking-wider border-t border-slate-200">Total Amount</td>
                                             <td className="px-5 py-3 text-right text-base border-t border-slate-200 font-black">
-                                                ₹ {Number(data.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                {getCurrencySymbol(data.currency)} {formatAmount(data.total_amount, data.currency)}
                                             </td>
-                                            {data.currency?.toString().trim().toUpperCase() !== 'INR' && (
-                                                <>
-                                                    <td className="px-5 py-3 text-right text-base border-t border-slate-200 text-blue-700 bg-blue-50/30">
-                                                        {data.currency?.toString().trim().toUpperCase() === 'USD' ? '$' : '₹'} {Number(data.original_total_amount).toFixed(2)}
-                                                    </td>
-                                                    <td className="bg-blue-50/30 border-t border-slate-200"></td>
-                                                </>
-                                            )}
                                             <td></td>
                                         </tr>
                                     </tfoot>

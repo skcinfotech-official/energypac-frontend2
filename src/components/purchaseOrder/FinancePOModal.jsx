@@ -31,11 +31,19 @@ const FinancePOModal = ({ open, onClose, data, onViewItems, onRecordPayment, onS
     }, [open, data?.id]);
 
     const formatCurrency = (amount, curr = 'INR') => {
-        return Number(amount || 0).toLocaleString('en-IN', {
-            style: 'currency',
-            currency: curr === 'USD' ? 'USD' : 'INR',
-            maximumFractionDigits: 2
-        }).replace('US$', '$');
+        const c = curr?.toString().trim().toUpperCase() || 'INR';
+        try {
+            return Number(amount || 0).toLocaleString('en-IN', {
+                style: 'currency',
+                currency: c,
+                maximumFractionDigits: 2
+            }).replace('US$', '$');
+        } catch (e) {
+            return `${c} ${Number(amount || 0).toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            })}`;
+        }
     };
 
     const handlePrint = async () => {
@@ -64,6 +72,8 @@ const FinancePOModal = ({ open, onClose, data, onViewItems, onRecordPayment, onS
         }
     };
 
+    const po = fullPOData || data;
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* Backdrop */}
@@ -76,14 +86,14 @@ const FinancePOModal = ({ open, onClose, data, onViewItems, onRecordPayment, onS
                     <div>
                         <div className="flex items-center gap-3">
                             <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Purchase Order Details</h3>
-                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusStyle(data.status)}`}>
-                                {data.status}
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusStyle(po.status)}`}>
+                                {po.status}
                             </span>
                         </div>
                         <p className="text-sm text-slate-500 font-bold mt-1 flex items-center gap-2">
-                             <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 font-mono">{data.po_number}</span>
+                             <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 font-mono">{po.po_number}</span>
                              • 
-                             <span className="flex items-center gap-1.5"><FaCalendarAlt className="text-slate-400" /> {new Date(data.po_date).toLocaleDateString()}</span>
+                             <span className="flex items-center gap-1.5"><FaCalendarAlt className="text-slate-400" /> {new Date(po.po_date).toLocaleDateString()}</span>
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -96,7 +106,7 @@ const FinancePOModal = ({ open, onClose, data, onViewItems, onRecordPayment, onS
                             <FaPrint size={18} className={generatingPdf ? "animate-pulse" : ""} />
                         </button>
                         <button onClick={onClose} className="p-2.5 hover:bg-slate-200 rounded-full transition-all text-slate-400 hover:text-slate-900 active:scale-90">
-                            <FaTimes size={20} />
+                             <FaTimes size={20} />
                         </button>
                     </div>
                 </div>
@@ -106,110 +116,206 @@ const FinancePOModal = ({ open, onClose, data, onViewItems, onRecordPayment, onS
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="p-5 rounded-2xl border-2 border-slate-100 bg-slate-50/50">
                             <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Total Payable</p>
-                            <p className="text-2xl font-black text-slate-900">{formatCurrency(data.total_amount)}</p>
-                            {data.currency && data.currency !== 'INR' && (
-                                <p className="text-xs font-bold text-blue-600 mt-1">{formatCurrency(data.original_total_amount || (data.total_amount / data.exchange_rate), data.currency)}</p>
+                            <p className="text-2xl font-black text-slate-900">{formatCurrency(po.total_amount, po.currency)}</p>
+                            {po.currency && po.currency !== 'INR' && (
+                                <p className="text-xs font-bold text-blue-600 mt-1">{formatCurrency(po.original_total_amount || (po.total_amount / po.exchange_rate), po.currency)}</p>
                             )}
                         </div>
                         <div className="p-5 rounded-2xl border-2 border-emerald-100 bg-emerald-50/30">
                             <p className="text-[10px] text-emerald-600 font-black uppercase tracking-widest mb-1">Amount Paid</p>
-                            <p className="text-2xl font-black text-emerald-700">{formatCurrency(data.amount_paid)}</p>
-                            {data.currency && data.currency !== 'INR' && (
-                                <p className="text-xs font-bold text-emerald-500 mt-1">{formatCurrency(data.original_amount_paid || (data.amount_paid / data.exchange_rate), data.currency)}</p>
+                            <p className="text-2xl font-black text-emerald-700">{formatCurrency(po.amount_paid, po.currency)}</p>
+                            {po.currency && po.currency !== 'INR' && (
+                                <p className="text-xs font-bold text-emerald-500 mt-1">{formatCurrency(po.original_amount_paid || (po.amount_paid / po.exchange_rate), po.currency)}</p>
                             )}
                         </div>
                         <div className="p-5 rounded-2xl border-2 border-red-100 bg-red-50/30">
                             <p className="text-[10px] text-red-600 font-black uppercase tracking-widest mb-1">Outstanding Balance</p>
-                            <p className="text-2xl font-black text-red-700">{formatCurrency(data.balance)}</p>
-                            {data.currency && data.currency !== 'INR' && (
-                                <p className="text-xs font-bold text-red-400 mt-1">{formatCurrency(data.original_balance || (data.balance / data.exchange_rate), data.currency)}</p>
+                            <p className="text-2xl font-black text-red-700">{formatCurrency(po.balance, po.currency)}</p>
+                            {po.currency && po.currency !== 'INR' && (
+                                <p className="text-xs font-bold text-red-400 mt-1">{formatCurrency(po.original_balance || (po.balance / po.exchange_rate), po.currency)}</p>
                             )}
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                        {/* Vendor Information */}
-                        <div className="space-y-6">
-                            <div className="border-b border-slate-100 pb-3 flex items-center gap-2">
-                                <FaUserTie className="text-slate-400" />
-                                <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">Vendor Info</h4>
+                    {/* GENERAL DETAILS */}
+                    <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2">
+                            General PO & Project Info
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="space-y-1">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Project Name</span>
+                                <span className="text-sm font-bold text-slate-800">{po.project_name || "N/A"}</span>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                                        Vendor Name
-                                    </label>
-                                    <p className="text-sm font-bold text-slate-800">{data.vendor_name}</p>
+                            <div className="space-y-1">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Subject</span>
+                                <span className="text-sm font-semibold text-slate-800">{po.subject || "N/A"}</span>
+                            </div>
+                            <div className="space-y-1">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Requisition Number</span>
+                                <span className="text-sm font-bold text-slate-800">{po.requisition_number}</span>
+                            </div>
+                            <div className="space-y-1">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">PO Date</span>
+                                <span className="text-sm font-semibold text-slate-800">{po.po_date ? new Date(po.po_date).toLocaleDateString() : "N/A"}</span>
+                            </div>
+                            <div className="space-y-1">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Created By</span>
+                                <span className="text-sm font-semibold text-slate-800">{po.created_by_name || "N/A"}</span>
+                            </div>
+                            <div className="space-y-1">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Revision</span>
+                                <span className="text-sm font-semibold text-slate-800">
+                                    {po.revision_number} {po.is_revised && <span className="text-xs text-red-500 font-bold ml-1">(Revised)</span>}
+                                </span>
+                            </div>
+                            <div className="space-y-1">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Currency</span>
+                                <span className="text-sm font-mono font-bold text-blue-600">{po.currency || "INR"}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* VENDOR & BANK DETAILS */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Vendor Details Card */}
+                        <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-2">
+                                <FaUserTie className="text-blue-500" /> Vendor Information
+                            </h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1 col-span-2">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Vendor Name</span>
+                                    <span className="text-sm font-bold text-slate-800">{po.vendor_name}</span>
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                                        GST Number
-                                    </label>
-                                    <p className="text-sm font-mono font-bold text-slate-800">{data.vendor_gst || 'N/A'}</p>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Phone</span>
+                                    <span className="text-sm font-semibold text-slate-700">{po.vendor_details?.phone || po.vendor_phone || "N/A"}</span>
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5 text-blue-500">
-                                        <FaEnvelope size={10} /> Email
-                                    </label>
-                                    <p className="text-sm font-bold text-slate-800">{data.vendor_email || 'N/A'}</p>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Email</span>
+                                    <span className="text-sm font-semibold text-slate-700">{po.vendor_details?.email || po.vendor_email || "N/A"}</span>
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5 text-emerald-500">
-                                        <FaPhoneAlt size={10} /> Phone
-                                    </label>
-                                    <p className="text-sm font-bold text-slate-800">{data.vendor_phone || 'N/A'}</p>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">GST Number</span>
+                                    <span className="text-sm font-mono font-bold text-slate-800">{po.vendor_details?.gst_number || po.vendor_details?.gst_no || po.vendor_gst || "N/A"}</span>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">PAN Number</span>
+                                    <span className="text-sm font-mono font-bold text-slate-800">{po.vendor_details?.pan_number || po.vendor_details?.pan_no || "N/A"}</span>
+                                </div>
+                                <div className="space-y-1 col-span-2">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Address</span>
+                                    <span className="text-sm text-slate-600 font-medium leading-relaxed">{po.vendor_details?.address || "N/A"}</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Order Summary */}
-                        <div className="space-y-6 bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                            <div className="border-b border-slate-200 pb-3 flex items-center gap-2">
-                                <FaMoneyBillWave className="text-slate-400" />
-                                <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">Order Summary</h4>
+                        {/* Bank Account Details Card */}
+                        <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-2">
+                                🏦 Bank Account Details
+                            </h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1 col-span-2">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Account Name</span>
+                                    <span className="text-sm font-bold text-slate-800">{po.vendor_details?.account_name || "N/A"}</span>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Bank Name</span>
+                                    <span className="text-sm font-semibold text-slate-700">{po.vendor_details?.bank_name || "N/A"}</span>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Account Number</span>
+                                    <span className="text-sm font-mono font-bold text-slate-800">{po.vendor_details?.bank_account_number || "N/A"}</span>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">IFSC Code</span>
+                                    <span className="text-sm font-mono font-bold text-slate-800">{po.vendor_details?.ifsc_code || "N/A"}</span>
+                                </div>
                             </div>
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-slate-500 font-bold">Items Total ({data.total_items_count} units)</span>
-                                    <div className="text-right">
-                                        <span className="text-slate-900 font-black block">{formatCurrency(data.items_total)}</span>
-                                        {data.currency && data.currency !== 'INR' && (
-                                            <span className="text-[10px] text-blue-500 font-bold">{formatCurrency(data.original_items_total || (data.items_total / data.exchange_rate), data.currency)}</span>
-                                        )}
-                                    </div>
+                        </div>
+                    </div>
+
+                    {/* BILLING & SHIPPING DETAILS */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-2">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Bill To</span>
+                            <p className="text-sm text-slate-700 font-medium whitespace-pre-line leading-relaxed">{po.bill_to || "N/A"}</p>
+                        </div>
+                        <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-2">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Ship To</span>
+                            <p className="text-sm text-slate-700 font-medium whitespace-pre-line leading-relaxed">{po.ship_to || "N/A"}</p>
+                        </div>
+                    </div>
+
+                    {/* Order Summary */}
+                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4">
+                        <div className="border-b border-slate-200 pb-3 flex items-center gap-2">
+                            <FaMoneyBillWave className="text-slate-400" />
+                            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Payment Breakdown</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-3 text-sm">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-slate-500 font-medium">Items Total:</span>
+                                    <span className="text-slate-900 font-bold">{formatCurrency(po.items_total || (parseFloat(po.total_amount) - parseFloat(po.freight_cost || 0)), po.currency)}</span>
                                 </div>
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-slate-500 font-bold flex items-center gap-1.5"><FaShippingFast className="text-blue-400" /> Freight Cost</span>
-                                    <div className="text-right">
-                                        <span className="text-slate-900 font-black block">{formatCurrency(data.freight_cost)}</span>
-                                        {data.currency && data.currency !== 'INR' && (
-                                            <span className="text-[10px] text-blue-500 font-bold">{formatCurrency(data.original_freight_cost || (data.freight_cost / data.exchange_rate), data.currency)}</span>
-                                        )}
+                                {parseFloat(po.discount_amount) > 0 && (
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-red-500 font-medium">Discount:</span>
+                                        <span className="text-red-600 font-bold">-{formatCurrency(po.discount_amount, po.currency)}</span>
                                     </div>
+                                )}
+                                {parseFloat(po.cgst_amount) > 0 && (
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-500 font-medium">CGST ({po.cgst_percentage}%):</span>
+                                        <span className="text-slate-900 font-bold">{formatCurrency(po.cgst_amount, po.currency)}</span>
+                                    </div>
+                                )}
+                                {parseFloat(po.sgst_amount) > 0 && (
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-500 font-medium">SGST ({po.sgst_percentage}%):</span>
+                                        <span className="text-slate-900 font-bold">{formatCurrency(po.sgst_amount, po.currency)}</span>
+                                    </div>
+                                )}
+                                {parseFloat(po.igst_amount) > 0 && (
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-500 font-medium">IGST ({po.igst_percentage}%):</span>
+                                        <span className="text-slate-900 font-bold">{formatCurrency(po.igst_amount, po.currency)}</span>
+                                    </div>
+                                )}
+                                {parseFloat(po.freight_cost) > 0 && (
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-500 font-medium">Freight Cost:</span>
+                                        <span className="text-slate-900 font-bold">{formatCurrency(po.freight_cost, po.currency)}</span>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="space-y-4 p-4 bg-white rounded-xl border border-slate-100 flex flex-col justify-center">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm font-bold text-slate-800 uppercase tracking-tight">Net Amount:</span>
+                                    <span className="text-2xl font-black text-emerald-600">{formatCurrency(po.total_amount, po.currency)}</span>
                                 </div>
-                                <div className="pt-3 border-t border-slate-200 flex justify-between items-center">
-                                    <span className="text-base font-black text-slate-900 uppercase tracking-tight">Net Amount</span>
-                                    <div className="text-right">
-                                        <span className="text-2xl font-black text-emerald-600 block leading-none">{formatCurrency(data.total_amount)}</span>
-                                        {data.currency && data.currency !== 'INR' && (
-                                            <span className="text-xs font-bold text-emerald-500 block mt-1">{formatCurrency(data.original_total_amount || (data.total_amount / data.exchange_rate), data.currency)}</span>
-                                        )}
-                                        <span className="text-[10px] text-slate-400 font-bold uppercase mt-1">Inclusive of all taxes</span>
-                                    </div>
+                                <div className="border-t border-slate-100 pt-3 flex justify-between items-center text-xs">
+                                    <span className="text-slate-500 font-bold">Outstanding Balance:</span>
+                                    <span className={`font-black ${po.balance > 0 ? "text-red-600" : "text-emerald-600"}`}>
+                                        {formatCurrency(po.balance, po.currency)}
+                                    </span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Quick Item View (optional summary) */}
-                    {data.items && data.items.length > 0 && (
+                    {po.items && po.items.length > 0 && (
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                                     <FaBoxOpen className="text-slate-400" /> Items List
                                 </h4>
                                 <button 
-                                    onClick={() => onViewItems(data.id)}
+                                    onClick={() => onViewItems(po.id)}
                                     className="text-xs font-black text-blue-600 hover:text-blue-700 hover:underline underline-offset-4 flex items-center gap-1"
                                 >
                                     SHOW DETAILED ITEM VIEW →
@@ -226,22 +332,22 @@ const FinancePOModal = ({ open, onClose, data, onViewItems, onRecordPayment, onS
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
-                                        {data.items.slice(0, 3).map((it, i) => (
+                                        {po.items.slice(0, 3).map((it, i) => (
                                             <tr key={i}>
                                                 <td className="px-5 py-3 font-bold text-slate-700">{it.product_name}</td>
                                                 <td className="px-5 py-3 text-right font-black text-slate-900">{Number(it.quantity).toFixed(2)} {it.unit}</td>
-                                                <td className="px-5 py-3 text-right font-bold text-slate-500">{formatCurrency(it.rate)}</td>
-                                                <td className="px-5 py-3 text-right font-black text-slate-900">{formatCurrency(it.amount)}</td>
+                                                <td className="px-5 py-3 text-right font-bold text-slate-500">{formatCurrency(it.rate, po.currency)}</td>
+                                                <td className="px-5 py-3 text-right font-black text-slate-900">{formatCurrency(it.amount, po.currency)}</td>
                                             </tr>
                                         ))}
-                                        {data.items.length > 3 && (
+                                        {po.items.length > 3 && (
                                             <tr>
                                                 <td colSpan="4" className="px-5 py-3 text-center bg-slate-50/50">
                                                     <button 
-                                                        onClick={() => onViewItems(data.id)}
+                                                        onClick={() => onViewItems(po.id)}
                                                         className="text-[10px] font-black text-slate-400 hover:text-slate-600 uppercase tracking-widest"
                                                     >
-                                                        + {data.items.length - 3} OTHER ITEMS • CLICK TO VIEW ALL
+                                                        + {po.items.length - 3} OTHER ITEMS • CLICK TO VIEW ALL
                                                     </button>
                                                 </td>
                                             </tr>
@@ -251,6 +357,72 @@ const FinancePOModal = ({ open, onClose, data, onViewItems, onRecordPayment, onS
                             </div>
                         </div>
                     )}
+
+                    {/* REMARKS & CANCELLATION DETAILS */}
+                    {(po.remarks || po.status === 'CANCELLED') && (
+                        <div className="grid grid-cols-1 gap-6">
+                            {po.remarks && (
+                                <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-2">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Remarks</span>
+                                    <p className="text-sm text-slate-700 font-medium whitespace-pre-line leading-relaxed">{po.remarks}</p>
+                                </div>
+                            )}
+                            {po.status === 'CANCELLED' && (
+                                <div className="bg-red-50 p-5 rounded-xl border border-red-200 space-y-2">
+                                    <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider block">Cancellation Info</span>
+                                    <p className="text-sm text-red-800 font-bold leading-relaxed">Reason: {po.cancellation_reason || "No reason specified"}</p>
+                                    <p className="text-[10px] text-red-500 font-medium">Cancelled By: {po.cancelled_by_name || "System"} on {po.cancelled_at ? new Date(po.cancelled_at).toLocaleDateString() : "N/A"}</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* TERMS & CONDITIONS */}
+                    <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4 animate-in fade-in duration-300">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-2">
+                            Terms & Conditions
+                        </h4>
+                        {(() => {
+                            const termsList = po?.terms_and_conditions || [];
+                            if (termsList.length === 0) {
+                                return (
+                                    <p className="text-xs text-slate-400 italic">No terms and conditions specified for this Purchase Order.</p>
+                                );
+                            }
+                            return (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {termsList.map((term, index) => {
+                                        let label = `Term #${index + 1}`;
+                                        let value = term;
+                                        if (typeof term === 'string') {
+                                            const colonIdx = term.indexOf(':');
+                                            if (colonIdx !== -1) {
+                                                label = term.substring(0, colonIdx).trim();
+                                                value = term.substring(colonIdx + 1).trim();
+                                            }
+                                        } else if (term && typeof term === 'object') {
+                                            if (term.type || term.key || term.label) {
+                                                label = term.type || term.key || term.label;
+                                                value = term.value || '';
+                                            } else {
+                                                const keys = Object.keys(term);
+                                                if (keys.length > 0) {
+                                                    label = keys[0];
+                                                    value = term[keys[0]];
+                                                }
+                                            }
+                                        }
+                                        return (
+                                            <div key={index} className="flex flex-col p-3.5 bg-white rounded-xl border border-slate-100 shadow-sm hover:border-slate-200 transition-all">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{label}</span>
+                                                <span className="text-xs font-semibold text-slate-700 leading-relaxed">{value}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })()}
+                    </div>
                 </div>
 
                 {/* Footer */}

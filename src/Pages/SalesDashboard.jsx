@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { FaUsers, FaFileAlt, FaChartLine, FaArrowUp, FaBox, FaShoppingBag, FaFileInvoiceDollar, FaRegListAlt, FaArrowRight, FaCommentDots, FaMoneyBillWave, FaPercentage } from "react-icons/fa";
-import { getSalesDashboardStats } from "../services/dashboardService";
+import { getSalesDashboardStats } from "../services/dashboardService";       
 import { useAuth } from "../context/AuthContext";
 
 // Helper to fix API links to Client Routes if needed
@@ -13,9 +13,9 @@ const normalizeLink = (link) => {
 
     // Map API resource paths to Frontend Routes
     if (newLink.includes("/sales/quotations")) {
-        newLink = newLink.replace("/sales/quotations", "/sales/client-quotation");
+        newLink = newLink.replace("/sales/quotations", "/sales/proforma-invoice");
     } else if (newLink.includes("/sales/queries")) {
-        newLink = newLink.replace("/sales/queries", "/sales/client-query");
+        newLink = newLink.replace("/sales/queries", "/sales/client-query");      
     }
 
     // Convert UUID path params to query params if needed
@@ -66,8 +66,8 @@ export default function SalesDashboard() {
                     <p className="text-slate-500 text-sm">Welcome back, {user?.full_name || "User"}. Here's your sales performance.</p>
                 </div>
                 {stats?.generated_at && (
-                    <div className="text-xs text-slate-500 font-medium">
-                        Updated : {new Date(stats.generated_at).toLocaleString()}
+                    <div className="text-xs text-slate-500 font-medium">     v     
+                        Updated : {new Date(stats.generated_at).toLocaleString()}                     
                     </div>
                 )}
             </div>

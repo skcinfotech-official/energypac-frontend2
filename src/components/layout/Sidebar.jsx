@@ -12,7 +12,13 @@ import {
   FaTrophy,
   FaBoxOpen,
   FaList,
-  FaUserShield
+  FaUserShield,
+  FaGlobe,
+  FaHistory,
+  FaTruck,
+  FaChartPie,
+  FaCoins,
+  FaFileInvoiceDollar
 } from "react-icons/fa";
 import { BiImport } from "react-icons/bi";
 import { RiCustomerService2Fill } from "react-icons/ri";
@@ -65,6 +71,9 @@ export default function Sidebar({ isOpen }) {
 
         {/* <SidebarLink to="/" label="Dashboard" icon={<FaThLarge />} isOpen={isOpen} /> */}
 
+        <SidebarLink to="/audit-logs" label="Audit Logs" icon={<FaHistory />} isOpen={isOpen} />
+        <SidebarLink to="/sales/client-query" label="Client Query" icon={<FaUserTie />} isOpen={isOpen} />
+
         {hasPermission("MASTER") && (
           <SidebarDropdown
             label="Master"
@@ -74,6 +83,7 @@ export default function Sidebar({ isOpen }) {
               // { to: "/HSN", label: "HSN Code", icon: <FaBarcode /> },
               { to: "/master/item", label: "Item", icon: <FaCube /> },
               { to: "/master/vendor", label: "Vendor", icon: <FaUserTie /> },
+              { to: "/master/currency", label: "Currency", icon: <FaGlobe /> },
             ]}
           />
         )}
@@ -88,6 +98,7 @@ export default function Sidebar({ isOpen }) {
               { to: "/requisition", label: "Requisition", icon: <FaFileAlt /> },
               { to: "/vendor-assignment", label: "Vendor Assignment", icon: <FaUserTie /> },
               { to: "/vendor-quotation", label: "Vendor Quotation", icon: <FaUserTie /> },
+              { to: "/vendor-quotation-comparison", label: "Quotation Comparison", icon: <FaChartLine /> },
               { to: "/purchase-order", label: "Purchase Order", icon: <BiSolidPurchaseTag /> },
             ]}
           />
@@ -103,25 +114,8 @@ export default function Sidebar({ isOpen }) {
               { to: "/sales/sales-statistics", label: "Sales Statistics", icon: <FaChartLine /> },
               { to: "/sales/sales-performance", label: "Performance Report", icon: <FaTrophy /> },
               { to: "/sales/sales-products", label: "Product Analysis", icon: <FaBoxOpen /> },
-              { to: "/sales/client-query", label: "Client Query", icon: <FaUserTie /> },
-              { to: "/sales/client-quotation", label: "Client Quotation", icon: <FaUserTie /> },
-              {
-                label: "Work Order",
-                icon: <FaFileAlt />,
-                items: [
-                  { to: "/sales/create-work-order", label: "Create Work Order", icon: <BiSolidPurchaseTag /> },
-                  { to: "/sales/work-orders", label: "Work Order List", icon: <FaList /> },
-                ]
-              },
-              {
-                label: "Work Order Bills",
-                icon: <FaFileAlt />,
-                items: [
-                  { to: "/sales/billing-dashboard", label: "Billing Dashboard", icon: <BiSolidPurchaseTag /> },  
-                  { to: "/sales/billing-analytics", label: "Billing Analytics", icon: <BiSolidPurchaseTag /> },  
-                  { to: "/sales/create-wo-bill", label: "Create WO Bill", icon: <BiSolidPurchaseTag /> },
-                ]
-              },
+              { to: "/sales/proforma-invoice", label: "Proforma Invoice", icon: <FaUserTie /> },
+              { to: "/sales/create-bill", label: "Create Bill", icon: <FaMoneyCheckAlt /> },
             ]}
           />
         )}
@@ -134,7 +128,20 @@ export default function Sidebar({ isOpen }) {
             items={[
               { to: "/finance/dashboard", label: "Finance Dashboard", icon: <FaThLarge /> },
               { to: "/finance/purchase-orders", label: "PO List", icon: <BiSolidPurchaseTag /> },
-              { to: "/finance/wo-bills", label: "WO Bills List", icon: <FaList /> },
+              { to: "/finance/pi-bills", label: "PI Bills List", icon: <FaList /> },
+              { to: "/finance/pi-advanced", label: "PI Advance List", icon: <FaCoins /> },
+              { to: "/finance/revenue-analysis", label: "Revenue Analysis", icon: <FaFileInvoiceDollar /> },
+            ]}
+          />
+        )}
+        {hasPermission("TRANSPORT") && (
+          <SidebarDropdown
+            label="Transport"
+            icon={<FaTruck />}
+            isOpen={isOpen}
+            items={[
+              { to: "/transport/dashboard", label: "Transport Dashboard", icon: <FaChartPie /> },
+              { to: "/transport", label: "Transport Entry", icon: <FaList /> },
             ]}
           />
         )}
@@ -170,6 +177,7 @@ function SidebarLink({ to, label, icon, isOpen }) {
   return (
     <NavLink
       to={to}
+      end
       title={!isOpen ? label : ""}
       className={({ isActive }) =>
         `
@@ -255,6 +263,7 @@ function SidebarDropdown({ label, icon, isOpen, items }) {
               <NavLink
                 key={item.to}
                 to={item.to}
+                end
                 className={({ isActive }) =>
                   `flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all
                     ${isActive

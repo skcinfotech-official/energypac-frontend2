@@ -26,11 +26,20 @@ const PaymentHistoryModal = ({ open, onClose, poId }) => {
     if (!open) return null;
 
     const formatCurrency = (amount) => {
-        return Number(amount || 0).toLocaleString('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-            maximumFractionDigits: 2
-        });
+        const curr = data?.currency || 'INR';
+        const c = curr?.toString().trim().toUpperCase() || 'INR';
+        try {
+            return Number(amount || 0).toLocaleString('en-IN', {
+                style: 'currency',
+                currency: c,
+                maximumFractionDigits: 2
+            }).replace('US$', '$');
+        } catch (e) {
+            return `${c} ${Number(amount || 0).toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            })}`;
+        }
     };
 
     const formatDate = (dateString) => {

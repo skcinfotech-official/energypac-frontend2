@@ -121,9 +121,10 @@ export default function Login() {
                         </div>
 
                         {error && (
-                            <p className="text-red-500 text-xs text-center font-bold">
-                                {error}
-                            </p>
+                            <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-100 rounded-xl">
+                                <div className="h-2 w-2 rounded-full bg-red-500 shrink-0"></div>
+                                <p className="text-red-600 text-xs font-bold">{error}</p>
+                            </div>
                         )}
 
 
@@ -132,9 +133,13 @@ export default function Login() {
                             disabled={loading}
                             className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
                         >
-                            {loading ? "Signing In..." : "Log In"}
-                            {!loading && (
-                                <FaChevronRight className="text-xs" />
+                            {loading ? (
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    <span>Signing In...</span>
+                                </div>
+                            ) : (
+                                <>Log In <FaChevronRight className="text-xs" /></>
                             )}
                         </button>
                     </form>

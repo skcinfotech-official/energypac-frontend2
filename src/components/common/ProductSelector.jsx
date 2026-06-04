@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { getProducts } from "../../services/productService";
-import { HiSearch, HiX } from "react-icons/hi";
+import { getProducts, createProduct } from "../../services/productService";
+import { HiSearch, HiX, HiPlus } from "react-icons/hi";
 
 const ProductSelector = ({ value, onChange, placeholder = "Search product...", defaultItem = null, excludeIds = [] }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -9,6 +9,10 @@ const ProductSelector = ({ value, onChange, placeholder = "Search product...", d
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [coords, setCoords] = useState({ top: 0, left: 0, width: 0, placement: 'bottom' });
+    const [showQuickAdd, setShowQuickAdd] = useState(false);
+    const [quickAddForm, setQuickAddForm] = useState({ item_name: "", unit: "PCS" });
+    const [quickAddLoading, setQuickAddLoading] = useState(false);
+    const [quickAddError, setQuickAddError] = useState("");
     const dropdownRef = useRef(null);
 
     useEffect(() => {
@@ -139,6 +143,33 @@ const ProductSelector = ({ value, onChange, placeholder = "Search product...", d
     const foundProduct = products.find((p) => String(p.id) === String(value) || p.uuid === value);
     const selectedProduct = foundProduct || defaultItem;
 
+    const handleQuickAdd = async () => {
+        if (!quickAddForm.item_name.trim()) {
+            setQuickAddError("Item name is required");
+            return;
+        }
+        setQuickAddLoading(true);
+        setQuickAddError("");
+        try {
+            const res = await createProduct({
+                item_name: quickAddForm.item_name.trim(),
+                unit: quickAddForm.unit,
+            });
+            const newProduct = res.data;
+            setProducts(prev => [newProduct, ...prev]);
+            onChange(newProduct.id, newProduct);
+            setShowQuickAdd(false);
+            setQuickAddForm({ item_name: "", unit: "PCS" });
+            setIsOpen(false);
+            setSearch("");
+        } catch (err) {
+            const msg = err.response?.data?.item_name?.[0] || err.response?.data?.detail || err.response?.data?.error || "Failed to create product";
+            setQuickAddError(msg);
+        } finally {
+            setQuickAddLoading(false);
+        }
+    };
+
     // Dropdown Content
     const dropdownContent = isOpen && coords.width > 0 && (
         <div
@@ -164,6 +195,60 @@ const ProductSelector = ({ value, onChange, placeholder = "Search product...", d
                     />
                 </div>
             </div>
+
+            {/* Quick Add Form */}
+            {showQuickAdd ? (
+                <div className="p-3 border-b border-slate-100 bg-blue-50/50 space-y-2">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">Quick Add New Item</span>
+                        <button type="button" onClick={() => { setShowQuickAdd(false); setQuickAddError(""); }} className="text-slate-400 hover:text-slate-600">
+                            <HiX size={14} />
+                        </button>
+                    </div>
+                    <input
+                        autoFocus
+                        type="text"
+                        placeholder="Item Name *"
+                        value={quickAddForm.item_name}
+                        onChange={(e) => setQuickAddForm(prev => ({ ...prev, item_name: e.target.value }))}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleQuickAdd(); } }}
+                    />
+                    <select
+                        value={quickAddForm.unit}
+                        onChange={(e) => setQuickAddForm(prev => ({ ...prev, unit: e.target.value }))}
+                        className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500 outline-none bg-white"
+                    >
+                        <option value="PCS">PCS</option>
+                        <option value="KG">KG</option>
+                        <option value="MTR">MTR</option>
+                        <option value="LTR">LTR</option>
+                        <option value="SET">SET</option>
+                        <option value="BOX">BOX</option>
+                        <option value="NOS">NOS</option>
+                        <option value="LOT">LOT</option>
+                    </select>
+                    {quickAddError && <p className="text-[11px] text-red-500 font-medium">{quickAddError}</p>}
+                    <button
+                        type="button"
+                        onClick={handleQuickAdd}
+                        disabled={quickAddLoading}
+                        className="w-full py-1.5 bg-blue-600 text-white text-xs font-bold rounded-md hover:bg-blue-500 transition-colors disabled:opacity-50"
+                    >
+                        {quickAddLoading ? "Creating..." : "Add & Select"}
+                    </button>
+                </div>
+            ) : (
+                <div className="px-3 py-2 border-b border-slate-100">
+                    <button
+                        type="button"
+                        onClick={() => { setShowQuickAdd(true); setQuickAddForm(prev => ({ ...prev, item_name: search })); }}
+                        className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors border border-blue-100"
+                    >
+                        <HiPlus size={14} /> Add New Item
+                    </button>
+                </div>
+            )}
 
             {/* Scrollable List */}
             <div className="overflow-y-auto max-h-[200px] py-1">

@@ -204,6 +204,16 @@ const CreateBill = () => {
             return;
         }
 
+        if (!formData.client_name?.trim()) {
+            setAlert({ open: true, type: "error", message: "Client Name is required." });
+            return;
+        }
+
+        if (!formData.bill_date) {
+            setAlert({ open: true, type: "error", message: "Bill Date is required." });
+            return;
+        }
+
         if (formData.items.length === 0) {
             setAlert({ open: true, type: "error", message: "The bill must contain at least one item." });
             return;

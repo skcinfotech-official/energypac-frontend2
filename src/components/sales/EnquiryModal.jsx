@@ -20,18 +20,12 @@ const EnquiryModal = ({ isOpen, onClose, onSuccess }) => {
     const validate = () => {
         const newErrors = {};
         if (!formData.client_name) newErrors.client_name = "Client Name is required";
-        if (!formData.contact_person) newErrors.contact_person = "Contact Person is required";
-        if (!formData.phone) {
-            newErrors.phone = "Phone is required";
-        } else if (!/^\d{10}$/.test(formData.phone)) {
+        if (formData.phone && !/^\d{10}$/.test(formData.phone)) {
             newErrors.phone = "Invalid phone number (10 digits)";
         }
-        if (!formData.email) {
-            newErrors.email = "Email is required";
-        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+        if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
             newErrors.email = "Invalid email address";
         }
-        if (!formData.address) newErrors.address = "Address is required";
         if (!formData.query_date) newErrors.query_date = "Query Date is required";
 
         // Require at least one: PDF or Remarks

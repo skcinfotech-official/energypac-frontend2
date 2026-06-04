@@ -29,7 +29,7 @@ const PiAdvance = () => {
 
     // Filter State
     const [filterStatus, setFilterStatus] = useState("ACTIVE");
-    const [filterWorkOrder, setFilterWorkOrder] = useState("");
+    const [filterPI, setFilterPI] = useState("");
     const [filterCurrency, setFilterCurrency] = useState("");
 
     // Create Modal State
@@ -63,7 +63,7 @@ const PiAdvance = () => {
         try {
             const params = {
                 ...(filterStatus && { status: filterStatus }),
-                ...(filterWorkOrder && { proforma_invoice: filterWorkOrder }),
+                ...(filterPI && { search: filterPI }),
                 ...(filterCurrency && { currency: filterCurrency })
             };
             const data = await getAdvancePayments(params);
@@ -78,13 +78,25 @@ const PiAdvance = () => {
 
     useEffect(() => {
         fetchAdvances();
-    }, [filterStatus, filterWorkOrder, filterCurrency]);
+    }, [filterStatus, filterPI, filterCurrency]);
 
     // Handle Create Advance Payment
     const handleCreateSubmit = async (e) => {
         e.preventDefault();
         if (!createModal.proforma_invoice) {
             setAlert({ open: true, type: "error", message: "Please select a Proforma Invoice" });
+            return;
+        }
+        if (!createModal.client_name?.trim()) {
+            setAlert({ open: true, type: "error", message: "Client Name is required" });
+            return;
+        }
+        if (!createModal.amount || parseFloat(createModal.amount) <= 0) {
+            setAlert({ open: true, type: "error", message: "Amount must be greater than 0" });
+            return;
+        }
+        if (!createModal.payment_date) {
+            setAlert({ open: true, type: "error", message: "Payment Date is required" });
             return;
         }
         setCreateLoading(true);
@@ -261,19 +273,21 @@ const PiAdvance = () => {
                         <div>
                             <div className="flex items-end justify-between mb-2">
                                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest">Filter by Proforma Invoice</label>
-                                {(filterWorkOrder || filterStatus || filterCurrency) && (
+                                {(filterPI || filterStatus || filterCurrency) && (
                                     <button
-                                        onClick={() => {setFilterWorkOrder(""); setFilterStatus("ACTIVE"); setFilterCurrency("");}}
+                                        onClick={() => {setFilterPI(""); setFilterStatus("ACTIVE"); setFilterCurrency("");}}
                                         className="text-[10px] font-black text-red-500 hover:text-red-600 uppercase tracking-widest flex items-center gap-1"
                                     >
                                         <FaTimes size={10} /> Clear Filters
                                     </button>
                                 )}
                             </div>
-                            <WorkOrderSelector
-                                value={filterWorkOrder}
-                                onChange={(id) => setFilterWorkOrder(id)}
+                            <input
+                                type="text"
+                                value={filterPI}
+                                onChange={(e) => setFilterPI(e.target.value)}
                                 placeholder="Search by PI Number or Client..."
+                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
                             />
                         </div>
                     </div>
@@ -390,7 +404,7 @@ const PiAdvance = () => {
                                                     <FaSearch size={32} />
                                                 </div>
                                                 <p className="text-slate-500 font-black uppercase tracking-widest text-sm">No advance payments found</p>
-                                                <button onClick={() => {setFilterWorkOrder(""); setFilterStatus(""); setFilterCurrency("");}} className="text-blue-600 font-black hover:underline uppercase text-[10px] tracking-widest mt-2">SHOW ALL RECORDS</button>
+                                                <button onClick={() => {setFilterPI(""); setFilterStatus(""); setFilterCurrency("");}} className="text-blue-600 font-black hover:underline uppercase text-[10px] tracking-widest mt-2">SHOW ALL RECORDS</button>
                                             </div>
                                         </td>
                                     </tr>

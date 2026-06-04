@@ -133,7 +133,7 @@ const BillPDF = ({ details }) => {
     // ── Dynamic fields ──
     const invoice_no        = details.bill_number        || '';
     const invoice_date      = fmtDate(details.bill_date) || '';
-    const buyers_order_no   = details.wo_number          || '';
+    const buyers_order_no   = details.pi_number           || '';
     const terms_of_delivery = details.terms_of_delivery_payment || 'CPT BENEPOLE BY ROAD, BANGLADESH (INCOTERMS-2020)'; 
     const consignee_name    = details.consignee_name     || 'COMMUNITY BANK BANGLADESH PLC.';                    
     const consignee_address = details.consignee_address  || 'CORPORATE BRANCH, DHAKA,\nBANGLADESH';             

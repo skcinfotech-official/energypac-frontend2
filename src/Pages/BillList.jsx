@@ -4,7 +4,6 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 import BillDetailsModal from "../components/sales/BillDetailsModal";
 import { getBills, getBillById, markBillAsPaid, cancelBill, getBillReport, getOutstandingReport, getBillPaymentHistory } from "../services/salesService";
 import PasswordConfirmModal from "../components/ui/PasswordConfirmModal";
-import WorkOrderSelector from "../components/common/WorkOrderSelector";
 import { FaSearch, FaFilter, FaEye, FaMoneyBillWave, FaTimes, FaFileExcel, FaHistory, FaFileInvoiceDollar, FaCalendarAlt, FaUserTie, FaUserEdit } from "react-icons/fa";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -22,7 +21,7 @@ const BillList = () => {
     // Filter State
     const [page, setPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState("");
-    const [filterWorkOrder, setFilterWorkOrder] = useState("");
+    const [filterPI, setFilterPI] = useState("");
 
     const [alert, setAlert] = useState({ open: false, type: "success", message: "" });
     const [confirm, setConfirm] = useState({ open: false, title: "", description: "", action: null });
@@ -48,7 +47,6 @@ const BillList = () => {
         start_date: "",
         end_date: "",
         status: "",
-        work_order: "",
         aging: false
     });
 
@@ -63,7 +61,7 @@ const BillList = () => {
     const fetchBills = async (pageNum = 1) => {
         setLoading(true);
         try {
-            const data = await getBills(pageNum, searchQuery, filterWorkOrder);
+            const data = await getBills(pageNum, searchQuery, filterPI);
             if (data) {
                 setBills(data.results || []);
                 setTotalCount(data.count || 0);
@@ -84,7 +82,7 @@ const BillList = () => {
             fetchBills(page);
         }, 500);
         return () => clearTimeout(timeoutId);
-    }, [searchQuery, filterWorkOrder, page]);
+    }, [searchQuery, filterPI, page]);
 
     const handleNext = () => { if (next) setPage(p => p + 1); };
     const handlePrev = () => { if (previous) setPage(p => Math.max(1, p - 1)); };
@@ -226,7 +224,7 @@ const BillList = () => {
                     [],
                     ["Bill Number", "Date", "PI Number", "Client Name", "Contact Person", "Phone", "Email", "Total Amount", "Paid Amount", "Balance Due", "Days Outstanding", "Status"]
                 ];
-                billsList.forEach(b => sheetData.push([b.bill_number, b.bill_date, b.pi_number || b.wo_number, b.client_name, b.contact_person, b.phone, b.email, b.total_amount, b.amount_paid, b.balance, b.days_outstanding, b.status]));
+                billsList.forEach(b => sheetData.push([b.bill_number, b.bill_date, b.pi_number, b.client_name, b.contact_person, b.phone, b.email, b.total_amount, b.amount_paid, b.balance, b.days_outstanding, b.status]));
                 const ws = XLSX.utils.aoa_to_sheet(sheetData);
                 XLSX.utils.book_append_sheet(wb, ws, "Outstanding");
             } else {
@@ -242,7 +240,7 @@ const BillList = () => {
                     [],
                     ["Bill Number", "Date", "PI Number", "Client Name", "Amount", "Paid", "Balance", "Status"]
                 ];
-                billsList.forEach(b => sheetData.push([b.bill_number, b.bill_date, b.pi_number || b.wo_number, b.client_name, b.total_amount, b.amount_paid, b.balance, b.status]));
+                billsList.forEach(b => sheetData.push([b.bill_number, b.bill_date, b.pi_number, b.client_name, b.total_amount, b.amount_paid, b.balance, b.status]));
                 const ws = XLSX.utils.aoa_to_sheet(sheetData);
                 XLSX.utils.book_append_sheet(wb, ws, "Bills");
             }
@@ -303,7 +301,7 @@ const BillList = () => {
                         onClick={() => {
                             const today = new Date().toISOString().split('T')[0];
                             const thirtyDaysAgo = new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0];
-                            setReportParams({ start_date: thirtyDaysAgo, end_date: today, status: "", work_order: "", aging: false });
+                            setReportParams({ start_date: thirtyDaysAgo, end_date: today, status: "", aging: false });
                             setReportType("bills");
                             setShowReportModal(true);
                         }}
@@ -337,24 +335,16 @@ const BillList = () => {
                         </div>
                     </div>
 
-                    {/* WO Filter */}
-                    <div className="lg:col-span-2">
-                        <div className="flex items-end justify-between mb-2">
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest">Filter by Proforma Invoice</label>
-                            {(filterWorkOrder || searchQuery) && (
-                                <button
-                                    onClick={() => {setFilterWorkOrder(""); setSearchQuery(""); setPage(1);}}
-                                    className="text-[10px] font-black text-red-500 hover:text-red-600 uppercase tracking-widest flex items-center gap-1"
-                                >
-                                    <FaTimes size={10} /> Clear Filters
-                                </button>
-                            )}
-                        </div>
-                        <WorkOrderSelector
-                            value={filterWorkOrder}
-                            onChange={(id) => {setFilterWorkOrder(id); setPage(1);}}
-                            placeholder="All Proforma Invoices (Search by PI Number or Client)"
-                        />
+                    {/* Clear Filters */}
+                    <div className="lg:col-span-2 flex items-end">
+                        {searchQuery && (
+                            <button
+                                onClick={() => {setFilterPI(""); setSearchQuery(""); setPage(1);}}
+                                className="text-[10px] font-black text-red-500 hover:text-red-600 uppercase tracking-widest flex items-center gap-1 mb-2"
+                            >
+                                <FaTimes size={10} /> Clear Filters
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -390,7 +380,7 @@ const BillList = () => {
                                                     {bill.bill_number}
                                                 </span>
                                                 <span className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
-                                                    PI: <span className="text-slate-600 ">{bill.wo_number || bill.pi_number}</span>
+                                                    PI: <span className="text-slate-600 ">{bill.pi_number}</span>
                                                 </span>
                                                 <span className="text-[10px] text-slate-400 flex items-center gap-1.5 mt-1">
                                                     <FaCalendarAlt size={10} />
@@ -497,7 +487,7 @@ const BillList = () => {
                                                 <FaSearch size={32} />
                                             </div>
                                             <p className="text-slate-500 font-black uppercase tracking-widest text-sm">No billing records found</p>
-                                            <button onClick={() => {setSearchQuery(""); setFilterWorkOrder("");}} className="text-emerald-600 font-black hover:underline uppercase text-[10px] tracking-widest mt-2">SHOW ALL RECORDS</button>
+                                            <button onClick={() => {setSearchQuery(""); setPage(1);}} className="text-emerald-600 font-black hover:underline uppercase text-[10px] tracking-widest mt-2">SHOW ALL RECORDS</button>
                                         </div>
                                     </td>
                                 </tr>

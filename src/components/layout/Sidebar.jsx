@@ -50,13 +50,13 @@ export default function Sidebar({ isOpen }) {
       `}
     >
       {/* BRAND */}
-      <div className={`flex items-center ${isOpen ? "px-6" : "justify-center px-0"} border-b h-16 border-slate-200 bg-white shadow-sm`}>
+      <div className={`flex items-center ${isOpen ? "px-6" : "justify-center px-0"} border-b h-16 border-slate-200 bg-white`}>
         {!isOpen ? (
-          <div className="flex items-center justify-center h-8 w-8 bg-blue-600 rounded-lg text-white font-bold shrink-0 shadow-lg shadow-blue-500/20">
+          <div className="flex items-center justify-center h-9 w-9 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl text-white font-bold shrink-0 shadow-lg shadow-blue-500/20">
             E
           </div>
         ) : (
-          <img src="/main_logo.png" alt="Energypac" className="h-8 w-auto object-contain" />
+          <img src="/main_logo.png" alt="Energypac" className="h-9 w-auto object-contain" />
         )}
       </div>
 
@@ -152,8 +152,8 @@ export default function Sidebar({ isOpen }) {
 
       {/* FOOTER */}
       <div className="p-4 border-t border-slate-200 bg-slate-50/50">
-        <div className={`flex items-center ${isOpen ? "gap-3" : "justify-center"}`}>
-          <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-semibold text-slate-600">
+        <div className={`flex items-center ${isOpen ? "gap-3" : "justify-center"}`} title={!isOpen ? `${user?.full_name || "User"} (${user?.role || "Employee"})` : ""}>
+          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-sm">
             {user?.full_name?.[0]?.toUpperCase() || "U"}
           </div>
           {isOpen && (
@@ -197,10 +197,8 @@ function SidebarLink({ to, label, icon, isOpen }) {
 }
 
 function SidebarDropdown({ label, icon, isOpen, items }) {
-  const [isExpanded, setIsExpanded] = useState(false);
   const location = useLocation();
 
-  // Helper to check active state recursively
   const checkActive = (navItems) => {
     return navItems.some(item => {
       if (item.items) return checkActive(item.items);
@@ -209,8 +207,8 @@ function SidebarDropdown({ label, icon, isOpen, items }) {
   };
 
   const isAnyChildActive = checkActive(items);
+  const [isExpanded, setIsExpanded] = useState(isAnyChildActive);
 
-  // ✅ derived expansion — no effect, no warning
   const expanded = isOpen && isExpanded;
 
   return (

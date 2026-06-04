@@ -116,7 +116,21 @@ const VendorAssignmentModal = ({ open, onClose, editData, onSuccess, viewOnly = 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (viewOnly || isQuoted || isCompleted) return; // double check
+    if (viewOnly || isQuoted || isCompleted) return;
+
+    if (!form.requisition) {
+      setToast({ open: true, type: "error", message: "Please select a Requisition" });
+      return;
+    }
+    if (!form.vendor) {
+      setToast({ open: true, type: "error", message: "Please select a Vendor" });
+      return;
+    }
+    if (!form.items || form.items.length === 0) {
+      setToast({ open: true, type: "error", message: "At least one item is required" });
+      return;
+    }
+
     setSubmitting(true);
 
     const payload = {

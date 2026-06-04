@@ -213,68 +213,6 @@ export const getClientQuotationItemsReport = async (params = {}) => {
         throw error;
     }
 };
-export const getWorkOrders = async (page = 1, searchQuery = "", status = "") => {
-    try {
-        let url = "/api/work-orders";
-        const params = { page, search: searchQuery };
-
-        if (status === "ACTIVE") {
-            url = "/api/work-orders/active";
-        } else if (status) {
-            params.status = status;
-        }
-
-        const response = await axiosSecure.get(url, { params });
-
-        if (Array.isArray(response.data)) {
-            return {
-                results: response.data,
-                count: response.data.length,
-                next: null,
-                previous: null
-            };
-        }
-
-        return response.data;
-    } catch (error) {
-        console.error("Error fetching work orders:", error);
-        throw error;
-    }
-};
-
-export const getActiveWorkOrders = async () => {
-    try {
-        const response = await axiosSecure.get("/api/work-orders/active");
-        if (Array.isArray(response.data)) {
-            return response.data;
-        }
-        return response.data.results || [];
-    } catch (error) {
-        console.error("Error fetching active work orders:", error);
-        throw error;
-    }
-};
-
-export const getWorkOrderById = async (id) => {
-    try {
-        const response = await axiosSecure.get(`/api/work-orders/${id}`);
-        return response.data;
-    } catch (error) {
-        console.error("Error fetching work order by ID:", error);
-        throw error;
-    }
-};
-
-
-export const validateBillStock = async (payload) => {
-    try {
-        const response = await axiosSecure.post("/api/pi-bills/validate_stock", payload);
-        return response.data;
-    } catch (error) {
-        console.error("Error validating bill stock:", error);
-        throw error;
-    }
-};
 
 export const createBill = async (payload) => {
     try {
@@ -296,14 +234,14 @@ export const getBillById = async (id) => {
     }
 };
 
-export const getBills = async (page = 1, searchQuery = "", workOrderId = "") => {
+export const getBills = async (page = 1, searchQuery = "", piId = "") => {
     try {
         const params = {
             page,
             search: searchQuery
         };
-        if (workOrderId) {
-            params.work_order = workOrderId;
+        if (piId) {
+            params.proforma_invoice = piId;
         }
         const response = await axiosSecure.get("/api/pi-bills", { params });
         return response.data;
@@ -313,24 +251,31 @@ export const getBills = async (page = 1, searchQuery = "", workOrderId = "") => 
     }
 };
 
-export const getBillsByWorkOrder = async (workOrderId, page = 1) => {
+export const getBillsByPI = async (piId, page = 1) => {
     try {
         const params = {
-            work_order: workOrderId,
+            proforma_invoice: piId,
             page
         };
-        const response = await axiosSecure.get("/api/pi-bills/by_work_order", { params });
+        const response = await axiosSecure.get("/api/pi-bills/by_pi", { params });
         return response.data;
     } catch (error) {
-        console.error("Error fetching bills by work order:", error);
+        console.error("Error fetching bills by PI:", error);
         throw error;
     }
 };
 
 export const getBillReport = async (params = {}) => {
     try {
-        const response = await axiosSecure.get("/api/reports/billing/bills", { params });
-        return response.data;
+        const response = await axiosSecure.get("/api/pi-bills", { params });
+        return {
+            bills: response.data.results || [],
+            summary: {
+                total_bills: response.data.count || 0,
+                total_amount: (response.data.results || []).reduce((sum, b) => sum + parseFloat(b.total_amount || 0), 0),
+            },
+            date_range: { start_date: params.start_date, end_date: params.end_date },
+        };
     } catch (error) {
         console.error("Error fetching bill report:", error);
         throw error;
@@ -339,20 +284,16 @@ export const getBillReport = async (params = {}) => {
 
 export const getOutstandingReport = async (params = {}) => {
     try {
-        const response = await axiosSecure.get("/api/reports/billing/outstanding", { params });
-        return response.data;
+        const response = await axiosSecure.get("/api/pi-bills/pending_payment", { params });
+        return {
+            bills: response.data.bills || [],
+            summary: {
+                total_outstanding_bills: response.data.total_pending_bills || 0,
+                total_outstanding_amount: response.data.total_balance || 0,
+            },
+        };
     } catch (error) {
         console.error("Error fetching outstanding report:", error);
-        throw error;
-    }
-};
-
-export const getBillDetailedReport = async (billId) => {
-    try {
-        const response = await axiosSecure.get(`/api/reports/billing/bills/${billId}/detailed`);
-        return response.data;
-    } catch (error) {
-        console.error("Error fetching bill detailed report:", error);
         throw error;
     }
 };
@@ -367,25 +308,6 @@ export const getBillPaymentHistory = async (id) => {
     }
 };
 
-export const getBillingDashboardStats = async () => {
-    try {
-        const response = await axiosSecure.get("/api/dashboard/billing/stats");
-        return response.data;
-    } catch (error) {
-        console.error("Error fetching billing dashboard stats:", error);
-        throw error;
-    }
-};
-
-export const getBillingAnalytics = async (params) => {
-    try {
-        const response = await axiosSecure.get("/api/reports/billing/analytics", { params });
-        return response.data;
-    } catch (error) {
-        console.error("Error fetching billing analytics:", error);
-        throw error;
-    }
-};
 
 
 

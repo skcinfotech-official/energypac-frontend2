@@ -75,7 +75,7 @@ const WorkOrderSelector = ({ value, onChange, placeholder = "Search proforma inv
                 if (res) {
                     const mapped = {
                         ...res,
-                        wo_number: res.pi_number,
+                        pi_number: res.pi_number,
                         pi_number: res.pi_number,
                         client_name: res.applicant_importer,
                         applicant_importer: res.applicant_importer,
@@ -103,7 +103,7 @@ const WorkOrderSelector = ({ value, onChange, placeholder = "Search proforma inv
                 const rawData = res.results || res.data || [];
                 const data = (Array.isArray(rawData) ? rawData : []).map(w => ({
                     ...w,
-                    wo_number: w.pi_number,
+                    pi_number: w.pi_number,
                     pi_number: w.pi_number,
                     client_name: w.applicant_importer,
                     applicant_importer: w.applicant_importer,
@@ -171,7 +171,7 @@ const WorkOrderSelector = ({ value, onChange, placeholder = "Search proforma inv
                                 setSearch("");
                             }}
                         >
-                            <div className="font-medium text-slate-900">{w.wo_number}</div>
+                            <div className="font-medium text-slate-900">{w.pi_number}</div>
                             <div className="text-xs text-slate-500 flex items-center justify-between mt-0.5">
                                 <span>{w.client_name}</span>
                                 <span className="font-mono text-blue-600 font-semibold">
@@ -195,7 +195,7 @@ const WorkOrderSelector = ({ value, onChange, placeholder = "Search proforma inv
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <span className={!selectedWO ? "text-slate-400 truncate" : "text-slate-800 truncate"}>
-                    {selectedWO ? `${selectedWO.wo_number} - ${selectedWO.client_name}` : placeholder}
+                    {selectedWO ? `${selectedWO.pi_number} - ${selectedWO.client_name}` : placeholder}
                 </span>
                 {value && (
                     <HiX

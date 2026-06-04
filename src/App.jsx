@@ -74,7 +74,6 @@ export default function App() {
               <Route path="/finance/pi-bills" element={<BillList />} />
               <Route path="/finance/pi-advanced" element={<PiAdvance />} />
               <Route path="/finance/revenue-analysis" element={<RevenueAnalysis />} />
-              <Route path="/finance/wo-bills" element={<Navigate to="/finance/pi-bills" replace />} />
               <Route path="/transport" element={<TransportList />} />
               <Route path="/transport/dashboard" element={<TransportDashboard />} />
 

@@ -16,7 +16,6 @@ export default function ProductModal({
         hsn_code: "",
         unit: "PCS",
         rate: "",
-        requisition_number: "",
     });
 
     const [loading, setLoading] = useState(false);
@@ -35,17 +34,14 @@ export default function ProductModal({
                 hsn_code: product.hsn_code || "",
                 unit: product.unit || "PCS",
                 rate: product.rate ?? "",
-                requisition_number: product.requisition_number || "",
             });
         } else {
-            // ADD MODE → CLEAR FORM
             setForm({
                 item_name: "",
                 description: "",
                 hsn_code: "",
                 unit: "PCS",
                 rate: "",
-                requisition_number: "",
             });
         }
     }, [open, mode, product]);
@@ -72,7 +68,7 @@ export default function ProductModal({
 
             const payload = {
                 ...form,
-                rate: Number(form.rate),
+                rate: Number(form.rate) || 0,
             };
 
             if (mode === "edit") {
@@ -162,19 +158,6 @@ export default function ProductModal({
                                 name="rate"
                                 value={form.rate}
                                 placeholder="e.g. 250.00"
-                                onChange={handleChange}
-                                className="input"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                Requisition Number
-                            </label>
-                            <input
-                                name="requisition_number"
-                                value={form.requisition_number}
-                                placeholder="e.g. EEL/2026/001"
                                 onChange={handleChange}
                                 className="input"
                             />

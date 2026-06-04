@@ -3,7 +3,7 @@ import React from "react";
 import { FaTimes, FaFileInvoiceDollar, FaBuilding, FaInfoCircle, FaCalendarAlt, FaHashtag, FaFileExcel, FaPrint } from "react-icons/fa";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { getBillDetailedReport } from "../../services/salesService";
+import { getBillById } from "../../services/salesService";
 import { pdf } from "@react-pdf/renderer";
 import BillPDF from "./BillPDF";
 import { toast } from "react-hot-toast";
@@ -46,7 +46,7 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
         if (!details || !details.id) return;
         setExporting(true);
         try {
-            const data = await getBillDetailedReport(details.id);
+            const data = await getBillById(details.id);
 
             const wb = XLSX.utils.book_new();
 
@@ -63,9 +63,9 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                 [],
                 // PROFORMA INVOICE INFO
                 ["PROFORMA INVOICE DETAILS"],
-                ["PI Number", data.work_order?.wo_number || data.proforma_invoice?.pi_number],
-                ["PI Date", data.work_order?.wo_date || data.proforma_invoice?.pi_date],
-                ["PI Status", data.work_order?.status || data.proforma_invoice?.status],
+                ["PI Number", data.proforma_invoice?.pi_number],
+                ["PI Date", data.proforma_invoice?.pi_date],
+                ["PI Status", data.proforma_invoice?.status],
                 [],
                 // CLIENT INFO
                 ["CLIENT INFORMATION"],
@@ -273,7 +273,7 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
                                         <span className="text-slate-500 block text-xs uppercase font-semibold">Proforma Invoice</span>
                                         <span className="font-medium text-slate-900 flex items-center gap-1">
                                             <FaHashtag className="text-slate-400 text-xs" />
-                                            {details.wo_number || details.pi_number}
+                                            {details.pi_number}
                                         </span>
                                     </div>
                                     <div className="w-px h-8 bg-slate-300 hidden md:block"></div>

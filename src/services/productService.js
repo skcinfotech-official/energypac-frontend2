@@ -30,7 +30,7 @@ export const createProduct = (data) => {
 
 // UPDATE (UUID)
 export const updateProduct = (id, data) => {
-    return axiosSecure.put(`/api/products/${id}`, data);
+    return axiosSecure.patch(`/api/products/${id}`, data);
 };
 
 // DELETE

@@ -107,28 +107,8 @@ export default function VendorModal({
             isValid = false;
         }
 
-        if (!form.bank_name.trim()) {
-            newErrors.bank_name = "Bank Name is required";
-            isValid = false;
-        }
-
-        if (!form.account_name.trim()) {
-            newErrors.account_name = "Account Name is required";
-            isValid = false;
-        }
-
-        if (!form.bank_account_number.trim()) {
-            newErrors.bank_account_number = "Bank Account Number is required";
-            isValid = false;
-        }
-
-        if (form.bank_account_number !== form.confirm_account_number) {
+        if (form.bank_account_number && form.bank_account_number !== form.confirm_account_number) {
             newErrors.confirm_account_number = "Account numbers do not match";
-            isValid = false;
-        }
-
-        if (!form.ifsc_code.trim()) {
-            newErrors.ifsc_code = "IFSC Code is required";
             isValid = false;
         }
 

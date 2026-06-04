@@ -342,6 +342,19 @@ const TransportList = () => {
             setAlert({ open: true, type: "error", message: "Please select a Purchase Order or Proforma Invoice first." });
             return;
         }
+        if (!formData.transporter_name?.trim()) {
+            setAlert({ open: true, type: "error", message: "Transporter Name is required." });
+            return;
+        }
+        if (!formData.cost_items || formData.cost_items.length === 0) {
+            setAlert({ open: true, type: "error", message: "At least one cost item is required." });
+            return;
+        }
+        const invalidCost = formData.cost_items.find(item => !item.cost_type || !item.amount || parseFloat(item.amount) <= 0);
+        if (invalidCost) {
+            setAlert({ open: true, type: "error", message: "All cost items must have a type and amount > 0." });
+            return;
+        }
 
         setSubmitting(true);
         try {

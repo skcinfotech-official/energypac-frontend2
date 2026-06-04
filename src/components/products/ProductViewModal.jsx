@@ -88,15 +88,15 @@ const ProductViewModal = ({ open, onClose, data, loading }) => {
 
                             <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
                                 <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                                    <FaInfoCircle /> Pricing Information
+                                    <FaInfoCircle /> Stock & Tracking
                                 </h4>
-                                <div className="grid grid-cols-1 gap-4">
-                                    <div>
-                                        <p className="text-xs text-slate-500">Rate</p>
-                                        <p className="font-bold text-blue-600 text-lg">
-                                            ₹ {parseFloat(data.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                        </p>
-                                    </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <DetailItem label="Rate" value={`₹ ${parseFloat(data.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} />
+                                    <DetailItem label="Current Stock" value={data.current_stock} />
+                                    <DetailItem label="Purchase Count" value={data.purchase_count} />
+                                    <DetailItem label="Sale Count" value={data.sale_count} />
+                                    <DetailItem label="Last Purchase Date" value={data.last_purchase_date || "-"} />
+                                    <DetailItem label="Last Sale Date" value={data.last_sale_date || "-"} />
                                 </div>
                             </div>
 

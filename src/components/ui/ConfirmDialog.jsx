@@ -38,15 +38,16 @@ export default function ConfirmDialog({
           <button
             onClick={onCancel}
             disabled={loading}
-            className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800"
+            className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
           >
             {cancelText}
           </button>
           <button
             onClick={onConfirm}
             disabled={loading}
-            className={`px-4 py-2 text-white text-sm font-semibold rounded-lg disabled:opacity-60 ${confirmButtonClass}`}
+            className={`px-5 py-2.5 text-white text-sm font-semibold rounded-lg disabled:opacity-60 transition-all active:scale-95 flex items-center gap-2 ${confirmButtonClass}`}
           >
+            {loading && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>}
             {loading ? "Processing..." : confirmText}
           </button>
         </div>

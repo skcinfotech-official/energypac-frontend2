@@ -94,7 +94,9 @@ const ProductViewModal = ({ open, onClose, data, loading }) => {
                                     <DetailItem label="Rate" value={`₹ ${parseFloat(data.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} />
                                     <DetailItem label="Current Stock" value={data.current_stock} />
                                     <DetailItem label="Purchase Count" value={data.purchase_count} />
+                                    <DetailItem label="Total Purchased Qty" value={data.total_purchased_qty} />
                                     <DetailItem label="Sale Count" value={data.sale_count} />
+                                    <DetailItem label="Total Sold Qty" value={data.total_sold_qty} />
                                     <DetailItem label="Last Purchase Date" value={data.last_purchase_date || "-"} />
                                     <DetailItem label="Last Sale Date" value={data.last_sale_date || "-"} />
                                 </div>

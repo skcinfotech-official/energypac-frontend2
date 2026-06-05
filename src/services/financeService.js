@@ -42,3 +42,13 @@ export const previewProfit = async (payload) => {
     const res = await axiosSecure.post("/api/finance/profit-preview", payload);
     return res.data;
 };
+
+export const getItemAnalytics = async (params = {}) => {
+    const res = await axiosSecure.get("/api/finance/items/analytics", { params });
+    return res.data;
+};
+
+export const getInventoryAging = async (params = {}) => {
+    const res = await axiosSecure.get("/api/finance/items/aging", { params });
+    return res.data;
+};

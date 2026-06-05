@@ -3,6 +3,7 @@ import { FaTimes, FaPlus, FaTrash, FaCheck } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import { fetchRequisitions } from "../../services/requisition";
 import { createProformaInvoice, updateProformaInvoice, getRequisitionItemsForPi } from "../../services/salesService";
+import { previewProfit } from "../../services/financeService";
 
 const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
     const isEdit = !!invoice;
@@ -39,6 +40,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null }) =>
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
     const [loadingItems, setLoadingItems] = useState(false);
+    const [profitPreview, setProfitPreview] = useState(null);
 
     // Fetch Requisitions on Modal Open
     useEffect(() => {
@@ -211,6 +213,18 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null }) =>
     const handleRemoveItem = (index) => {
         setItems(items.filter((_, i) => i !== index));
     };
+
+    useEffect(() => {
+        if (!formData.requisition || items.length === 0 || isEdit) { setProfitPreview(null); return; }
+        const totalSellingInr = items.reduce((s, it) => s + (Number(it.quantity) * Number(it.unit_price)), 0) * (formData.currency !== 'INR' ? Number(formData.conversion_rate || 1) : 1);
+        const timer = setTimeout(async () => {
+            try {
+                const res = await previewProfit({ requisition: formData.requisition, selling_price_inr: totalSellingInr, currency: formData.currency, conversion_rate: Number(formData.conversion_rate || 1) });
+                setProfitPreview(res);
+            } catch { setProfitPreview(null); }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [formData.requisition, formData.currency, formData.conversion_rate, items]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -710,6 +724,27 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null }) =>
                                 </table>
                             </div>
                         </div>
+
+                        {/* PROFIT PREVIEW */}
+                        {profitPreview && !isEdit && (
+                            <div className={`p-4 rounded-2xl border flex items-center justify-between ${(profitPreview.expected_profit_inr || 0) >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Profit Preview (Estimated)</p>
+                                    <div className="flex items-center gap-4 text-xs font-bold text-slate-600">
+                                        <span>Cost: ₹{Number(profitPreview.purchase_cost_inr || 0).toLocaleString('en-IN')}</span>
+                                        <span>Transport: ₹{Number(profitPreview.transport_cost_inr || 0).toLocaleString('en-IN')}</span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className={`text-xl font-black ${(profitPreview.expected_profit_inr || 0) >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                                        {(profitPreview.expected_profit_inr || 0) >= 0 ? '+' : ''}₹{Number(profitPreview.expected_profit_inr || 0).toLocaleString('en-IN')}
+                                    </p>
+                                    <p className={`text-[10px] font-black uppercase ${(profitPreview.expected_margin_percentage || 0) >= 10 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                        Margin: {Number(profitPreview.expected_margin_percentage || 0).toFixed(1)}%
+                                    </p>
+                                </div>
+                            </div>
+                        )}
 
                         {/* TERMS AND CONDITIONS */}
                         <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">

@@ -688,13 +688,15 @@ const TransportList = () => {
                                                         >
                                                             <FaEye size={14} />
                                                         </button>
-                                                        <button
-                                                             onClick={() => handleOpenForm("edit", trn)}
-                                                             className="p-2 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-all active:scale-90"
-                                                             title="Modify records"
-                                                         >
-                                                             <FaEdit size={14} />
-                                                         </button>
+                                                        {trn.status?.toUpperCase() !== "DELIVERED" && (
+                                                            <button
+                                                                onClick={() => handleOpenForm("edit", trn)}
+                                                                className="p-2 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-all active:scale-90"
+                                                                title="Modify records"
+                                                            >
+                                                                <FaEdit size={14} />
+                                                            </button>
+                                                        )}
                                                         {trn.status?.toUpperCase() !== "DELIVERED" && (
                                                             <button
                                                                 onClick={() => handleMarkDelivered(trn)}

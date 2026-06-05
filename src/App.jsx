@@ -34,6 +34,8 @@ import ManageUsers from "./Pages/ManageUsers.jsx";
 import AuditLogs from "./Pages/AuditLogs.jsx";
 import TransportList from "./Pages/TransportList.jsx";
 import TransportDashboard from "./Pages/TransportDashboard.jsx";
+import ItemAnalytics from "./Pages/ItemAnalytics.jsx";
+import InventoryAging from "./Pages/InventoryAging.jsx";
 import { useAuth } from "./context/AuthContext";
 
 
@@ -86,6 +88,8 @@ export default function App() {
               <Route path="/HSN" element={<Pending />} />
               <Route path="/finance/dashboard" element={<FinanceDashboard />} />
               <Route path="/finance/purchase-orders" element={<FinancePOList />} />
+              <Route path="/finance/item-analytics" element={<ItemAnalytics />} />
+              <Route path="/finance/inventory-aging" element={<InventoryAging />} />
 
             </Route>
           </Route>

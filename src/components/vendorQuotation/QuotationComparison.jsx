@@ -257,8 +257,9 @@ const QuotationComparison = () => {
                 type: "success",
                 message: `Purchase Order for ${targetVendorForPO.vendor_name} generated successfully!`
             });
-            const vendorKey = targetVendorForPO.vendor_id || targetVendorForPO.id || targetVendorForPO.vendor_name;
-            setGeneratedPoVendors(prev => [...prev, vendorKey]);
+            setSelectedItems({});
+            const refreshed = await getQuotationComparison(selectedRequisition);
+            setData(refreshed);
         } catch (err) {
             console.error(err);
             setToast({
@@ -547,19 +548,20 @@ const QuotationComparison = () => {
                                             return (
                                                 <td key={`cell-${qIdx}`} className="px-4 py-3 border-r border-slate-300 align-top text-right">
                                                     {matchedItem ? (
-                                                        <div className="flex flex-col items-end gap-1">
+                                                        <div className={`flex flex-col items-end gap-1 ${matchedItem.has_po ? 'opacity-50' : ''}`}>
                                                             {parseFloat(matchedItem.quoted_rate) !== 0 && (
                                                                 <div className="flex items-center gap-2 mb-1 w-full justify-end">
-                                                                    <div className="text-xs text-slate-400 font-mono hidden group-hover:block">
-                                                                        Select
-                                                                    </div>
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        name={`product-${product.code}`}
-                                                                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-                                                                        checked={selectedItems[product.code] === matchedItem.id}
-                                                                        onChange={() => handleItemSelect(product.code, matchedItem.id)}
-                                                                    />
+                                                                    {matchedItem.has_po ? (
+                                                                        <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full uppercase tracking-wider">PO Done</span>
+                                                                    ) : (
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            name={`product-${product.code}`}
+                                                                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                                                                            checked={selectedItems[product.code] === matchedItem.id}
+                                                                            onChange={() => handleItemSelect(product.code, matchedItem.id)}
+                                                                        />
+                                                                    )}
                                                                 </div>
                                                             )}
                                                             <div className="font-bold text-slate-900">
@@ -610,20 +612,21 @@ const QuotationComparison = () => {
                                         Actions
                                     </td>
                                     {data.vendors.map((q, idx) => {
-                                        const vendorKey = q.vendor_id || q.id;
                                         const vendorItemIds = (q.items || []).map(i => i.id);
                                         const selectedForThisVendor = Object.values(selectedItems).filter(id => vendorItemIds.includes(id));
                                         const hasSelection = selectedForThisVendor.length > 0;
-                                        const isPoAlreadyGenerated = generatedPoVendors.some(v => 
-                                            v === q.vendor_id || 
-                                            v === q.id || 
-                                            v === q.vendor_name || 
-                                            (typeof v === 'object' && v !== null && (v.id === q.vendor_id || v.id === q.id || v.vendor_name === q.vendor_name))
-                                        );
+                                        const allItemsHavePo = (q.items || []).length > 0 && (q.items || []).every(i => i.has_po);
+                                        const pendingCount = (q.items || []).filter(i => !i.has_po).length;
 
                                         return (
                                             <td key={`actions-${idx}`} className="px-4 py-3 border-r border-slate-300 bg-slate-50/50 text-center">
                                                 <div className="flex flex-col gap-2 items-center">
+                                                    {allItemsHavePo && (
+                                                        <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full uppercase tracking-wider">All POs Generated</span>
+                                                    )}
+                                                    {!allItemsHavePo && pendingCount > 0 && (
+                                                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">{pendingCount} item{pendingCount > 1 ? 's' : ''} pending PO</span>
+                                                    )}
                                                     <button
                                                         type="button"
                                                         onClick={() => {
@@ -640,10 +643,10 @@ const QuotationComparison = () => {
                                                             setTargetVendorForPO(q);
                                                             setShowConfirm(true);
                                                         }}
-                                                        disabled={!hasSelection || isPoAlreadyGenerated}
+                                                        disabled={!hasSelection || allItemsHavePo}
                                                         className="w-full px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                                                     >
-                                                        {isPoAlreadyGenerated ? "PO Generated" : "Proceed to PO"}
+                                                        {allItemsHavePo ? "All POs Done" : "Generate PO"}
                                                     </button>
                                                 </div>
                                             </td>

@@ -131,6 +131,8 @@ export default function Sidebar({ isOpen }) {
               { to: "/finance/pi-bills", label: "PI Bills List", icon: <FaList /> },
               { to: "/finance/pi-advanced", label: "PI Advance List", icon: <FaCoins /> },
               { to: "/finance/revenue-analysis", label: "Revenue Analysis", icon: <FaFileInvoiceDollar /> },
+              { to: "/finance/item-analytics", label: "Item Analytics", icon: <FaChartLine /> },
+              { to: "/finance/inventory-aging", label: "Dead Stock", icon: <FaCube /> },
             ]}
           />
         )}

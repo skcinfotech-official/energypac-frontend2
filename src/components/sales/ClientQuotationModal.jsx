@@ -4,6 +4,7 @@ import { toast } from "react-hot-toast";
 import { fetchRequisitions } from "../../services/requisition";
 import { createProformaInvoice, updateProformaInvoice, getRequisitionItemsForPi, getStockItemsForPi } from "../../services/salesService";
 import { previewProfit } from "../../services/financeService";
+import { getCurrencies } from "../../services/currencyService";
 
 const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null }) => {
     const isEdit = !!invoice;
@@ -13,7 +14,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null }) =>
         requisition: "",
         pi_date: new Date().toISOString().split('T')[0],
         currency: "USD",
-        conversion_rate: 84.50,
+        conversion_rate: "",
         payment_due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         lc_number: "",
         exporter_beneficiary: "EnergyPac Engineering Ltd",
@@ -46,6 +47,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null }) =>
     const [stockProducts, setStockProducts] = useState([]);
     const [stockSearch, setStockSearch] = useState("");
     const [loadingStock, setLoadingStock] = useState(false);
+    const [currencyList, setCurrencyList] = useState([]);
 
     useEffect(() => {
         if (isOpen) {
@@ -59,13 +61,23 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null }) =>
             };
             fetchReqList();
 
+            const fetchCurrencyList = async () => {
+                try {
+                    const res = await getCurrencies({ isActive: true });
+                    setCurrencyList(res.data?.results || res.data || []);
+                } catch (err) {
+                    console.error("Failed to fetch currencies", err);
+                }
+            };
+            fetchCurrencyList();
+
             if (isEdit && invoice) {
                 setPiMode(invoice.is_stock_sale ? "stock_sale" : "requisition");
                 setFormData({
                     requisition: invoice.requisition || "",
                     pi_date: invoice.pi_date || "",
                     currency: invoice.currency || "USD",
-                    conversion_rate: Number(invoice.conversion_rate) || 84.50,
+                    conversion_rate: invoice.conversion_rate || "",
                     payment_due_date: invoice.payment_due_date || "",
                     lc_number: invoice.lc_number || "",
                     exporter_beneficiary: invoice.exporter_beneficiary || "EnergyPac Engineering Ltd",
@@ -113,7 +125,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null }) =>
                     requisition: "",
                     pi_date: new Date().toISOString().split('T')[0],
                     currency: "USD",
-                    conversion_rate: 84.50,
+                    conversion_rate: "",
                     payment_due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                     lc_number: "",
                     exporter_beneficiary: "EnergyPac Engineering Ltd",
@@ -251,10 +263,18 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null }) =>
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: name === "conversion_rate" ? (parseFloat(value) || 0) : value
-        }));
+        if (name === "currency") {
+            setFormData(prev => ({
+                ...prev,
+                currency: value,
+                conversion_rate: value === "INR" ? 1 : prev.conversion_rate === 1 ? "" : prev.conversion_rate,
+            }));
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                [name]: name === "conversion_rate" ? value : value
+            }));
+        }
     };
 
     const handleItemChange = (index, field, value) => {
@@ -262,7 +282,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null }) =>
             const updated = [...prevItems];
             updated[index] = {
                 ...updated[index],
-                [field]: field === "quantity" || field === "unit_price" ? (parseFloat(value) || 0) : value
+                [field]: (field === "quantity" || field === "unit_price") ? value : value
             };
             return updated;
         });
@@ -323,6 +343,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null }) =>
 
             const payload = {
                 ...formData,
+                conversion_rate: formData.currency === "INR" ? 1 : Number(formData.conversion_rate) || 1,
                 requisition: piMode === "stock_sale" ? null : formData.requisition,
                 items: selectedItems.map(it => ({
                     product: it.product,
@@ -519,16 +540,24 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null }) =>
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-0.5">Currency *</label>
                                 <select name="currency" value={formData.currency} onChange={handleInputChange} className="input w-full rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500 font-bold" required>
-                                    <option value="USD">USD ($)</option>
-                                    <option value="INR">INR (₹)</option>
-                                    <option value="EUR">EUR (€)</option>
-                                    <option value="GBP">GBP (£)</option>
+                                    {currencyList.length > 0 ? currencyList.map(c => (
+                                        <option key={c.id} value={c.code}>{c.code} ({c.symbol || c.name})</option>
+                                    )) : (
+                                        <>
+                                            <option value="USD">USD ($)</option>
+                                            <option value="INR">INR (₹)</option>
+                                            <option value="EUR">EUR (€)</option>
+                                            <option value="GBP">GBP (£)</option>
+                                        </>
+                                    )}
                                 </select>
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-0.5">Conversion Rate *</label>
-                                <input type="number" step="0.0001" name="conversion_rate" value={formData.conversion_rate} onChange={handleInputChange} className="input w-full rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500 font-bold" required />
-                            </div>
+                            {formData.currency !== "INR" && (
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-0.5">Conversion Rate (1 {formData.currency} = ₹?) *</label>
+                                    <input type="number" step="0.0001" name="conversion_rate" value={formData.conversion_rate} onChange={handleInputChange} className="input w-full rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500 font-bold" required />
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-0.5">L/C Number</label>
                                 <input type="text" name="lc_number" value={formData.lc_number} onChange={handleInputChange} placeholder="e.g. LC-2026-001" className="input w-full rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500 font-mono text-sm" />
@@ -752,7 +781,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null }) =>
                                                             />
                                                         </td>
                                                         <td className="px-4 py-3.5 text-right font-bold text-slate-800">
-                                                            {(item.quantity * item.unit_price).toFixed(2)}
+                                                            {(Number(item.quantity) * Number(item.unit_price)).toFixed(2)}
                                                         </td>
                                                         <td className="px-4 py-3.5 text-center">
                                                             {piMode === "stock_sale" && (
@@ -774,7 +803,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null }) =>
                                                     {formData.currency} {(piMode === "requisition"
                                                         ? items.filter(i => i.selected && i.can_add_to_pi)
                                                         : items
-                                                    ).reduce((sum, item) => sum + (item.quantity * item.unit_price), 0).toFixed(2)}
+                                                    ).reduce((sum, item) => sum + (Number(item.quantity) * Number(item.unit_price)), 0).toFixed(2)}
                                                 </td>
                                                 <td></td>
                                             </tr>

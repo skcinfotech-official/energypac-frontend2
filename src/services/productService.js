@@ -59,6 +59,10 @@ export const getBulkUploadTemplate = () => {
     });
 };
 
+export const getProductTracking = (id) => {
+    return axiosSecure.get(`/api/products/${id}/tracking`);
+};
+
 export const bulkUploadProducts = (formData) => {
     return axiosSecure.post("/api/products/bulk-upload", formData, {
         headers: {

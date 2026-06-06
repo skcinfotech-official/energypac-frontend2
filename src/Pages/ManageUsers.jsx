@@ -28,6 +28,7 @@ const MODULES = [
   { id: "SALES", label: "Sales" },
   { id: "FINANCE", label: "Finance" },
   { id: "TRANSPORT", label: "Transport" },
+  { id: "RETURNS", label: "Returns" },
 ];
 
 export default function ManageUsers() {

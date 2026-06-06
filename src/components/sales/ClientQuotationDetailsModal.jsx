@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FaTimes, FaFileInvoiceDollar, FaGlobe, FaAnchor, FaListUl, FaStickyNote, FaPrint } from "react-icons/fa";
+import { FaTimes, FaFileInvoiceDollar, FaGlobe, FaAnchor, FaListUl, FaStickyNote, FaPrint, FaBoxOpen } from "react-icons/fa";
 import { getProformaInvoiceById } from "../../services/salesService";
 import { pdf } from "@react-pdf/renderer";
 import ClientQuotationPDF from "./ClientQuotationPDF";
@@ -117,11 +117,15 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, invoice }) => {
                                             STATUS: {(details.status || "DRAFT").toUpperCase()}
                                         </span>
                                     </div>
-                                    {requisitionNumber && (
+                                    {details.is_stock_sale ? (
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-50 text-amber-700 rounded-md text-[11px] font-bold border border-amber-200">
+                                                <FaBoxOpen size={10} /> STOCK SALE (Direct)
+                                            </span>
+                                        ) : requisitionNumber ? (
                                             <span className="px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[13px] font-bold border border-slate-200 font-mono">
                                                 REQ: {requisitionNumber}
                                             </span>
-                                        )}
+                                        ) : null}
                                 </div>
                                 <div className="text-left sm:text-right">
                                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">PI Issued Date</p>

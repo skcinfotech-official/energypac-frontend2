@@ -381,6 +381,16 @@ export const getRequisitionItemsForPi = async (requisitionId) => {
     }
 };
 
+export const getStockItemsForPi = async () => {
+    try {
+        const response = await axiosSecure.get(`/api/proforma-invoices/stock_items`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching stock items for PI:", error);
+        throw error;
+    }
+};
+
 export const lockProformaInvoice = async (id) => {
     try {
         const response = await axiosSecure.post(`/api/proforma-invoices/${id}/lock`);

@@ -9,7 +9,7 @@ import {
     acceptProformaInvoice,
     cancelProformaInvoice
 } from "../services/salesService";
-import { FaPlus, FaSearch, FaEye, FaEdit, FaPaperPlane, FaCheck, FaBan, FaTimes } from "react-icons/fa";
+import { FaPlus, FaSearch, FaEye, FaEdit, FaPaperPlane, FaCheck, FaBan, FaTimes, FaBoxOpen } from "react-icons/fa";
 import ClientQuotationModal from "../components/sales/ClientQuotationModal";
 import ClientQuotationDetailsModal from "../components/sales/ClientQuotationDetailsModal";
 import AlertToast from "../components/ui/AlertToast";
@@ -109,7 +109,14 @@ const ClientQuotation = () => {
                     fetchInvoices(currentPage, searchText);
                 } catch (error) {
                     console.error("Failed to accept proforma invoice", error);
-                    const errorMsg = error.response?.data?.error || error.response?.data?.detail || error.response?.data?.message || "Failed to accept proforma invoice";
+                    const respData = error.response?.data;
+                    let errorMsg = respData?.error || respData?.detail || respData?.message || "Failed to accept proforma invoice";
+                    if (respData?.insufficient_items && Array.isArray(respData.insufficient_items)) {
+                        const itemList = respData.insufficient_items.map(
+                            i => `${i.product} (stock: ${i.available}, need: ${i.required})`
+                        ).join("; ");
+                        errorMsg = `Insufficient stock: ${itemList}`;
+                    }
                     setAlert({ open: true, type: "error", message: errorMsg });
                 } finally {
                     setConfirm({ open: false });
@@ -307,11 +314,15 @@ const ClientQuotation = () => {
                                                 <span className="font-mono text-blue-600 block">
                                                     {item.pi_number || `#${item.id?.substring(0, 8) || "N/A"}`}
                                                 </span>
-                                                {item.requisition_number && (
+                                                {item.is_stock_sale ? (
+                                                    <span className="inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.5 bg-amber-50 text-amber-700 text-[9px] font-bold rounded-md border border-amber-200">
+                                                        <FaBoxOpen size={8} /> STOCK SALE
+                                                    </span>
+                                                ) : item.requisition_number ? (
                                                     <span className="block text-[10px] text-slate-400 font-mono mt-0.5">
                                                         Req: {item.requisition_number}
                                                     </span>
-                                                )}
+                                                ) : null}
                                             </td>
                                             <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap font-medium">
                                                 {item.pi_date}

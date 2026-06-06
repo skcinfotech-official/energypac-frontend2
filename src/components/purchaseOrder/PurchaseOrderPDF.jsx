@@ -365,23 +365,16 @@ const PurchaseOrderPDF = ({ details }) => {
                     </View>
                 </View>
 
-                {/* 7. Actual Signatures Block */}
+                {/* 7. Signatures Block — blank for manual signing */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 35 }} wrap={false}>
-                    {/* Left: Checked By */}
                     <View style={{ width: '50%', alignItems: 'flex-start' }}>
-                        <Text style={{ fontFamily: 'Courier', fontSize: 11, color: '#1A4B82', fontStyle: 'italic', marginBottom: 2, marginLeft: 20 }}>Apramaya</Text>
-                        <View style={{ width: '130px', borderTopWidth: 1, borderTopColor: '#000', paddingTop: 3 }}>
-                            <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>Apramaya Chowdhury</Text>
-                            <Text style={{ fontSize: 7, color: '#555' }}>Checked By</Text>
+                        <View style={{ marginTop: 25, width: '130px', borderTopWidth: 1, borderTopColor: '#000', paddingTop: 3 }}>
+                            <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>Checked By</Text>
                         </View>
                     </View>
-                    
-                    {/* Right: Authorized Signatory */}
                     <View style={{ width: '50%', alignItems: 'flex-end' }}>
-                        <Text style={{ fontFamily: 'Courier', fontSize: 11, color: '#1A4B82', fontStyle: 'italic', marginBottom: 2, marginRight: 45 }}>P.K. Ghosh</Text>
-                        <View style={{ width: '150px', borderTopWidth: 1, borderTopColor: '#000', paddingTop: 3, alignItems: 'center' }}>
-                            <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>P. K. GHOSH</Text>
-                            <Text style={{ fontSize: 7, color: '#555' }}>(Authorized Signatory)</Text>
+                        <View style={{ marginTop: 25, width: '150px', borderTopWidth: 1, borderTopColor: '#000', paddingTop: 3, alignItems: 'center' }}>
+                            <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>Authorized Signatory</Text>
                         </View>
                     </View>
                 </View>

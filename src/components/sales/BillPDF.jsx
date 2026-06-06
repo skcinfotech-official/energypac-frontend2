@@ -1,622 +1,198 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/renderer';
 import RobotoRegular from '../../assets/fonts/Roboto-Regular.ttf';
 import RobotoBold from '../../assets/fonts/Roboto-Bold.ttf';
-// import RobotoItalic from '../../assets/fonts/Roboto-Italic.ttf';
 
 Font.register({
     family: 'Roboto',
     fonts: [
         { src: RobotoRegular },
-        { src: RobotoBold,   fontWeight: 'bold' },
-        // { src: RobotoItalic, fontStyle: 'italic' },
-    ],
+        { src: RobotoBold, fontWeight: 'bold' }
+    ]
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-    page: {
-        padding: 14,
-        paddingBottom: 30,          // leave room for PTO footer
-        fontFamily: 'Roboto',
-        fontSize: 7.5,
-        color: '#000',
-    },
-
-    // ── Watermark ──
-    watermarkContainer: {
-        position: 'absolute',
-        top: 0, left: 0, right: 0, bottom: 0,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    watermarkText: {
-        fontSize: 70,
-        fontWeight: 'bold',
-        color: '#75b4d1',
-        transform: 'rotate(-45deg)',
-        opacity: 0.18,
-        letterSpacing: 10,
-    },
-
-    // ── PTO footer — fixed, visible on every page except the last ──
-    ptoFooter: {
-        position: 'absolute',
-        bottom: 10,
-        left: 14,
-        right: 14,
-        textAlign: 'right',
-        fontSize: 8,
-        fontWeight: 'bold',
-        color: '#000',
-    },
-
-    // ── Title ──
-    docTitle: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        marginBottom: 4,
-    },
-
-    // ── Generic table cells ──
-    cell:          { padding: 3, fontSize: 7.5 },
-    cellBold:      { padding: 3, fontSize: 7.5, fontWeight: 'bold' },
-    cellSmall:     { padding: 3, fontSize: 6.8 },
-    cellCenter:    { padding: 3, fontSize: 7.5, textAlign: 'center' },
-    cellRight:     { padding: 3, fontSize: 7.5, textAlign: 'right' },
-    cellRightBold: { padding: 3, fontSize: 7.5, textAlign: 'right', fontWeight: 'bold' },
-
-    // ── Borders ──
-    bordered:     { borderWidth: 0.5,       borderColor: '#000' },
-    borderBottom: { borderBottomWidth: 0.5, borderBottomColor: '#000' },
-    borderRight:  { borderRightWidth:  0.5, borderRightColor:  '#000' },
-    borderTop:    { borderTopWidth:    0.5, borderTopColor:    '#000' },
-    borderLeft:   { borderLeftWidth:   0.5, borderLeftColor:   '#000' },
-
-    // ── Flex helpers ──
-    row: { flexDirection: 'row' },
-    col: { flexDirection: 'column' },
-
-    // ── Page-break avoidance (break-inside: avoid) ──
-    noBreak: { breakInside: 'avoid' },
+    page: { padding: 30, paddingBottom: 40, fontFamily: 'Roboto', fontSize: 8, color: '#000' },
+    watermarkContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' },
+    watermarkText: { fontSize: 70, fontWeight: 'bold', color: '#e2f0fd', transform: 'rotate(-45deg)', opacity: 0.5, letterSpacing: 10 },
+    table: { marginTop: 10, borderWidth: 1, borderColor: '#000' },
+    tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', fontWeight: 'bold', backgroundColor: '#E5E7EB', alignItems: 'center' },
+    tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', alignItems: 'center', minHeight: 24 },
+    col1: { width: '6%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
+    col2: { width: '30%', padding: 4, borderRightWidth: 1, borderRightColor: '#000' },
+    col3: { width: '10%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
+    col4: { width: '10%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'right' },
+    col5: { width: '8%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
+    colRate: { width: '14%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'right' },
+    col6: { width: '22%', padding: 4, textAlign: 'right' },
+    label: { fontSize: 6.5, fontWeight: 'bold', color: '#444', marginBottom: 1, textTransform: 'uppercase' },
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
-const fmt = (val, curr = "INR") => {
-    const c = curr?.toString().trim().toUpperCase() || "INR";
-    const symbol = c === "USD" ? "$" : (c === "INR" ? "₹" : c);
-    const num = Number(val || 0);
-    const formatted = num.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
-    return `${symbol} ${formatted}`;
-};
+const EnergypacLogo = () => (
+    <Image src={`${window.location.origin}/logo.jpeg`} style={{ width: 180, height: 25, marginBottom: 5 }} />
+);
 
-const fmtDate = (date) =>
-    date
-        ? new Date(date)
-              .toLocaleDateString('en-GB', {
-                  day: '2-digit', month: '2-digit', year: 'numeric',
-              })
-              .replace(/\//g, '.')
-        : '';
-
-const multiLine = (str = '') =>
-    (str || '').split('\n').map((line, i) => <Text key={i}>{line}</Text>);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────────────────────────────────────
 const BillPDF = ({ details }) => {
-    const exchangeRate = parseFloat(details?.exchange_rate || details?.conversion_rate || 1);
+    if (!details) return null;
 
-    // ── Always-fixed Energypac identity ──
-    const STATIC = {
-        exporter_name:     'ENERGYPAC ENGINEERING LIMITED',
-        exporter_address:  'PLOT NO. 22, KB BLOCK, 4TH FLOOR\nSECTOR-III, SALT LAKE\nKOLKATA-700098\nWEST BENGAL, INDIA.',
-        iec_no:            'IEC NO. 0205015794',
-        gst_no:            '19AABCE4975G1ZE',
-        applicant_name:    'ENERGYPAC ENGINEERING LTD.',
-        applicant_address: 'BARUIPARA ASHULIA, SAVAR\nDHAKA-1345, BANGLADESH,',
-        applicant_bin_tin: 'E-BIN NO. 001230413-0403 AND TIN: 785525797245',
-        lut_no:            'LUT NO. AD1905250273129 DT. 30.05.2025',
-        place_of_supply:   'KOLKATA (INDIA)',
-        port_of_loading:   'PETRAPOLE LCS (INDIA)',
-        pre_carriage:      'BY ROAD',
-        place_of_receipt:  'PETRAPOLE LCS (INDIA)',
-        country_of_origin: 'INDIA',
+    const fmt = (val) => `₹ ${Number(val || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const formatDate = (date) => {
+        if (!date) return '';
+        return new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.');
     };
 
-    // ── Dynamic fields ──
-    const invoice_no        = details.bill_number        || '';
-    const invoice_date      = fmtDate(details.bill_date) || '';
-    const buyers_order_no   = details.pi_number           || '';
-    const terms_of_delivery = details.terms_of_delivery_payment || 'CPT BENEPOLE BY ROAD, BANGLADESH (INCOTERMS-2020)'; 
-    const consignee_name    = details.consignee_name     || 'COMMUNITY BANK BANGLADESH PLC.';                    
-    const consignee_address = details.consignee_address  || 'CORPORATE BRANCH, DHAKA,\nBANGLADESH';             
-    const consignee_bin     = details.consignee_bin      || 'BIN: 001810084-0101';                               
-    const importer_name     = details.client_name        || details.importer_name      || 'ENERGYPAC ENGINEERING LTD.';                       
-    const importer_address  = details.address            || details.importer_address   || 'BARUIPARA, ASHULIA, SAVAR\nDHAKA-1345, BANGLADESH';
-    const contact_person    = details.contact_person     || '';
-    const phone             = details.phone              || '';
-    const email             = details.email              || '';
-    const importer_bin_tin  = details.importer_bin_tin   || 'E-BIN NO. 001230413-0403 AND TIN: 785525797245';   
-    const dc_no             = details.dc_no              || 'DC NO. 365125010228 DT. 20.08.2025.';               
-    const irc_no            = details.irc_no             || 'IRC NO. 260326120028119';                           
-    const importer_bin2     = details.importer_bin2      || 'IMPORTER BIN: 001230413-0403, TIN: 785525797245';  
-    const insurance_no      = details.insurance_no       || 'INSURANCE NO. CIC/LO/MC-0425/08/2025 DATED 18/08/2025\nCENTRAL INSURANCE COMPANY LTD., LOCAL OFFICE, 93,MOTIJHEEL, 1ST FLOOR,DHAKA-1000, BANGLADESH'; 
-    const vessel            = details.vessel_flight_no   || 'BY ROAD';                                          
-    const port_of_discharge = details.port_of_discharge  || 'BENAPOLE LAND PORT\nBANGLADESH';                   
-    const place_of_delivery = details.place_of_delivery  || 'BENAPOLE LAND PORT\nBANGLADESH';                   
-    const final_destination = details.final_destination  || 'DHAKA/BANGLADESH';                                 
-    const port_of_loading   = details.port_of_loading    || STATIC.port_of_loading;
-    const pre_carriage_by   = details.pre_carriage_by    || STATIC.pre_carriage;
-    const marks_nos         = details.marks_nos          || '';                                                  
-    const kind_of_pkgs      = details.kind_of_pkgs       || '';                                                  
-    const proforma_ref      = details.proforma_ref       || buyers_order_no;
-
-    // ── Your original line items from details.items ──
     const items = details.items || [];
+    const subtotal = parseFloat(details.subtotal || 0);
+    const cgstPct = parseFloat(details.cgst_percentage || 0);
+    const sgstPct = parseFloat(details.sgst_percentage || 0);
+    const igstPct = parseFloat(details.igst_percentage || 0);
+    const cgstAmt = parseFloat(details.cgst_amount || 0);
+    const sgstAmt = parseFloat(details.sgst_amount || 0);
+    const igstAmt = parseFloat(details.igst_amount || 0);
+    const totalGst = cgstAmt + sgstAmt + igstAmt;
+    const discountAmt = parseFloat(details.discount_amount || 0);
+    const totalAmount = parseFloat(details.total_amount || 0);
+    const advanceDeducted = parseFloat(details.advance_deducted || 0);
+    const netPayable = parseFloat(details.net_payable || 0);
+    const amountPaid = parseFloat(details.amount_paid || 0);
+    const balance = parseFloat(details.balance || 0);
 
-    // ── Your original totals ──
-    const subtotal         = details.subtotal         || 0;
-    const cgst_amount      = details.cgst_amount      || 0;
-    const sgst_amount      = details.sgst_amount      || 0;
-    const igst_amount      = details.igst_amount      || 0;
-    const cgst_percentage  = details.cgst_percentage  || 0;
-    const sgst_percentage  = details.sgst_percentage  || 0;
-    const igst_percentage  = details.igst_percentage  || 0;
-    const total_amount     = details.total_amount     || 0;
-    const advance_deducted = details.advance_deducted || 0;
-    const freight_cost     = details.freight_cost     || 0;
-    const net_payable      = details.net_payable      || 0;
-    const amount_paid      = details.amount_paid      || 0;
-    const balance          = details.balance          || 0;
-    const isInternational  = details.currency && details.currency.toUpperCase() !== 'INR';
+    const InfoRow = ({ label, value }) => value ? (
+        <View style={{ flexDirection: 'row', marginBottom: 2 }}>
+            <Text style={{ width: '35%', fontSize: 7.5, fontWeight: 'bold' }}>{label} :</Text>
+            <Text style={{ width: '65%', fontSize: 7.5 }}>{value}</Text>
+        </View>
+    ) : null;
 
-    // ─────────────────────────────────────────────────────────────────────────
+    const TotalRow = ({ label, value, bold, color }) => (
+        <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000' }}>
+            <Text style={{ width: '60%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', fontWeight: bold ? 'bold' : 'normal', textAlign: 'right', fontSize: 7.5, color: color || '#000' }}>{label}</Text>
+            <Text style={{ width: '40%', padding: 4, textAlign: 'right', fontWeight: bold ? 'bold' : 'normal', fontSize: 7.5, color: color || '#000' }}>{value}</Text>
+        </View>
+    );
+
     return (
         <Document>
             <Page size="A4" style={styles.page}>
 
-                {/* ── WATERMARK (fixed on every page) ── */}
                 <View style={styles.watermarkContainer} fixed>
                     <Text style={styles.watermarkText}>ENERGYPAC</Text>
                 </View>
 
-                {/* ── PTO FOOTER — "P.T.O →" on every page except the last ── */}
-                <Text
-                    style={styles.ptoFooter}
-                    render={({ pageNumber, totalPages }) =>
-                        pageNumber < totalPages ? 'P.T.O \u2192' : ''
-                    }
-                    fixed
-                />
-
-                {/* ── TITLE ── */}
-                <Text style={styles.docTitle}>PI NOTE SHEET</Text>
-
-                {/* ════════════════════════════════════════════════════════════
-                    ROW 1 — Exporter | Invoice No & Date | Bill Info & Exch Rate
-                ════════════════════════════════════════════════════════════ */}
-                <View style={[styles.row, styles.bordered, styles.noBreak]} wrap={false}>
-                    <View style={[{ width: '40%' }, styles.borderRight]}>
-                        <Text style={styles.cellBold}>Exporter:</Text>
-                        <Text style={[styles.cell, { fontWeight: 'bold' }]}>{STATIC.exporter_name}</Text>
-                        <View style={styles.cell}>{multiLine(STATIC.exporter_address)}</View>
+                {/* Letterhead */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 1.5, borderBottomColor: '#000', paddingBottom: 6, marginBottom: 8 }}>
+                    <EnergypacLogo />
+                    <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
+                        <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#0E5EB3' }}>ENERGYPAC ENGINEERING LTD.</Text>
+                        <Text style={{ fontSize: 6.5, color: '#333', marginTop: 1.5 }}>KB-22, "Bhakta Tower", 4th Floor, Sector-III,</Text>
+                        <Text style={{ fontSize: 6.5, color: '#333' }}>Salt Lake City, KOLKATA - 700 098, INDIA.</Text>
+                        <Text style={{ fontSize: 6.5, color: '#333' }}>Tel. : 033 4006 5853, GSTIN : 19AABCE4975G1ZE</Text>
+                        <Text style={{ fontSize: 6.5, color: '#333' }}>E-mail : energypackolkata@gmail.com | eel@energypacindia.in</Text>
                     </View>
-                    <View style={[{ width: '30%' }, styles.borderRight]}>
-                        <View style={styles.borderBottom}>
-                            <Text style={styles.cellBold}>Invoice No &amp; Date</Text>
-                        </View>
-                        <View style={styles.borderBottom}>
-                            <Text style={styles.cell}>{invoice_no} Dt. {invoice_date}</Text>
-                        </View>
-                        <View style={styles.borderBottom}>
-                            <Text style={styles.cellBold}>Buyers Order No. &amp; Date</Text>
-                        </View>
-                        <Text style={styles.cell}>{buyers_order_no}</Text>
+                </View>
+
+                {/* Title + Details */}
+                <View style={{ borderWidth: 1, borderColor: '#000', marginBottom: 8 }}>
+                    <View style={{ borderBottomWidth: 1, borderBottomColor: '#000', padding: 4, alignItems: 'center', backgroundColor: '#F9FAFB' }}>
+                        <Text style={{ fontSize: 10, fontWeight: 'bold', letterSpacing: 1 }}>TAX INVOICE / BILL</Text>
                     </View>
-                    <View style={{ width: '30%' }}>
-                        <View style={styles.borderBottom}>
-                            <Text style={styles.cellBold}>Bill Information</Text>
+                    <View style={{ flexDirection: 'row' }}>
+                        {/* Left: Client Info */}
+                        <View style={{ width: '55%', padding: 5, borderRightWidth: 1, borderRightColor: '#000', minHeight: 70 }}>
+                            <Text style={styles.label}>Bill To:</Text>
+                            <Text style={{ fontSize: 8, fontWeight: 'bold', marginBottom: 2 }}>{details.client_name}</Text>
+                            {details.address && <Text style={{ fontSize: 6.5, color: '#333', lineHeight: 1.2 }}>{details.address}</Text>}
+                            {details.contact_person && <Text style={{ fontSize: 7, marginTop: 3 }}>Contact: {details.contact_person}</Text>}
+                            {details.phone && <Text style={{ fontSize: 7 }}>Phone: {details.phone}</Text>}
+                            {details.email && <Text style={{ fontSize: 7 }}>Email: {details.email}</Text>}
                         </View>
-                        <View style={styles.borderBottom}>
-                            <Text style={styles.cell}><Text style={{ fontWeight: 'bold' }}>Status: </Text>{details.status}</Text>
+                        {/* Right: Bill Details */}
+                        <View style={{ width: '45%', padding: 5 }}>
+                            <InfoRow label="BILL NO" value={details.bill_number} />
+                            <InfoRow label="DATE" value={formatDate(details.bill_date)} />
+                            <InfoRow label="PI NUMBER" value={details.pi_number} />
+                            <InfoRow label="BILL TYPE" value={details.bill_type || 'DOMESTIC'} />
+                            <InfoRow label="STATUS" value={details.status} />
+                            <InfoRow label="CREATED BY" value={details.created_by_name} />
                         </View>
-                        <View style={styles.borderBottom}>
-                            <Text style={styles.cell}><Text style={{ fontWeight: 'bold' }}>Bill Type: </Text>{details.bill_type || 'DOMESTIC'}</Text>
-                        </View>
-                        <View style={styles.borderBottom}>
-                            <Text style={styles.cell}><Text style={{ fontWeight: 'bold' }}>Created By: </Text>{details.created_by_name || details.created_by || 'N/A'}</Text>
-                        </View>
-                        {isInternational && (
-                            <View style={styles.cell}>
-                                <Text style={{ fontWeight: 'bold' }}>Exch. Rate:</Text>
-                                <Text>1 {details.currency} = INR {Number(exchangeRate).toFixed(2)}</Text>
+                    </View>
+                </View>
+
+                {/* Items Table */}
+                <View style={styles.table}>
+                    <View style={styles.tableHeader} fixed>
+                        <Text style={styles.col1}>SL.</Text>
+                        <Text style={styles.col2}>DESCRIPTION</Text>
+                        <Text style={styles.col3}>HSN CODE</Text>
+                        <Text style={styles.col4}>QTY</Text>
+                        <Text style={styles.col5}>UNIT</Text>
+                        <Text style={styles.colRate}>RATE (INR)</Text>
+                        <Text style={styles.col6}>AMOUNT (INR)</Text>
+                    </View>
+                    {items.map((item, index) => (
+                        <View key={index} style={styles.tableRow} wrap={false}>
+                            <Text style={styles.col1}>{index + 1}</Text>
+                            <View style={styles.col2}>
+                                <Text style={{ fontWeight: 'bold', fontSize: 8 }}>{item.item_name}</Text>
+                                {(item.product_code || item.item_code) && (
+                                    <Text style={{ fontSize: 6.5, color: '#444', marginTop: 1 }}>{item.product_code || item.item_code}</Text>
+                                )}
                             </View>
-                        )}
-                    </View>
-                </View>
-
-                {/* ════════════════════════════════════════════════════════════
-                    ROW 2 — Consignee | Applicant (Uncommented and made dynamic if needed, otherwise kept aligned with the design)
-                ════════════════════════════════════════════════════════════ */}
-                {/* <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
-                    <View style={[{ width: '50%' }, styles.borderRight]}>
-                        <Text style={styles.cellBold}>Consigned to the order of:</Text>
-                        <Text style={[styles.cell, { fontWeight: 'bold' }]}>{consignee_name}</Text>
-                        <View style={styles.cell}>{multiLine(consignee_address)}</View>
-                        <Text style={styles.cell}>{consignee_bin}</Text>
-                    </View>
-                    <View style={{ width: '50%' }}>
-                        <Text style={styles.cellBold}>Applicant:-</Text>
-                        <Text style={[styles.cell, { fontWeight: 'bold' }]}>{STATIC.applicant_name}</Text>
-                        <View style={styles.cell}>{multiLine(STATIC.applicant_address)}</View>
-                    </View>
-                </View> */}
-
-                {/* ════════════════════════════════════════════════════════════
-                    ROW 3 — Client / Importer Details | Terms of Delivery & Payment
-                ════════════════════════════════════════════════════════════ */}
-                <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
-                    <View style={[{ width: '50%' }, styles.borderRight]}>
-                        <Text style={styles.cellBold}>Client / Importer Details:</Text>
-                        <Text style={[styles.cell, { fontWeight: 'bold' }]}>{importer_name}</Text>
-                        <View style={styles.cell}>{multiLine(importer_address)}</View>
-                        {contact_person ? <Text style={styles.cell}><Text style={{ fontWeight: 'bold' }}>Contact Person: </Text>{contact_person}</Text> : null}
-                        {phone ? <Text style={styles.cell}><Text style={{ fontWeight: 'bold' }}>Phone: </Text>{phone}</Text> : null}
-                        {email ? <Text style={styles.cell}><Text style={{ fontWeight: 'bold' }}>Email: </Text>{email}</Text> : null}
-                    </View> 
-                    <View style={{ width: '50%' }}>
-                        <Text style={styles.cellBold}>Terms of Delivery and Payment:</Text>
-                        <Text style={styles.cell}>{terms_of_delivery}</Text>
-                    </View>
-                </View>
-
-                {/* ── Place of Supply ── */}
-                <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
-                    <Text style={styles.cell}>
-                        <Text style={{ fontWeight: 'bold' }}>Place of Supply: </Text>
-                        {STATIC.place_of_supply}
-                    </Text>
-                </View>
-
-                {/* ════════════════════════════════════════════════════════════
-                    ROW 4 — Vessel / Port grid
-                ════════════════════════════════════════════════════════════ */}
-                {[
-                    [
-                        { label: 'Vessel/Flight No:',  value: vessel,                   w: '15%' },
-                        { label: 'Port of Loading:',   value: port_of_loading,          w: '25%' },
-                        { label: 'Port of Discharge:', value: port_of_discharge,         w: '30%' },
-                        { label: 'Place of Delivery:', value: place_of_delivery,         w: '30%' },
-                    ],
-                    [
-                        { label: 'Pre-carriage by:',                     value: pre_carriage_by,          w: '15%' },
-                        { label: 'Place of Receipt of by Pre-carriage:',  value: STATIC.place_of_receipt,  w: '25%' },
-                        { label: 'Country of Origin:',                   value: STATIC.country_of_origin, w: '30%' },
-                        { label: 'Final Destination:',                   value: final_destination,         w: '30%' },
-                    ],
-                ].map((rowDef, ri) => (
-                    <View key={ri} style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
-                        {rowDef.map((col, ci) => (
-                            <View key={ci} style={[{ width: col.w }, ci < rowDef.length - 1 && styles.borderRight]}>
-                                <Text style={styles.cellBold}>{col.label}</Text>
-                                <View style={styles.cell}>{multiLine(col.value)}</View>
-                            </View>
-                        ))}
-                    </View>
-                ))}
-
-                {/* ════════════════════════════════════════════════════════════
-                    ITEMS TABLE — Header
-                ════════════════════════════════════════════════════════════ */}
-                <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
-                    {[
-                        { label: 'SL\nNO',          w: '5%'  },
-                        { label: 'PRODUCT / ITEM',  w: '37%' },
-                        { label: 'HSN/SAC',         w: '12%' },
-                        { label: 'QTY',             w: '10%' },
-                        { label: `RATE\n(${isInternational ? details.currency : 'INR'})`, w: '12%' },
-                        { label: `AMOUNT\n(${isInternational ? details.currency : 'INR'})`, w: '12%' },
-                        { label: 'TOTAL\n(INR)',     w: '24%' },
-                    ].map((h, hi) => (
-                        <View key={hi} style={[{ width: h.w }, hi < 5 && styles.borderRight]}>
-                            <Text style={[styles.cellBold, { textAlign: 'center' }]}>{h.label}</Text>
+                            <Text style={styles.col3}>{item.hsn_code || '-'}</Text>
+                            <Text style={styles.col4}>{Number(item.quantity || 0).toFixed(2)}</Text>
+                            <Text style={styles.col5}>{item.unit || 'PCS'}</Text>
+                            <Text style={styles.colRate}>{Number(item.rate || 0).toFixed(2)}</Text>
+                            <Text style={styles.col6}>{Number(item.amount || (item.quantity * item.rate) || 0).toFixed(2)}</Text>
                         </View>
                     ))}
                 </View>
 
-                {/* ════════════════════════════════════════════════════════════
-                    ITEMS TABLE — Body (your original details.items)
-                ════════════════════════════════════════════════════════════ */}
-                {items.map((item, index) => (
-                    <View
-                        key={index}
-                        style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]}
-                        wrap={false}
-                    >
-                        {/* SL NO */}
-                        <View style={[{ width: '5%' }, styles.borderRight]}>
-                            <Text style={styles.cellCenter}>{index + 1}</Text>
+                {/* Totals */}
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 }} wrap={false}>
+                    <View style={{ width: '50%', borderWidth: 1, borderColor: '#000' }}>
+                        <TotalRow label="SUB TOTAL" value={fmt(subtotal)} bold />
+                        {cgstPct > 0 && <TotalRow label={`CGST @ ${cgstPct}%`} value={fmt(cgstAmt)} />}
+                        {sgstPct > 0 && <TotalRow label={`SGST @ ${sgstPct}%`} value={fmt(sgstAmt)} />}
+                        {igstPct > 0 && <TotalRow label={`IGST @ ${igstPct}%`} value={fmt(igstAmt)} />}
+                        {totalGst > 0 && <TotalRow label="TOTAL GST" value={fmt(totalGst)} bold />}
+                        {discountAmt > 0 && <TotalRow label="DISCOUNT" value={`- ${fmt(discountAmt)}`} />}
+                        <TotalRow label="TOTAL AMOUNT" value={fmt(totalAmount)} bold />
+                        {advanceDeducted > 0 && <TotalRow label="ADVANCE DEDUCTED" value={`- ${fmt(advanceDeducted)}`} />}
+                        <TotalRow label="NET PAYABLE" value={fmt(netPayable)} bold color="#0E5EB3" />
+                        <TotalRow label="AMOUNT PAID" value={fmt(amountPaid)} bold />
+                        <View style={{ flexDirection: 'row', backgroundColor: balance > 0 ? '#FEF2F2' : '#F0FDF4' }}>
+                            <Text style={{ width: '60%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', fontWeight: 'bold', textAlign: 'right', fontSize: 8, color: balance > 0 ? '#dc2626' : '#16a34a' }}>BALANCE DUE</Text>
+                            <Text style={{ width: '40%', padding: 4, textAlign: 'right', fontWeight: 'bold', fontSize: 8, color: balance > 0 ? '#dc2626' : '#16a34a' }}>{fmt(balance)}</Text>
                         </View>
-
-                        {/* PRODUCT / ITEM */}
-                        <View style={[{ width: '37%' }, styles.borderRight]}>
-                            <Text style={[styles.cell, { fontWeight: 'bold' }]}>{item.item_name}</Text>
-                            {(item.product_code || item.item_code) ? (
-                                <Text style={[styles.cellSmall, { color: '#444' }]}>{item.product_code || item.item_code}</Text>
-                            ) : null}
-                            {item.description && item.description !== item.item_name ? (
-                                <Text style={[styles.cellSmall, { color: '#444' }]}>{item.description}</Text>
-                            ) : null}
-                        </View>
-
-                        {/* HSN/SAC */}
-                        <View style={[{ width: '12%' }, styles.borderRight]}>
-                            <Text style={styles.cellCenter}>{item.hsn_code}</Text>
-                        </View>
-
-                        {/* QTY */}
-                        <View style={[{ width: '10%' }, styles.borderRight]}>
-                            <Text style={styles.cellCenter}>
-                                {Number(item.delivered_quantity !== undefined && item.delivered_quantity !== null ? item.delivered_quantity : item.quantity || 0).toFixed(2)} {item.unit}
-                            </Text>
-                            {item.ordered_quantity !== undefined && item.ordered_quantity !== null && (
-                                <Text style={[styles.cellSmall, { textAlign: 'center', color: '#555', fontSize: 6.2, marginTop: 2 }]}>
-                                    Ord: {Number(item.ordered_quantity).toFixed(2)}{'\n'}
-                                    Pend: {Number(item.pending_quantity || 0).toFixed(2)}
-                                </Text>
-                            )}
-                        </View>
-
-                        {/* RATE */}
-                        <View style={[{ width: '12%' }, styles.borderRight]}>
-                            <Text style={styles.cellRight}>
-                                {isInternational 
-                                    ? fmt(item.original_rate || (item.rate / exchangeRate), details.currency)
-                                    : fmt(item.rate, 'INR')
-                                }
-                            </Text>
-                        </View>
-
-                        {/* AMOUNT */}
-                        <View style={[{ width: '12%' }, styles.borderRight]}>
-                            <Text style={styles.cellRight}>
-                                {isInternational 
-                                    ? fmt(item.original_amount || (item.amount / exchangeRate), details.currency)
-                                    : fmt(item.amount, 'INR')
-                                }
-                            </Text>
-                        </View>
-
-                        {/* TOTAL (INR) */}
-                        <View style={{ width: '24%' }}>
-                            <Text style={styles.cellRight}>{fmt(item.amount, 'INR')}</Text>
-                        </View>
-                    </View>
-                ))}
-
-                {/* ════════════════════════════════════════════════════════════
-                    TOTALS SECTION
-                ════════════════════════════════════════════════════════════ */}
-                {/* SUB TOTAL */}
-                <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
-                    <View style={[{ width: '76%' }, styles.borderRight]}>
-                        <Text style={styles.cellRightBold}>SUB TOTAL (INR)</Text>
-                    </View>
-                    <View style={{ width: '24%' }}>
-                        <Text style={styles.cellRightBold}>{fmt(subtotal, 'INR')}</Text>
                     </View>
                 </View>
-
-                {/* CGST */}
-                {parseFloat(cgst_amount) > 0 && (
-                    <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
-                        <View style={[{ width: '76%' }, styles.borderRight]}>
-                            <Text style={styles.cellRight}>CGST ({cgst_percentage}%) (INR)</Text>
-                        </View>
-                        <View style={{ width: '24%' }}>
-                            <Text style={styles.cellRight}>{fmt(cgst_amount, 'INR')}</Text>
-                        </View>
-                    </View>
-                )}
-
-                {/* SGST */}
-                {parseFloat(sgst_amount) > 0 && (
-                    <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
-                        <View style={[{ width: '76%' }, styles.borderRight]}>
-                            <Text style={styles.cellRight}>SGST ({sgst_percentage}%) (INR)</Text>
-                        </View>
-                        <View style={{ width: '24%' }}>
-                            <Text style={styles.cellRight}>{fmt(sgst_amount, 'INR')}</Text>
-                        </View>
-                    </View>
-                )}
-
-                {/* IGST */}
-                {parseFloat(igst_amount) > 0 && (
-                    <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
-                        <View style={[{ width: '76%' }, styles.borderRight]}>
-                            <Text style={styles.cellRight}>IGST ({igst_percentage}%) (INR)</Text>
-                        </View>
-                        <View style={{ width: '24%' }}>
-                            <Text style={styles.cellRight}>{fmt(igst_amount, 'INR')}</Text>
-                        </View>
-                    </View>
-                )}
-
-                {/* TOTAL GST */}
-                {parseFloat(details.total_gst || (parseFloat(cgst_amount) + parseFloat(sgst_amount) + parseFloat(igst_amount))) > 0 && (
-                    <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
-                        <View style={[{ width: '76%' }, styles.borderRight]}>
-                            <Text style={styles.cellRightBold}>TOTAL GST (INR)</Text>
-                        </View>
-                        <View style={{ width: '24%' }}>
-                            <Text style={styles.cellRightBold}>{fmt(details.total_gst || (parseFloat(cgst_amount) + parseFloat(sgst_amount) + parseFloat(igst_amount)), 'INR')}</Text>
-                        </View>
-                    </View>
-                )}
-
-                {/* TOTAL BILL AMOUNT */}
-                <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
-                    <View style={[{ width: '76%' }, styles.borderRight]}>
-                        <Text style={styles.cellRightBold}>TOTAL BILL AMOUNT (INR)</Text>
-                    </View>
-                    <View style={{ width: '24%' }}>
-                        <Text style={styles.cellRightBold}>{fmt(total_amount, 'INR')}</Text>
-                    </View>
-                </View>
-
-                {/* ADVANCE DEDUCTED */}
-                <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
-                    <View style={[{ width: '76%' }, styles.borderRight]}>
-                        <Text style={styles.cellRightBold}>ADVANCE DEDUCTED (INR)</Text>
-                    </View>
-                    <View style={{ width: '24%' }}>
-                        <Text style={styles.cellRightBold}>{fmt(advance_deducted, 'INR')}</Text>
-                    </View>
-                </View>
-
-                {/* FREIGHT COST */}
-                {parseFloat(freight_cost) > 0 && (
-                    <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
-                        <View style={[{ width: '76%' }, styles.borderRight]}>
-                            <Text style={styles.cellRightBold}>FREIGHT COST (INR)</Text>
-                        </View>
-                        <View style={{ width: '24%' }}>
-                            <Text style={styles.cellRightBold}>{fmt(freight_cost, 'INR')}</Text>
-                        </View>
-                    </View>
-                )}
-
-                {/* NET PAYABLE */}
-                <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
-                    <View style={[{ width: '76%' }, styles.borderRight]}>
-                        <Text style={[styles.cellRightBold, { color: '#1a56db' }]}>NET PAYABLE (INR)</Text>
-                    </View>
-                    <View style={{ width: '24%' }}>
-                        <Text style={[styles.cellRightBold, { color: '#1a56db' }]}>{fmt(net_payable, 'INR')}</Text>
-                    </View>
-                </View>
-
-                {/* AMOUNT PAID */}
-                <View style={[styles.row, styles.borderBottom, styles.borderLeft, styles.borderRight, styles.noBreak]} wrap={false}>
-                    <View style={[{ width: '76%' }, styles.borderRight]}>
-                        <Text style={styles.cellRightBold}>AMOUNT PAID (INR)</Text>
-                    </View>
-                    <View style={{ width: '24%' }}>
-                        <Text style={styles.cellRightBold}>{fmt(amount_paid, 'INR')}</Text>
-                    </View>
-                </View>
-
-                {/* BALANCE DUE */}
-                <View style={[styles.row, styles.bordered, styles.noBreak]} wrap={false}>
-                    <View style={[{ width: '76%' }, styles.borderRight]}>
-                        <Text style={[styles.cellRightBold, { color: '#dc2626' }]}>BALANCE DUE (INR)</Text>
-                    </View>
-                    <View style={{ width: '24%' }}>
-                        <Text style={[styles.cellRightBold, { color: '#dc2626' }]}>{fmt(balance, 'INR')}</Text>
-                    </View>
-                </View>
-
-                {/* Original Currency Summary Block */}
-                {isInternational && (
-                    <View style={[styles.noBreak, { marginTop: 10, padding: 5, backgroundColor: '#f0f8ff', borderWidth: 1, borderColor: '#accce6' }]} wrap={false}>
-                        <Text style={{ fontWeight: 'bold', fontSize: 8, marginBottom: 4, color: '#2d5a84' }}>ORIGINAL CURRENCY SUMMARY ({details.currency})</Text>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
-                            <Text style={{ fontSize: 8 }}>Subtotal ({details.currency})</Text>
-                            <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{fmt(details.original_subtotal || (details.subtotal / exchangeRate), details.currency)}</Text>
-                        </View>
-
-                        {parseFloat(details.total_gst || cgst_amount || sgst_amount || igst_amount) > 0 && (
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
-                                <Text style={{ fontSize: 8 }}>Total Tax ({details.currency})</Text>
-                                <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{fmt(details.original_total_tax || ((details.total_gst || (parseFloat(cgst_amount) + parseFloat(sgst_amount) + parseFloat(igst_amount))) / exchangeRate), details.currency)}</Text>
-                            </View>
-                        )}
-
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
-                            <Text style={{ fontSize: 8 }}>Total Amount ({details.currency})</Text>
-                            <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{fmt(details.original_total_amount || (details.total_amount / exchangeRate), details.currency)}</Text>
-                        </View>
-
-                        {parseFloat(advance_deducted) > 0 && (
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
-                                <Text style={{ fontSize: 8 }}>Advance Deducted ({details.currency})</Text>
-                                <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{fmt(details.original_advance_deducted || (advance_deducted / exchangeRate), details.currency)}</Text>
-                            </View>
-                        )}
-                        {parseFloat(freight_cost) > 0 && (
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
-                                <Text style={{ fontSize: 8 }}>Freight Cost ({details.currency})</Text>
-                                <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{fmt(details.original_freight_cost || (freight_cost / exchangeRate), details.currency)}</Text>
-                            </View>
-                        )}
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
-                            <Text style={{ fontSize: 8 }}>Net Payable ({details.currency})</Text>
-                            <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{fmt(details.original_net_payable || (details.net_payable / exchangeRate), details.currency)}</Text>
-                        </View>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
-                            <Text style={{ fontSize: 8 }}>Amount Paid ({details.currency})</Text>
-                            <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{fmt(details.original_amount_paid || (amount_paid / exchangeRate), details.currency)}</Text>
-                        </View>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#accce6', pt: 2 }}>
-                            <Text style={{ fontSize: 9, fontWeight: 'bold' }}>Balance Due ({details.currency})</Text>
-                            <Text style={{ fontSize: 9, fontWeight: 'bold' }}>{fmt(details.original_balance || (details.balance / exchangeRate), details.currency)}</Text>
-                        </View>
-                    </View>
-                )}
-
-                {/* Amount in words */}
-                {details.amount_in_words ? (
-                    <Text style={[styles.cell, { fontWeight: 'bold', marginTop: 6, textTransform: 'uppercase' }]}>
-                        AMOUNT IN WORDS: {details.amount_in_words}
-                    </Text>
-                ) : null}
 
                 {/* Remarks */}
-                {details.remarks ? (
-                    <View style={[{ marginTop: 8 }, styles.noBreak]} wrap={false}>
-                        <Text style={[styles.cellBold, { textDecoration: 'underline' }]}>Remarks:-</Text>
-                        <Text style={styles.cell}>{details.remarks}</Text>
+                {details.remarks && (
+                    <View style={{ marginTop: 8 }} wrap={false}>
+                        <Text style={{ fontWeight: 'bold', fontSize: 7.5, textDecoration: 'underline', marginBottom: 2 }}>Remarks:</Text>
+                        <Text style={{ fontSize: 7.5 }}>{details.remarks}</Text>
                     </View>
-                ) : null}
+                )}
 
-                {/* ════════════════════════════════════════════════════════════
-                    FOOTER — Notes | Signature
-                ════════════════════════════════════════════════════════════ */}
-                <View style={[styles.row, styles.bordered, { marginTop: 10 }, styles.noBreak]} wrap={false}>
-                    {/* Notes */}
-                    <View style={[{ width: '63%' }, styles.borderRight]}>
-                        <Text style={styles.cellBold}>Signature</Text>
-                        <View style={styles.cell}>
-                            <Text>(1) The goods are of India Origin</Text>
-                            <Text>(2) Country of Origin was printed clearly on package/boxes/cartons of goods.</Text>
-                            <Text>
-                                (3) The goods Description, Quality, Quantity, other particulars and price herein
-                                invoiced{'\n'}    conformity to Proforma Invoice No: {proforma_ref}
-                            </Text>
+                {/* Signature */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 30 }} wrap={false}>
+                    <View style={{ width: '45%' }}>
+                        <View style={{ marginTop: 30, width: 130, borderTopWidth: 1, borderTopColor: '#000', paddingTop: 3 }}>
+                            <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>Receiver's Signature</Text>
                         </View>
-                        <Text style={[styles.cell, { fontWeight: 'bold', marginTop: 4 }]}>
-                            {STATIC.lut_no}
-                        </Text>
                     </View>
-
-                    {/* Signature block */}
-                    <View style={[{ width: '37%' }, styles.col, { alignItems: 'center', justifyContent: 'center', padding: 8 }]}>
-                        <Text style={[styles.cell, { fontWeight: 'bold', marginBottom: 30 }]}>
-                            Energypac Engineering Ltd.
-                        </Text>
-                        <View style={{ borderTopWidth: 1, borderTopColor: '#000', width: '80%', marginBottom: 4 }} />
-                        <Text style={[styles.cell, { textAlign: 'center' }]}>(Authorised Signatory)</Text>
+                    <View style={{ width: '45%', alignItems: 'flex-end' }}>
+                        <Text style={{ fontSize: 7.5, marginBottom: 2 }}>For Energypac Engineering Limited.</Text>
+                        <View style={{ marginTop: 30, width: 130, borderTopWidth: 1, borderTopColor: '#000', paddingTop: 3, alignItems: 'center' }}>
+                            <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>Authorized Signatory</Text>
+                        </View>
                     </View>
                 </View>
 
+                {/* Page Number */}
+                <Text style={{ position: 'absolute', bottom: 10, left: 0, right: 0, textAlign: 'center', fontSize: 7.5, color: '#666' }}
+                    render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} fixed />
             </Page>
         </Document>
     );

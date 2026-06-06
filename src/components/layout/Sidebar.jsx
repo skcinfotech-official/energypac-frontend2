@@ -18,7 +18,8 @@ import {
   FaTruck,
   FaChartPie,
   FaCoins,
-  FaFileInvoiceDollar
+  FaFileInvoiceDollar,
+  FaUndoAlt
 } from "react-icons/fa";
 import { BiImport } from "react-icons/bi";
 import { RiCustomerService2Fill } from "react-icons/ri";
@@ -147,6 +148,10 @@ export default function Sidebar({ isOpen }) {
             ]}
           />
         )}
+        {hasPermission("RETURNS") && (
+          <SidebarLink to="/returns" label="Returns" icon={<FaUndoAlt />} isOpen={isOpen} />
+        )}
+
         {user?.role === "ADMIN" && (
           <SidebarLink to="/admin/users" label="Admin Panel" icon={<FaUserShield />} isOpen={isOpen} />
         )}

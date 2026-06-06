@@ -19,7 +19,14 @@ const EditPurchaseOrderModal = ({ open, onClose, poData, onUpdate }) => {
 
     // Form fields
     const [poDate, setPoDate] = useState("");
+    const [subject, setSubject] = useState("");
+    const [projectName, setProjectName] = useState("");
+    const [billTo, setBillTo] = useState("");
+    const [shipTo, setShipTo] = useState("");
+    const [paymentDueDate, setPaymentDueDate] = useState("");
+    const [termsAndConditions, setTermsAndConditions] = useState([]);
     const [remarks, setRemarks] = useState("");
+    const [conversionRate, setConversionRate] = useState("");
     const [discountAmount, setDiscountAmount] = useState(0);
     const [cgstPercentage, setCgstPercentage] = useState(0);
     const [sgstPercentage, setSgstPercentage] = useState(0);
@@ -35,7 +42,14 @@ const EditPurchaseOrderModal = ({ open, onClose, poData, onUpdate }) => {
     useEffect(() => {
         if (open && poData) {
             setPoDate(poData.po_date || new Date().toISOString().split('T')[0]);
+            setSubject(poData.subject || "");
+            setProjectName(poData.project_name || "");
+            setBillTo(poData.bill_to || "");
+            setShipTo(poData.ship_to || "");
+            setPaymentDueDate(poData.payment_due_date || "");
+            setTermsAndConditions(poData.terms_and_conditions || []);
             setRemarks(poData.remarks || "");
+            setConversionRate(poData.conversion_rate || "");
             setDiscountAmount(parseFloat(poData.discount_amount) || 0);
             setCgstPercentage(parseFloat(poData.cgst_percentage) || 0);
             setSgstPercentage(parseFloat(poData.sgst_percentage) || 0);
@@ -111,13 +125,20 @@ const EditPurchaseOrderModal = ({ open, onClose, poData, onUpdate }) => {
         try {
             const payload = {
                 po_date: poDate,
+                subject: subject,
+                project_name: projectName,
+                bill_to: billTo,
+                ship_to: shipTo,
+                payment_due_date: paymentDueDate || null,
+                conversion_rate: conversionRate ? parseFloat(conversionRate) : null,
+                terms_and_conditions: termsAndConditions,
                 remarks: remarks,
                 discount_amount: parseFloat(discountAmount),
                 cgst_percentage: parseFloat(cgstPercentage),
                 sgst_percentage: parseFloat(sgstPercentage),
                 igst_percentage: parseFloat(igstPercentage),
                 items: items.map(it => ({
-                    id: it.id || undefined, // undefined for new items
+                    id: it.id || undefined,
                     product: it.product,
                     quantity: it.quantity,
                     rate: it.rate
@@ -176,6 +197,48 @@ const EditPurchaseOrderModal = ({ open, onClose, poData, onUpdate }) => {
                             />
                         </div>
                         <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Subject</label>
+                            <input
+                                type="text"
+                                placeholder="PO subject..."
+                                value={subject}
+                                onChange={(e) => setSubject(e.target.value)}
+                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Project Name</label>
+                            <input
+                                type="text"
+                                placeholder="Project name..."
+                                value={projectName}
+                                onChange={(e) => setProjectName(e.target.value)}
+                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Payment Due Date</label>
+                            <input
+                                type="date"
+                                value={paymentDueDate}
+                                onChange={(e) => setPaymentDueDate(e.target.value)}
+                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
+                            />
+                        </div>
+                        {poData.currency !== 'INR' && (
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Conversion Rate (1 {poData.currency} = ₹?)</label>
+                                <input
+                                    type="number"
+                                    step="0.0001"
+                                    placeholder="e.g. 83.5"
+                                    value={conversionRate}
+                                    onChange={(e) => setConversionRate(e.target.value)}
+                                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-mono"
+                                />
+                            </div>
+                        )}
+                        <div className="space-y-1">
                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Discount Amount</label>
                             <input
                                 type="number"
@@ -194,6 +257,30 @@ const EditPurchaseOrderModal = ({ open, onClose, poData, onUpdate }) => {
                                 value={remarks}
                                 onChange={(e) => setRemarks(e.target.value)}
                                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Bill To / Ship To */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50/50 p-5 rounded-2xl border border-slate-150">
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Bill To</label>
+                            <textarea
+                                rows="3"
+                                placeholder="Billing address..."
+                                value={billTo}
+                                onChange={(e) => setBillTo(e.target.value)}
+                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all resize-none"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Ship To</label>
+                            <textarea
+                                rows="3"
+                                placeholder="Shipping address..."
+                                value={shipTo}
+                                onChange={(e) => setShipTo(e.target.value)}
+                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all resize-none"
                             />
                         </div>
                     </div>
@@ -235,6 +322,75 @@ const EditPurchaseOrderModal = ({ open, onClose, poData, onUpdate }) => {
                         </div>
                     </div>
 
+
+                    {/* Terms & Conditions */}
+                    <div className="bg-slate-50/50 p-5 rounded-2xl border border-slate-150 space-y-3">
+                        <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Terms & Conditions ({termsAndConditions.length})</label>
+                            <button
+                                type="button"
+                                onClick={() => setTermsAndConditions(prev => [...prev, { label: "", value: "" }])}
+                                className="px-3 py-1 text-xs font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            >
+                                + Add Term
+                            </button>
+                        </div>
+                        {termsAndConditions.length === 0 ? (
+                            <p className="text-xs text-slate-400 italic">No terms added. Click "+ Add Term" to add.</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {termsAndConditions.map((term, idx) => {
+                                    let termLabel = "";
+                                    let termValue = "";
+                                    if (typeof term === "string") {
+                                        const colonIdx = term.indexOf(":");
+                                        if (colonIdx !== -1) {
+                                            termLabel = term.substring(0, colonIdx).trim();
+                                            termValue = term.substring(colonIdx + 1).trim();
+                                        } else {
+                                            termValue = term;
+                                        }
+                                    } else if (term && typeof term === "object") {
+                                        termLabel = term.label || term.type || term.key || "";
+                                        termValue = term.value || "";
+                                    }
+                                    return (
+                                        <div key={idx} className="flex items-start gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="Label (e.g. Delivery)"
+                                                value={termLabel}
+                                                onChange={(e) => {
+                                                    const updated = [...termsAndConditions];
+                                                    updated[idx] = { label: e.target.value, value: termValue };
+                                                    setTermsAndConditions(updated);
+                                                }}
+                                                className="w-1/3 px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="Value (e.g. Within 30 days)"
+                                                value={termValue}
+                                                onChange={(e) => {
+                                                    const updated = [...termsAndConditions];
+                                                    updated[idx] = { label: termLabel, value: e.target.value };
+                                                    setTermsAndConditions(updated);
+                                                }}
+                                                className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setTermsAndConditions(prev => prev.filter((_, i) => i !== idx))}
+                                                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                                            >
+                                                <FaTrashAlt size={12} />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
 
                     {/* Items Grid */}
                     <div className="space-y-3">

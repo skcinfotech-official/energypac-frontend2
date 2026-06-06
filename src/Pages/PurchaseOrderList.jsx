@@ -394,8 +394,11 @@ const PurchaseOrderList = () => {
                                         <td className="px-6 py-4 text-slate-600 font-semibold">
                                             {new Date(row.po_date).toLocaleDateString()}
                                         </td>
-                                        <td className="px-6 py-4 text-right font-bold text-slate-800">
-                                            {formatCurrency(row.total_amount, row.currency)}
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="font-bold text-slate-800">{formatCurrency(row.total_amount, row.currency)}</div>
+                                            {row.conversion_rate && row.currency !== 'INR' && (
+                                                <div className="text-[10px] text-emerald-600 font-mono font-semibold">1 {row.currency} = ₹{parseFloat(row.conversion_rate)}</div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
                                             {(() => {

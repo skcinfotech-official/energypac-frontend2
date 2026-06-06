@@ -283,6 +283,18 @@ const PurchaseOrderModal = ({ open, onClose, data, onShowAlert, onUpdate }) => {
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Currency</span>
                                         <span className="text-sm font-mono font-bold text-blue-600">{poData.currency || "INR"}</span>
                                     </div>
+                                    {poData.conversion_rate && poData.currency !== 'INR' && (
+                                        <div className="space-y-1">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Conversion Rate</span>
+                                            <span className="text-sm font-mono font-bold text-emerald-600">1 {poData.currency} = ₹{parseFloat(poData.conversion_rate)}</span>
+                                        </div>
+                                    )}
+                                    {poData.payment_due_date && (
+                                        <div className="space-y-1">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Payment Due Date</span>
+                                            <span className="text-sm font-semibold text-slate-800">{new Date(poData.payment_due_date).toLocaleDateString()}</span>
+                                        </div>
+                                    )}
                                     <div className="space-y-1">
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Status</span>
                                         {(() => {

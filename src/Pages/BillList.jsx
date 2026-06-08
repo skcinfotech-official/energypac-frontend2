@@ -148,7 +148,7 @@ const BillList = () => {
             open: true,
             bill,
             amount: defaultAmount,
-            currency: "INR",
+            currency: bill.currency || "INR",
             payment_date: new Date().toISOString().split("T")[0],
             payment_mode: "CASH",
             reference_number: "",
@@ -161,20 +161,14 @@ const BillList = () => {
         setPasswordModal({
             open: true,
             title: "Confirm Payment",
-            message: "Please enter your password to record this payment.",
+            message: `Please enter your password to record this ${paymentModal.currency} payment.`,
             loading: false,
             onConfirm: async (password) => {
                 setPasswordModal(prev => ({ ...prev, loading: true }));
                 try {
-                    let finalAmount = parseFloat(paymentModal.amount);
-                    const billExchRate = parseFloat(paymentModal.bill?.exchange_rate || paymentModal.bill?.conversion_rate || 1);
-                    if (paymentModal.currency !== 'INR') {
-                        finalAmount = finalAmount * billExchRate;
-                    }
-
                     const payload = {
                         confirm_password: password,
-                        amount_paid: Number(finalAmount.toFixed(2)),
+                        amount_paid: Number(parseFloat(paymentModal.amount).toFixed(2)),
                         payment_date: paymentModal.payment_date
                     };
                     const res = await markBillAsPaid(paymentModal.bill.id, payload);
@@ -256,12 +250,23 @@ const BillList = () => {
         }
     };
 
+    const getCurrencySymbol = (code) => {
+        switch (code?.toUpperCase()) {
+            case "USD": return "$";
+            case "EUR": return "€";
+            case "GBP": return "£";
+            case "JPY": return "¥";
+            case "CAD": return "C$";
+            case "AUD": return "A$";
+            case "INR": return "₹";
+            default: return code || "₹";
+        }
+    };
+
     const formatCurrency = (amount, curr = 'INR') => {
-        return Number(amount || 0).toLocaleString('en-IN', {
-            style: 'currency',
-            currency: curr === 'USD' ? 'USD' : 'INR',
-            maximumFractionDigits: 2
-        }).replace('US$', '$');
+        const num = Number(amount || 0);
+        const locale = curr?.toUpperCase() === 'INR' ? 'en-IN' : 'en-US';
+        return `${getCurrencySymbol(curr)} ${num.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
     const formatDate = (dateStr) => {
@@ -398,32 +403,22 @@ const BillList = () => {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <div className="text-sm font-bold text-slate-800">{formatCurrency(bill.total_amount)}</div>
-                                            {bill.currency && bill.currency !== 'INR' && (
+                                            <div className="text-sm font-bold text-slate-800">{formatCurrency(bill.total_amount, bill.currency)}</div>
+                                            {bill.currency && bill.currency !== 'INR' && bill.conversion_rate && (
                                                 <div className="text-[10px] text-blue-600 font-bold">
-                                                    {formatCurrency(bill.original_total_amount || (bill.total_amount / (bill.exchange_rate || bill.conversion_rate || 1)), bill.currency)}
+                                                    1 {bill.currency} = ₹{parseFloat(bill.conversion_rate)}
                                                 </div>
                                             )}
                                             <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Net Payable</div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <div className="text-sm font-bold text-emerald-600">{formatCurrency(bill.amount_paid)}</div>
-                                            {bill.currency && bill.currency !== 'INR' && (
-                                                <div className="text-[10px] text-emerald-500 font-bold">
-                                                    {formatCurrency(bill.original_amount_paid || (bill.amount_paid / (bill.exchange_rate || bill.conversion_rate || 1)), bill.currency)}
-                                                </div>
-                                            )}
+                                            <div className="text-sm font-bold text-emerald-600">{formatCurrency(bill.amount_paid, bill.currency)}</div>
                                             <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Total Collected</div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className={`text-sm font-black ${parseFloat(bill.balance) > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                                                {formatCurrency(bill.balance)}
+                                                {formatCurrency(bill.balance, bill.currency)}
                                             </div>
-                                            {bill.currency && bill.currency !== 'INR' && (
-                                                <div className={`text-[10px] font-bold ${parseFloat(bill.balance) > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                                                    {formatCurrency(bill.original_balance || (bill.balance / (bill.exchange_rate || bill.conversion_rate || 1)), bill.currency)}
-                                                </div>
-                                            )}
                                             {parseFloat(bill.balance) > 0 && (
                                                 <div className="w-16 h-1 bg-slate-100 rounded-full mt-1.5 ml-auto overflow-hidden">
                                                     <div className="h-full bg-red-400" style={{ width: `${Math.min(100, (bill.balance / bill.total_amount) * 100)}%` }}></div>
@@ -568,10 +563,11 @@ const BillList = () => {
                                 <div>
                                     <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Bill Reference</p>
                                     <p className="font-mono font-bold text-emerald-400">{paymentModal.bill?.bill_number}</p>
+                                    <p className="text-[10px] text-slate-500 font-bold mt-1">Currency: <span className="text-blue-400">{paymentModal.bill?.currency || "INR"}</span></p>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Due Balance</p>
-                                    <p className="text-2xl font-black text-red-400">{formatCurrency(paymentModal.bill?.balance)}</p>
+                                    <p className="text-2xl font-black text-red-400">{formatCurrency(paymentModal.bill?.balance, paymentModal.bill?.currency)}</p>
                                 </div>
                             </div>
                         </div>
@@ -579,33 +575,10 @@ const BillList = () => {
                         <form onSubmit={handlePaymentSubmit} className="p-8 space-y-6 bg-slate-50">
                             <div className="grid grid-cols-1 gap-6">
                                 <div>
-                                    <div className="flex justify-between items-center mb-2">
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Collected Amount *</label>
-                                        {paymentModal.bill?.currency && paymentModal.bill?.currency !== 'INR' && (
-                                            <div className="flex bg-slate-200 rounded-lg p-0.5 shadow-inner">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setPaymentModal({ ...paymentModal, currency: 'INR', amount: paymentModal.bill.balance })}
-                                                    className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${paymentModal.currency === 'INR' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
-                                                >
-                                                    INR
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        const rate = parseFloat(paymentModal.bill?.exchange_rate || paymentModal.bill?.conversion_rate || 1);
-                                                        setPaymentModal({ ...paymentModal, currency: paymentModal.bill.currency, amount: paymentModal.bill.original_balance || (paymentModal.bill.balance / rate) });
-                                                    }}
-                                                    className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${paymentModal.currency !== 'INR' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
-                                                >
-                                                    {paymentModal.bill.currency}
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Collected Amount ({paymentModal.bill?.currency || "INR"}) *</label>
                                     <div className="relative">
                                         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
-                                            {paymentModal.currency === 'INR' ? '₹' : (paymentModal.currency === 'USD' ? '$' : paymentModal.currency)}
+                                            {getCurrencySymbol(paymentModal.bill?.currency)}
                                         </div>
                                         <input
                                             type="number" step="0.01" min="0" required
@@ -614,9 +587,9 @@ const BillList = () => {
                                             className="w-full pl-10 pr-5 py-3.5 bg-white border border-slate-200 rounded-xl text-xl font-black focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
                                         />
                                     </div>
-                                    {paymentModal.currency !== 'INR' && (paymentModal.bill?.exchange_rate || paymentModal.bill?.conversion_rate) && (
+                                    {paymentModal.bill?.currency && paymentModal.bill.currency !== 'INR' && paymentModal.bill?.conversion_rate && (
                                         <p className="mt-2 text-[10px] text-slate-400 font-bold uppercase italic">
-                                            Approx. {formatCurrency(parseFloat(paymentModal.amount || 0) * parseFloat(paymentModal.bill?.exchange_rate || paymentModal.bill?.conversion_rate || 1))} (Exch: {Number(paymentModal.bill?.exchange_rate || paymentModal.bill?.conversion_rate || 1).toFixed(2)})
+                                            Approx. ₹{(parseFloat(paymentModal.amount || 0) * parseFloat(paymentModal.bill.conversion_rate)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (1 {paymentModal.bill.currency} = ₹{parseFloat(paymentModal.bill.conversion_rate)})
                                         </p>
                                     )}
                                 </div>
@@ -674,35 +647,20 @@ const BillList = () => {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md">
                                             <p className="text-[10px] text-slate-500 uppercase font-black tracking-wider mb-1">Net Bill Amount</p>
-                                            <p className="text-xl font-black text-slate-800">{formatCurrency(historyModal.data.net_payable)}</p>
-                                            {historyModal.data.currency && historyModal.data.currency !== 'INR' && (
-                                                <p className="text-[10px] font-bold text-blue-600 mt-1">
-                                                    {formatCurrency(historyModal.data.original_net_payable || (historyModal.data.net_payable / (historyModal.data.exchange_rate || historyModal.data.conversion_rate || 1)), historyModal.data.currency)}
-                                                </p>
-                                            )}
+                                            <p className="text-xl font-black text-slate-800">{formatCurrency(historyModal.data.net_payable, historyModal.data.currency)}</p>
                                         </div>
                                         <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 shadow-sm hover:shadow-md">
                                             <p className="text-[10px] text-emerald-600 uppercase font-black tracking-wider mb-1">Total Collected</p>
-                                            <p className="text-xl font-black text-emerald-700">{formatCurrency(historyModal.data.total_paid)}</p>
-                                            {historyModal.data.currency && historyModal.data.currency !== 'INR' && (
-                                                <p className="text-[10px] font-bold text-emerald-500 mt-1">
-                                                    {formatCurrency(historyModal.data.original_total_paid || (historyModal.data.total_paid / (historyModal.data.exchange_rate || historyModal.data.conversion_rate || 1)), historyModal.data.currency)}
-                                                </p>
-                                            )}
+                                            <p className="text-xl font-black text-emerald-700">{formatCurrency(historyModal.data.total_paid, historyModal.data.currency)}</p>
                                         </div>
                                         <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 shadow-sm hover:shadow-md">
                                             <p className="text-[10px] text-orange-600 uppercase font-black tracking-wider mb-1">Current Balance</p>
-                                            <p className="text-xl font-black text-orange-700">{formatCurrency(historyModal.data.balance)}</p>
-                                            {historyModal.data.currency && historyModal.data.currency !== 'INR' && (
-                                                <p className="text-[10px] font-bold text-orange-400 mt-1">
-                                                    {formatCurrency(historyModal.data.original_balance || (historyModal.data.balance / (historyModal.data.exchange_rate || historyModal.data.conversion_rate || 1)), historyModal.data.currency)}
-                                                </p>
-                                            )}
+                                            <p className="text-xl font-black text-orange-700">{formatCurrency(historyModal.data.balance, historyModal.data.currency)}</p>
                                         </div>
                                         <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 shadow-sm hover:shadow-md">
                                             <p className="text-[10px] text-blue-600 uppercase font-black tracking-wider mb-1">Payment Count</p>
                                             <p className="text-xl font-black text-blue-700">{historyModal.data.payments?.length || 0} <span className="text-xs font-bold uppercase tracking-tighter">Collections</span></p>
-                                        </div> 
+                                        </div>
                                     </div>
 
                                     {/* Payments Table */}
@@ -752,24 +710,10 @@ const BillList = () => {
                                                                 </div>
                                                             </td>
                                                             <td className="px-5 py-4 text-right">
-                                                                <div className="flex flex-col items-end">
-                                                                    <span className="text-sm font-black text-slate-800">{formatCurrency(payment.amount)}</span>
-                                                                    {historyModal.data.currency && historyModal.data.currency !== 'INR' && (
-                                                                        <span className="text-[10px] font-bold text-emerald-600">
-                                                                            {formatCurrency(payment.original_amount || (payment.amount / (historyModal.data.exchange_rate || historyModal.data.conversion_rate || 1)), historyModal.data.currency)}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
+                                                                <span className="text-sm font-black text-slate-800">{formatCurrency(payment.amount, historyModal.data.currency)}</span>
                                                             </td>
                                                             <td className="px-5 py-4 text-right">
-                                                                <div className="flex flex-col items-end">
-                                                                    <span className="text-xs font-bold text-slate-400">{formatCurrency(payment.balance_after)}</span>
-                                                                    {historyModal.data.currency && historyModal.data.currency !== 'INR' && (
-                                                                        <span className="text-[10px] font-medium text-slate-400">
-                                                                            {formatCurrency(payment.original_balance_after || (payment.balance_after / (historyModal.data.exchange_rate || historyModal.data.conversion_rate || 1)), historyModal.data.currency)}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
+                                                                <span className="text-xs font-bold text-slate-400">{formatCurrency(payment.balance_after, historyModal.data.currency)}</span>
                                                             </td>
                                                             <td className="px-5 py-4">
                                                                 <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5 whitespace-nowrap">

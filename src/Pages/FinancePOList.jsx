@@ -74,20 +74,22 @@ const FinancePOList = () => {
     }, [search, status, vendor, ordering, page]);
 
 
+    const getCurrencySymbol = (code) => {
+        switch (code?.toUpperCase()) {
+            case "USD": return "$";
+            case "EUR": return "€";
+            case "GBP": return "£";
+            case "JPY": return "¥";
+            case "INR": return "₹";
+            default: return code || "₹";
+        }
+    };
+
     const formatCurrency = (amount, curr = 'INR') => {
         const c = curr?.toString().trim().toUpperCase() || 'INR';
-        try {
-            return Number(amount || 0).toLocaleString('en-IN', {
-                style: 'currency',
-                currency: c,
-                maximumFractionDigits: 2
-            }).replace('US$', '$');
-        } catch (e) {
-            return `${c} ${Number(amount || 0).toLocaleString('en-IN', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            })}`;
-        }
+        const num = Number(amount || 0);
+        const locale = c === 'INR' ? 'en-IN' : 'en-US';
+        return `${getCurrencySymbol(c)} ${num.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
     const getStatusStyle = (status) => {
@@ -229,9 +231,9 @@ const FinancePOList = () => {
                                             <div className="text-sm font-bold text-slate-800">
                                                 {formatCurrency(po.total_amount, po.currency)}
                                             </div>
-                                            {po.currency && po.currency !== 'INR' && (
+                                            {po.currency && po.currency !== 'INR' && po.conversion_rate && (
                                                 <div className="text-[10px] text-blue-600 font-bold">
-                                                    {formatCurrency(po.original_total_amount || (po.total_amount / po.exchange_rate), po.currency)}
+                                                    1 {po.currency} = ₹{parseFloat(po.conversion_rate)}
                                                 </div>
                                             )}
                                             <div className="text-[10px] text-slate-400 font-semibold uppercase">
@@ -242,11 +244,6 @@ const FinancePOList = () => {
                                             <div className="text-sm font-bold text-emerald-600">
                                                 {formatCurrency(po.amount_paid, po.currency)}
                                             </div>
-                                            {po.currency && po.currency !== 'INR' && (
-                                                <div className="text-[10px] text-emerald-500 font-bold">
-                                                    {formatCurrency(po.original_amount_paid || (po.amount_paid / po.exchange_rate), po.currency)}
-                                                </div>
-                                            )}
                                             <div className="text-[10px] text-slate-400 font-semibold uppercase">
                                                 {po.payment_count} Payments
                                             </div>
@@ -255,16 +252,11 @@ const FinancePOList = () => {
                                             <div className={`text-sm font-bold ${po.balance > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
                                                 {formatCurrency(po.balance, po.currency)}
                                             </div>
-                                            {po.currency && po.currency !== 'INR' && (
-                                                <div className={`text-[10px] font-bold ${po.balance > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                                                    {formatCurrency(po.original_balance || (po.balance / po.exchange_rate), po.currency)}
-                                                </div>
-                                            )}
                                             {po.balance > 0 && (
                                                 <div className="flex justify-end mt-1">
                                                     <div className="w-16 h-1 bg-slate-100 rounded-full overflow-hidden">
-                                                        <div 
-                                                            className="h-full bg-red-500" 
+                                                        <div
+                                                            className="h-full bg-red-500"
                                                             style={{ width: `${Math.min(100, (po.balance / po.total_amount) * 100)}%` }}
                                                         ></div>
                                                     </div>

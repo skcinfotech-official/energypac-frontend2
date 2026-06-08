@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { getProformaInvoices, getProformaInvoiceById, createBill } from "../services/salesService";
+import { getProformaInvoices, getProformaInvoiceById, createBill, getBillsByPI } from "../services/salesService";
 import { FaFileInvoiceDollar, FaSearch, FaChevronDown, FaTimes, FaCalendarAlt, FaUserTie, FaEnvelope, FaPhone, FaMapMarkerAlt, FaPercent, FaCoins, FaRegCommentDots, FaBoxes, FaTrash, FaPlus, FaCheck, FaInfoCircle } from "react-icons/fa";
 import AlertToast from "../components/ui/AlertToast";
 
@@ -19,6 +19,22 @@ const CreateBill = () => {
     const [selectedPi, setSelectedPi] = useState(null);
     const [piListLoading, setPiListLoading] = useState(false);
     const dropdownRef = useRef(null);
+
+    // Currency from selected PI
+    const [piCurrency, setPiCurrency] = useState("INR");
+    const [piConversionRate, setPiConversionRate] = useState(1);
+    const [billAlreadyExists, setBillAlreadyExists] = useState(null);
+
+    const getCurrencySymbol = (code) => {
+        switch (code?.toUpperCase()) {
+            case "USD": return "$";
+            case "INR": return "₹";
+            case "EUR": return "€";
+            case "GBP": return "£";
+            case "JPY": return "¥";
+            default: return code || "₹";
+        }
+    };
 
     // Form data state
     const [formData, setFormData] = useState({
@@ -80,12 +96,32 @@ const CreateBill = () => {
         setIsPiDropdownOpen(false);
         setPiSearch("");
         setLoading(true);
+        setBillAlreadyExists(null);
 
         try {
+            // Check if bill already exists for this PI
+            const billsRes = await getBillsByPI(pi.id);
+            const existingBills = (billsRes?.bills || []).filter(b => b.status !== "CANCELLED");
+            if (existingBills.length > 0) {
+                setBillAlreadyExists(existingBills[0]);
+                setLoading(false);
+                setAlert({
+                    open: true,
+                    type: "error",
+                    message: `Bill "${existingBills[0].bill_number}" has already been generated for this PI. Duplicate bills are not allowed.`
+                });
+                return;
+            }
+
             const details = await getProformaInvoiceById(pi.id);
             if (details) {
+                // Set PI currency
+                const currency = details.currency || "INR";
+                setPiCurrency(currency);
+                setPiConversionRate(details.conversion_rate || 1);
+
                 // Determine default bill type from currency
-                const isInternational = details.currency && details.currency !== "INR";
+                const isInternational = currency !== "INR";
                 const defaultBillType = isInternational ? "INTERNATIONAL" : "DOMESTIC";
                 const defaultIgst = isInternational ? 18 : 0;
                 
@@ -367,6 +403,21 @@ const CreateBill = () => {
                     </div>
                 </div>
 
+                {billAlreadyExists && (
+                    <div className="bg-red-50 border border-red-200 rounded-2xl p-5 flex items-start gap-3">
+                        <FaInfoCircle className="text-red-500 mt-0.5 shrink-0" size={18} />
+                        <div>
+                            <p className="text-sm font-bold text-red-800">
+                                Bill Already Generated for this PI
+                            </p>
+                            <p className="text-xs text-red-600 mt-1">
+                                Bill <span className="font-mono font-bold">{billAlreadyExists.bill_number}</span> has already been created for this Proforma Invoice.
+                                You cannot create a duplicate bill. Please select a different PI.
+                            </p>
+                        </div>
+                    </div>
+                )}
+
                 {/* CLIENT INFORMATION */}
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                     <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-3">
@@ -622,7 +673,7 @@ const CreateBill = () => {
                             <div className="space-y-3.5 mt-5">
                                 <div className="flex justify-between text-s text-slate-600 font-semibold">
                                     <span>Items Subtotal</span>
-                                    <span className="font-mono text-slate-900 font-bold">₹{financials.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span className="font-mono text-slate-900 font-bold">{getCurrencySymbol(piCurrency)} {financials.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
 
                                 {/* TAX INPUT FIELDS */}
@@ -686,7 +737,7 @@ const CreateBill = () => {
                                 <div className="flex items-center justify-between gap-4">
                                     <span className="text-xs text-slate-600 font-semibold">Discount Amount</span>
                                     <div className="flex items-center gap-1.5">
-                                        <span className="text-slate-500 font-bold text-sm">₹</span>
+                                        <span className="text-slate-500 font-bold text-sm">{getCurrencySymbol(piCurrency)}</span>
                                         <input
                                             type="number"
                                             name="discount_amount"
@@ -701,7 +752,7 @@ const CreateBill = () => {
 
                                 <div className="flex justify-between text-xs text-slate-500 font-semibold">
                                     <span>Total Taxation Value</span>
-                                    <span className="font-mono text-slate-700">₹{financials.totalTax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span className="font-mono text-slate-700">{getCurrencySymbol(piCurrency)} {financials.totalTax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                             </div>
                         </div>
@@ -710,12 +761,12 @@ const CreateBill = () => {
                         <div className="space-y-4 pt-6 border-t border-slate-200">
                             <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-inner">
                                 <span className="text-sm font-bold text-slate-700">Grand Total Net Payable</span>
-                                <span className="font-mono font-black text-2xl text-blue-600">₹{financials.netPayable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <span className="font-mono font-black text-2xl text-blue-600">{getCurrencySymbol(piCurrency)} {financials.netPayable.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
 
                             <button
                                 type="submit"
-                                disabled={submitting || loading}
+                                disabled={submitting || loading || !!billAlreadyExists}
                                 className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                                 <FaCheck size={12} />

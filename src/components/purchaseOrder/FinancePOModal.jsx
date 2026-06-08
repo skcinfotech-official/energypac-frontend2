@@ -117,23 +117,17 @@ const FinancePOModal = ({ open, onClose, data, onViewItems, onRecordPayment, onS
                         <div className="p-5 rounded-2xl border-2 border-slate-100 bg-slate-50/50">
                             <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Total Payable</p>
                             <p className="text-2xl font-black text-slate-900">{formatCurrency(po.total_amount, po.currency)}</p>
-                            {po.currency && po.currency !== 'INR' && (
-                                <p className="text-xs font-bold text-blue-600 mt-1">{formatCurrency(po.original_total_amount || (po.total_amount / po.exchange_rate), po.currency)}</p>
+                            {po.currency && po.currency !== 'INR' && po.conversion_rate && (
+                                <p className="text-xs font-bold text-blue-600 mt-1">1 {po.currency} = ₹{parseFloat(po.conversion_rate)}</p>
                             )}
                         </div>
                         <div className="p-5 rounded-2xl border-2 border-emerald-100 bg-emerald-50/30">
                             <p className="text-[10px] text-emerald-600 font-black uppercase tracking-widest mb-1">Amount Paid</p>
                             <p className="text-2xl font-black text-emerald-700">{formatCurrency(po.amount_paid, po.currency)}</p>
-                            {po.currency && po.currency !== 'INR' && (
-                                <p className="text-xs font-bold text-emerald-500 mt-1">{formatCurrency(po.original_amount_paid || (po.amount_paid / po.exchange_rate), po.currency)}</p>
-                            )}
                         </div>
                         <div className="p-5 rounded-2xl border-2 border-red-100 bg-red-50/30">
                             <p className="text-[10px] text-red-600 font-black uppercase tracking-widest mb-1">Outstanding Balance</p>
                             <p className="text-2xl font-black text-red-700">{formatCurrency(po.balance, po.currency)}</p>
-                            {po.currency && po.currency !== 'INR' && (
-                                <p className="text-xs font-bold text-red-400 mt-1">{formatCurrency(po.original_balance || (po.balance / po.exchange_rate), po.currency)}</p>
-                            )}
                         </div>
                     </div>
 

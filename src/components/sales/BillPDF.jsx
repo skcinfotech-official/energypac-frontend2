@@ -32,10 +32,24 @@ const EnergypacLogo = () => (
     <Image src={`${window.location.origin}/logo.jpeg`} style={{ width: 180, height: 25, marginBottom: 5 }} />
 );
 
+const getCurrencySymbol = (code) => {
+    switch (code?.toUpperCase()) {
+        case "USD": return "$";
+        case "EUR": return "€";
+        case "GBP": return "£";
+        case "JPY": return "¥";
+        case "INR": return "₹";
+        default: return code || "₹";
+    }
+};
+
 const BillPDF = ({ details }) => {
     if (!details) return null;
 
-    const fmt = (val) => `₹ ${Number(val || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const billCurrency = details.currency || 'INR';
+    const currSymbol = getCurrencySymbol(billCurrency);
+    const locale = billCurrency === 'INR' ? 'en-IN' : 'en-US';
+    const fmt = (val) => `${currSymbol} ${Number(val || 0).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const formatDate = (date) => {
         if (!date) return '';
         return new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.');
@@ -112,6 +126,10 @@ const BillPDF = ({ details }) => {
                             <InfoRow label="DATE" value={formatDate(details.bill_date)} />
                             <InfoRow label="PI NUMBER" value={details.pi_number} />
                             <InfoRow label="BILL TYPE" value={details.bill_type || 'DOMESTIC'} />
+                            <InfoRow label="CURRENCY" value={billCurrency} />
+                            {billCurrency !== 'INR' && details.conversion_rate && (
+                                <InfoRow label="CONV. RATE" value={`1 ${billCurrency} = ₹${parseFloat(details.conversion_rate)}`} />
+                            )}
                             <InfoRow label="STATUS" value={details.status} />
                             <InfoRow label="CREATED BY" value={details.created_by_name} />
                         </View>
@@ -126,8 +144,8 @@ const BillPDF = ({ details }) => {
                         <Text style={styles.col3}>HSN CODE</Text>
                         <Text style={styles.col4}>QTY</Text>
                         <Text style={styles.col5}>UNIT</Text>
-                        <Text style={styles.colRate}>RATE (INR)</Text>
-                        <Text style={styles.col6}>AMOUNT (INR)</Text>
+                        <Text style={styles.colRate}>RATE ({billCurrency})</Text>
+                        <Text style={styles.col6}>AMOUNT ({billCurrency})</Text>
                     </View>
                     {items.map((item, index) => (
                         <View key={index} style={styles.tableRow} wrap={false}>

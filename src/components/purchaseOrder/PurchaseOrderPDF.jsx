@@ -76,14 +76,26 @@ const EnergypacLogo = () => (
     />
 );
 
+const getCurrencySymbol = (code) => {
+    switch (code?.toUpperCase()) {
+        case "USD": return "$";
+        case "EUR": return "€";
+        case "GBP": return "£";
+        case "JPY": return "¥";
+        case "INR": return "₹";
+        default: return code || "₹";
+    }
+};
+
 const PurchaseOrderPDF = ({ details }) => {
-    const isInternational = details.currency && details.currency.toUpperCase() !== 'INR';
+    const poCurrency = (details.currency || 'INR').toUpperCase();
 
     const formatCurrency = (val, curr = "INR") => {
         const c = curr?.toString().trim().toUpperCase() || "INR";
-        const symbol = c === "USD" ? "$" : (c === "INR" ? "₹" : c);
-        
-        return `${symbol} ${Number(val || 0).toLocaleString('en-IN', {
+        const symbol = getCurrencySymbol(c);
+        const locale = c === 'INR' ? 'en-IN' : 'en-US';
+
+        return `${symbol} ${Number(val || 0).toLocaleString(locale, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         })}`;
@@ -202,10 +214,20 @@ const PurchaseOrderPDF = ({ details }) => {
                                 <Text style={{ width: '30%', fontSize: 7.5, fontWeight: 'bold' }}>DATE :</Text>
                                 <Text style={{ width: '70%', fontSize: 7.5 }}>{formatDate(details.created_at || details.po_date)}</Text>
                             </View>
-                            <View style={{ flexDirection: 'row' }}>
+                            <View style={{ flexDirection: 'row', marginBottom: 3 }}>
                                 <Text style={{ width: '30%', fontSize: 7.5, fontWeight: 'bold' }}>YOUR REF :</Text>
                                 <Text style={{ width: '70%', fontSize: 7.5, lineHeight: 1.2 }}>{details.requisition_number || 'Verbal'}</Text>
                             </View>
+                            <View style={{ flexDirection: 'row', marginBottom: 3 }}>
+                                <Text style={{ width: '30%', fontSize: 7.5, fontWeight: 'bold' }}>CURRENCY :</Text>
+                                <Text style={{ width: '70%', fontSize: 7.5 }}>{poCurrency}</Text>
+                            </View>
+                            {poCurrency !== 'INR' && details.conversion_rate && (
+                                <View style={{ flexDirection: 'row' }}>
+                                    <Text style={{ width: '30%', fontSize: 7.5, fontWeight: 'bold' }}>CONV. RATE :</Text>
+                                    <Text style={{ width: '70%', fontSize: 7.5 }}>1 {poCurrency} = ₹{parseFloat(details.conversion_rate)}</Text>
+                                </View>
+                            )}
                         </View>
                     </View>
                     {/* Kind Attention Row */}
@@ -242,8 +264,8 @@ const PurchaseOrderPDF = ({ details }) => {
                         <Text style={styles.col3}>HS CODE</Text>
                         <Text style={styles.col4}>TOTAL QTY</Text>
                         <Text style={styles.col5}>U.O.M</Text>
-                        <Text style={styles.col_rate}>RATE</Text>
-                        <Text style={styles.col6}>TOTAL AMOUNT</Text>
+                        <Text style={styles.col_rate}>RATE ({poCurrency})</Text>
+                        <Text style={styles.col6}>AMOUNT ({poCurrency})</Text>
                     </View>
 
                     {details.items?.map((item, index) => (

@@ -175,7 +175,7 @@ const WorkOrderSelector = ({ value, onChange, placeholder = "Search proforma inv
                             <div className="text-xs text-slate-500 flex items-center justify-between mt-0.5">
                                 <span>{w.client_name}</span>
                                 <span className="font-mono text-blue-600 font-semibold">
-                                    {w.currency === 'USD' ? '$' : (w.currency === 'EUR' ? '€' : '₹')}
+                                    {w.currency === 'USD' ? '$' : w.currency === 'EUR' ? '€' : w.currency === 'GBP' ? '£' : w.currency === 'JPY' ? '¥' : '₹'}
                                     {Number(w.total_amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                                 </span>
                             </div>

@@ -41,7 +41,9 @@ const PiAdvance = () => {
         payment_date: new Date().toISOString().split("T")[0],
         payment_mode: "TT",
         reference_number: "",
-        remarks: ""
+        remarks: "",
+        piCurrency: "INR",
+        piConversionRate: 1
     });
     const [createLoading, setCreateLoading] = useState(false);
 
@@ -53,7 +55,8 @@ const PiAdvance = () => {
         clientName: "",
         piNumber: "",
         remaining: 0,
-        amount: ""
+        amount: "",
+        currency: "INR"
     });
     const [adjustLoading, setAdjustLoading] = useState(false);
 
@@ -120,7 +123,9 @@ const PiAdvance = () => {
                 payment_date: new Date().toISOString().split("T")[0],
                 payment_mode: "TT",
                 reference_number: "",
-                remarks: ""
+                remarks: "",
+                piCurrency: "INR",
+                piConversionRate: 1
             });
             fetchAdvances();
         } catch (error) {
@@ -141,7 +146,7 @@ const PiAdvance = () => {
             return;
         }
         if (adjustAmt > adjustModal.remaining) {
-            setAlert({ open: true, type: "error", message: `Amount cannot exceed remaining balance of ${formatCurrency(adjustModal.remaining)}` });
+            setAlert({ open: true, type: "error", message: `Amount cannot exceed remaining balance of ${formatCurrency(adjustModal.remaining, adjustModal.currency)}` });
             return;
         }
         setAdjustLoading(true);
@@ -155,7 +160,8 @@ const PiAdvance = () => {
                 clientName: "",
                 piNumber: "",
                 remaining: 0,
-                amount: ""
+                amount: "",
+                currency: "INR"
             });
             fetchAdvances();
         } catch (error) {
@@ -167,12 +173,22 @@ const PiAdvance = () => {
         }
     };
 
+    const getCurrencySymbol = (code) => {
+        switch (code?.toUpperCase()) {
+            case "USD": return "$";
+            case "EUR": return "€";
+            case "GBP": return "£";
+            case "JPY": return "¥";
+            case "INR": return "₹";
+            default: return code || "₹";
+        }
+    };
+
     const formatCurrency = (amount, curr = 'INR') => {
-        return Number(amount || 0).toLocaleString('en-IN', {
-            style: 'currency',
-            currency: curr === 'USD' ? 'USD' : (curr === 'EUR' ? 'EUR' : 'INR'),
-            maximumFractionDigits: 2
-        }).replace('US$', '$');
+        const c = (curr || 'INR').toString().trim().toUpperCase();
+        const locale = c === 'INR' ? 'en-IN' : 'en-US';
+        const sym = getCurrencySymbol(c);
+        return `${sym} ${Number(amount || 0).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
     const getStatusStyle = (status) => {
@@ -380,7 +396,8 @@ const PiAdvance = () => {
                                                         clientName: item.client_name,
                                                         piNumber: item.pi_number,
                                                         remaining: item.remaining,
-                                                        amount: ""
+                                                        amount: "",
+                                                        currency: item.currency || "INR"
                                                     })}
                                                     disabled={item.status === 'ADJUSTED' || item.status === 'USED' || parseFloat(item.remaining) <= 0}
                                                     className={`p-2 rounded-lg transition-all shadow-sm active:scale-90 inline-flex items-center gap-1.5 text-xs font-bold ${
@@ -435,7 +452,9 @@ const PiAdvance = () => {
                                         setCreateModal(prev => ({
                                             ...prev,
                                             proforma_invoice: id,
-                                            client_name: selectedWO ? selectedWO.client_name : prev.client_name
+                                            client_name: selectedWO ? selectedWO.client_name : prev.client_name,
+                                            piCurrency: selectedWO?.currency || "INR",
+                                            piConversionRate: selectedWO?.conversion_rate || 1
                                         }));
                                     }}
                                     placeholder="Search PI by Number or Client..."
@@ -455,14 +474,24 @@ const PiAdvance = () => {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Amount (FC / INR) *</label>
-                                    <input
-                                        type="number" step="0.01" min="0" required
-                                        value={createModal.amount}
-                                        onChange={(e) => setCreateModal(prev => ({ ...prev, amount: e.target.value }))}
-                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none transition-all"
-                                        placeholder="E.g. 100000.00"
-                                    />
+                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Amount ({createModal.piCurrency}) *</label>
+                                    <div className="relative">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
+                                            {getCurrencySymbol(createModal.piCurrency)}
+                                        </div>
+                                        <input
+                                            type="number" step="0.01" min="0" required
+                                            value={createModal.amount}
+                                            onChange={(e) => setCreateModal(prev => ({ ...prev, amount: e.target.value }))}
+                                            className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none transition-all"
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                    {createModal.piCurrency !== 'INR' && parseFloat(createModal.piConversionRate) > 0 && createModal.amount && (
+                                        <p className="text-[10px] text-blue-600 font-bold mt-1 italic">
+                                            ≈ ₹{(parseFloat(createModal.amount || 0) * parseFloat(createModal.piConversionRate)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </p>
+                                    )}
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Payment Mode *</label>
@@ -551,16 +580,21 @@ const PiAdvance = () => {
                         <form onSubmit={handleAdjustSubmit} className="p-8 space-y-6 bg-slate-50">
                             <div>
                                 <div className="flex justify-between items-center mb-2">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Amount to Adjust *</label>
-                                    <span className="text-[10px] font-bold text-emerald-600 uppercase">Available: {formatCurrency(adjustModal.remaining)}</span>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Amount to Adjust ({adjustModal.currency}) *</label>
+                                    <span className="text-[10px] font-bold text-emerald-600 uppercase">Available: {formatCurrency(adjustModal.remaining, adjustModal.currency)}</span>
                                 </div>
-                                <input
-                                    type="number" step="0.01" min="0.01" max={adjustModal.remaining} required
-                                    value={adjustModal.amount}
-                                    onChange={(e) => setAdjustModal(prev => ({ ...prev, amount: e.target.value }))}
-                                    className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl text-xl font-black focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
-                                    placeholder="Enter amount..."
-                                />
+                                <div className="relative">
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-lg">
+                                        {getCurrencySymbol(adjustModal.currency)}
+                                    </div>
+                                    <input
+                                        type="number" step="0.01" min="0.01" max={adjustModal.remaining} required
+                                        value={adjustModal.amount}
+                                        onChange={(e) => setAdjustModal(prev => ({ ...prev, amount: e.target.value }))}
+                                        className="w-full pl-10 pr-4 py-3.5 bg-white border border-slate-200 rounded-xl text-xl font-black focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
+                                        placeholder="0.00"
+                                    />
+                                </div>
                             </div>
 
                             <div className="flex gap-3 pt-4 border-t border-slate-200">

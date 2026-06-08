@@ -3,10 +3,20 @@ import { FaTimes, FaMoneyBillWave, FaCalendarAlt, FaCreditCard, FaEdit } from "r
 import { recordFinancePayment } from "../../services/financeService";
 import PasswordConfirmModal from "../ui/PasswordConfirmModal";
 
+const getCurrencySymbol = (code) => {
+    switch (code?.toUpperCase()) {
+        case "USD": return "$";
+        case "EUR": return "€";
+        case "GBP": return "£";
+        case "JPY": return "¥";
+        case "INR": return "₹";
+        default: return code || "₹";
+    }
+};
+
 const RecordPaymentModal = ({ open, onClose, poData, onSuccess }) => {
     const [loading, setLoading] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
-    const [paymentCurrency, setPaymentCurrency] = useState("INR");
     const [payload, setPayload] = useState({
         amount: "",
         payment_date: new Date().toISOString().split('T')[0],
@@ -34,15 +44,9 @@ const RecordPaymentModal = ({ open, onClose, poData, onSuccess }) => {
         setLoading(true);
         setError("");
         try {
-            let finalAmount = parseFloat(payload.amount);
-            if (paymentCurrency !== 'INR' && poData.exchange_rate) {
-                finalAmount = finalAmount * parseFloat(poData.exchange_rate);
-            }
-
             await recordFinancePayment(poData.id, {
                 ...payload,
-                amount: finalAmount,
-                remarks: payload.remarks + (paymentCurrency !== 'INR' ? ` (Paid: ${payload.amount} ${paymentCurrency})` : ""),
+                amount: parseFloat(payload.amount),
                 confirm_password: password
             });
             onSuccess("Payment recorded successfully!");
@@ -61,8 +65,15 @@ const RecordPaymentModal = ({ open, onClose, poData, onSuccess }) => {
     if (!open || !poData) return null;
 
     const paymentModes = ["CASH", "CHEQUE", "NEFT", "RTGS", "IMPS", "UPI", "OTHER"];
+    const poCurrency = poData?.currency || "INR";
+    const convRate = parseFloat(poData?.conversion_rate || 1);
 
-    const formatINR = (val) => Number(val || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' });
+    const formatAmount = (val, curr) => {
+        const c = curr || poCurrency;
+        const num = Number(val || 0);
+        const locale = c === 'INR' ? 'en-IN' : 'en-US';
+        return `${getCurrencySymbol(c)} ${num.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    };
 
     return (
         <>
@@ -95,40 +106,13 @@ const RecordPaymentModal = ({ open, onClose, poData, onSuccess }) => {
 
                         <div className="grid grid-cols-1 gap-6">
                             <div className="space-y-2">
-                                <div className="flex justify-between items-center">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                        <FaMoneyBillWave className="text-emerald-500" /> Amount to Pay *
-                                    </label>
-                                    
-                                    {poData.currency && poData.currency !== 'INR' && (
-                                        <div className="flex bg-slate-200 rounded-lg p-0.5 shadow-inner">
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setPaymentCurrency('INR');
-                                                    setPayload({ ...payload, amount: poData.balance });
-                                                }}
-                                                className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${paymentCurrency === 'INR' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
-                                            >
-                                                INR
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setPaymentCurrency(poData.currency);
-                                                    setPayload({ ...payload, amount: (poData.balance / (poData.exchange_rate || 1)).toFixed(2) });
-                                                }}
-                                                className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${paymentCurrency !== 'INR' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
-                                            >
-                                                {poData.currency}
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                                
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                    <FaMoneyBillWave className="text-emerald-500" /> Amount to Pay ({poCurrency}) *
+                                </label>
+
                                 <div className="relative">
                                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
-                                        {paymentCurrency === 'INR' ? '₹' : (paymentCurrency === 'USD' ? '$' : paymentCurrency)}
+                                        {getCurrencySymbol(poCurrency)}
                                     </div>
                                     <input
                                         required
@@ -142,11 +126,11 @@ const RecordPaymentModal = ({ open, onClose, poData, onSuccess }) => {
                                 </div>
                                 <div className="flex justify-between items-center px-1">
                                     <p className="text-[10px] text-slate-400 font-black uppercase tracking-tighter">
-                                        Outstanding: {formatINR(poData.balance)}
+                                        Outstanding: {formatAmount(poData.balance)}
                                     </p>
-                                    {paymentCurrency !== 'INR' && poData.exchange_rate && (
+                                    {poCurrency !== 'INR' && convRate > 0 && (
                                         <p className="text-[10px] text-emerald-600 font-bold uppercase italic">
-                                            ≈ {formatINR(parseFloat(payload.amount || 0) * poData.exchange_rate)}
+                                            ≈ ₹{(parseFloat(payload.amount || 0) * convRate).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </p>
                                     )}
                                 </div>
@@ -234,7 +218,7 @@ const RecordPaymentModal = ({ open, onClose, poData, onSuccess }) => {
                 open={confirmOpen}
                 loading={loading}
                 title="Confirm Payment"
-                message={`You are recording a payment of ${paymentCurrency === 'INR' ? formatINR(payload.amount) : `${paymentCurrency} ${payload.amount}`} for ${poData.po_number}.`}
+                message={`You are recording a payment of ${formatAmount(payload.amount)} for ${poData.po_number}.`}
                 onConfirm={handleFinalConfirm}
                 onCancel={() => setConfirmOpen(false)}
             />

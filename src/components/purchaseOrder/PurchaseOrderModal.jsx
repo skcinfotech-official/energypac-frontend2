@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { FaTimes, FaFileInvoice, FaBuilding, FaBoxOpen, FaCheckCircle, FaFileAlt, FaPrint, FaEdit, FaHistory } from "react-icons/fa";
+import { FaTimes, FaFileInvoice, FaBuilding, FaBoxOpen, FaCheckCircle, FaFileAlt, FaPrint, FaEdit, FaHistory, FaExclamationTriangle } from "react-icons/fa";
 import { pdf } from "@react-pdf/renderer";
 import PurchaseOrderPDF from "./PurchaseOrderPDF";
 import { markItemPurchased, getPurchaseOrder, lockPurchaseOrder } from "../../services/purchaseOrderService";
@@ -51,6 +51,7 @@ const PurchaseOrderModal = ({ open, onClose, data, onShowAlert, onUpdate }) => {
 
     // UI State
     const [showConfirm, setShowConfirm] = useState(false);
+    const [showPaymentWarning, setShowPaymentWarning] = useState(false);
 
     // ... imports
 
@@ -102,6 +103,16 @@ const PurchaseOrderModal = ({ open, onClose, data, onShowAlert, onUpdate }) => {
             onShowAlert("error", "Select items to mark as received");
             return;
         }
+        const vendorNotPaid = poData && parseFloat(poData.amount_paid || 0) === 0;
+        if (vendorNotPaid) {
+            setShowPaymentWarning(true);
+        } else {
+            setShowConfirm(true);
+        }
+    };
+
+    const handlePaymentWarningConfirm = () => {
+        setShowPaymentWarning(false);
         setShowConfirm(true);
     };
 
@@ -610,6 +621,18 @@ const PurchaseOrderModal = ({ open, onClose, data, onShowAlert, onUpdate }) => {
                     </button>
                 </div>
             </div>
+
+            <ConfirmDialog
+                open={showPaymentWarning}
+                title="Vendor Payment Pending"
+                message={`The vendor "${poData?.vendor_name || ''}" for this Purchase Order has not been paid yet. Are you sure you want to mark items as purchased?`}
+                confirmText="Yes, Continue"
+                onCancel={() => setShowPaymentWarning(false)}
+                onConfirm={handlePaymentWarningConfirm}
+                icon={FaExclamationTriangle}
+                confirmButtonClass="bg-amber-600 hover:bg-amber-700"
+                iconBgClass="bg-amber-100 text-amber-600"
+            />
 
             <ConfirmDialog
                 open={showConfirm}

@@ -180,7 +180,35 @@ const TransportList = () => {
     }, [refSearch, refType, isRefDropdownOpen]);
 
     // Handle reference selection
-    const handleRefSelect = (item) => {
+    const handleRefSelect = async (item) => {
+        setIsRefDropdownOpen(false);
+        setRefSearch("");
+
+        if (formModal.mode === "create") {
+            try {
+                let existingEntries = [];
+                if (refType === "PO") {
+                    const res = await getTransportsByPO(item.id);
+                    existingEntries = (Array.isArray(res) ? res : (res?.results || [])).filter(e => e.status !== "CANCELLED");
+                } else {
+                    const res = await getTransportsByPI(item.id);
+                    existingEntries = (Array.isArray(res) ? res : (res?.results || [])).filter(e => e.status !== "CANCELLED");
+                }
+
+                if (existingEntries.length > 0) {
+                    const refNum = refType === "PO" ? (item.po_number || item.id) : (item.pi_number || item.id);
+                    setAlert({
+                        open: true,
+                        type: "error",
+                        message: `Transport entry "${existingEntries[0].transport_number}" already exists for ${refNum}. Duplicate entries are not allowed.`
+                    });
+                    return;
+                }
+            } catch (err) {
+                console.error("Failed to check existing transport entries", err);
+            }
+        }
+
         if (refType === "PO") {
             setFormData(prev => ({
                 ...prev,
@@ -196,8 +224,6 @@ const TransportList = () => {
                 linked_number: item.pi_number || item.id
             }));
         }
-        setIsRefDropdownOpen(false);
-        setRefSearch("");
     };
 
     // Fetch POs or PIs dynamically inside FILTER

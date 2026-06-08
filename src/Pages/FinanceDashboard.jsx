@@ -32,12 +32,21 @@ const FinanceDashboard = () => {
         fetchDashboard();
     }, []);
 
-    const formatCurrency = (amount) => {
-        return Number(amount || 0).toLocaleString('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-            maximumFractionDigits: 0
-        });
+    const getCurrencySymbol = (code) => {
+        switch (code?.toUpperCase()) {
+            case "USD": return "$";
+            case "EUR": return "€";
+            case "GBP": return "£";
+            case "JPY": return "¥";
+            case "INR": return "₹";
+            default: return code || "₹";
+        }
+    };
+
+    const formatCurrency = (amount, curr = 'INR') => {
+        const c = (curr || 'INR').toString().trim().toUpperCase();
+        const locale = c === 'INR' ? 'en-IN' : 'en-US';
+        return `${getCurrencySymbol(c)} ${Number(amount || 0).toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
     };
 
     const formatDate = (dateString) => {
@@ -95,29 +104,29 @@ const FinanceDashboard = () => {
 
             {/* MAIN STATS GRID */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard 
-                    title="Total Inflow"
+                <StatCard
+                    title="Total Inflow (INR)"
                     value={formatCurrency(stats?.cash_flow?.total_inflow)}
                     change="Payments Received"
                     icon={<FaArrowUp />}
                     color="emerald"
                 />
-                <StatCard 
-                    title="Total Outflow"
+                <StatCard
+                    title="Total Outflow (INR)"
                     value={formatCurrency(stats?.cash_flow?.total_outflow)}
                     change="Vendor Payments"
                     icon={<FaArrowDown />}
                     color="orange"
                 />
-                <StatCard 
-                    title="Net Cash Flow"
+                <StatCard
+                    title="Net Cash Flow (INR)"
                     value={formatCurrency(stats?.cash_flow?.net_flow)}
                     change="Current Liquidity"
                     icon={<FaWallet />}
                     color="blue"
                 />
-                <StatCard 
-                    title="Purchased Value"
+                <StatCard
+                    title="Purchased Value (INR)"
                     value={formatCurrency(stats?.purchase_items?.purchased_value)}
                     change={`${stats?.purchase_items?.purchased_items} Items Purchased`}
                     icon={<FaBox />}
@@ -132,6 +141,7 @@ const FinanceDashboard = () => {
                     <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                         <h3 className="font-bold text-slate-800 flex items-center gap-2">
                             <FaHandHoldingUsd className="text-indigo-600" /> {stats?.incoming?.label}
+                            <span className="text-[9px] text-slate-400 font-bold">(INR)</span>
                         </h3>
                         <Link to="/finance/pi-bills" className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
                             MANAGE BILLS <FaArrowRight size={10} />
@@ -173,6 +183,7 @@ const FinanceDashboard = () => {
                     <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                         <h3 className="font-bold text-slate-800 flex items-center gap-2">
                             <FaShoppingCart className="text-orange-600" /> {stats?.outgoing?.label}
+                            <span className="text-[9px] text-slate-400 font-bold">(INR)</span>
                         </h3>
                         <Link to="/finance/purchase-orders" className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1">
                             MANAGE POS <FaArrowRight size={10} />
@@ -244,7 +255,10 @@ const FinanceDashboard = () => {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <div className="text-sm font-bold text-emerald-600">{formatCurrency(item.amount)}</div>
+                                                <div className="text-sm font-bold text-emerald-600">{formatCurrency(item.amount, item.currency)}</div>
+                                                {item.currency && item.currency !== 'INR' && (
+                                                    <div className="text-[9px] text-slate-400 font-bold">{item.currency}</div>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter">
@@ -293,7 +307,10 @@ const FinanceDashboard = () => {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <div className="text-sm font-bold text-orange-600">{formatCurrency(item.amount)}</div>
+                                                <div className="text-sm font-bold text-orange-600">{formatCurrency(item.amount, item.currency)}</div>
+                                                {item.currency && item.currency !== 'INR' && (
+                                                    <div className="text-[9px] text-slate-400 font-bold">{item.currency}</div>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter">

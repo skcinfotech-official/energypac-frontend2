@@ -37,6 +37,7 @@ import TransportDashboard from "./Pages/TransportDashboard.jsx";
 import ItemAnalytics from "./Pages/ItemAnalytics.jsx";
 import InventoryAging from "./Pages/InventoryAging.jsx";
 import Returns from "./Pages/Returns.jsx";
+import UserGuide from "./Pages/UserGuide.jsx";
 import { useAuth } from "./context/AuthContext";
 
 
@@ -92,6 +93,7 @@ export default function App() {
               <Route path="/finance/item-analytics" element={<ItemAnalytics />} />
               <Route path="/finance/inventory-aging" element={<InventoryAging />} />
               <Route path="/returns" element={<Returns />} />
+              <Route path="/user-guide" element={<UserGuide />} />
 
             </Route>
           </Route>

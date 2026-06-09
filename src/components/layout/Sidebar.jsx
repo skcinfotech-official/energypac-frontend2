@@ -19,7 +19,8 @@ import {
   FaChartPie,
   FaCoins,
   FaFileInvoiceDollar,
-  FaUndoAlt
+  FaUndoAlt,
+  FaBook
 } from "react-icons/fa";
 import { BiImport } from "react-icons/bi";
 import { RiCustomerService2Fill } from "react-icons/ri";
@@ -155,6 +156,10 @@ export default function Sidebar({ isOpen }) {
         {user?.role === "ADMIN" && (
           <SidebarLink to="/admin/users" label="Admin Panel" icon={<FaUserShield />} isOpen={isOpen} />
         )}
+
+        <div className={`mt-4 pt-3 border-t border-slate-200 ${!isOpen ? "mx-2" : ""}`}>
+          <SidebarLink to="/user-guide" label="User Guide" icon={<FaBook />} isOpen={isOpen} />
+        </div>
       </nav>
 
       {/* FOOTER */}

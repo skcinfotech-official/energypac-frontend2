@@ -162,5 +162,62 @@ export const getTransportsReport = async (params = {}) => {
     }
 };
 
+// ── Transporter master + ledger ─────────────────────────────────────────────
+export const getTransporters = async (params = {}) => {
+    const response = await axiosSecure.get("/api/transporters", { params });
+    return response.data;
+};
+
+export const createTransporter = async (payload) => {
+    const response = await axiosSecure.post("/api/transporters", payload);
+    return response.data;
+};
+
+export const updateTransporter = async (id, payload) => {
+    const response = await axiosSecure.patch(`/api/transporters/${id}`, payload);
+    return response.data;
+};
+
+export const getTransporterLedger = async (id) => {
+    const response = await axiosSecure.get(`/api/transporters/${id}/ledger`);
+    return response.data;
+};
+
+// ── Transporter payments (both buy & sell side) ─────────────────────────────
+export const recordTransportPayment = async (id, payload) => {
+    const response = await axiosSecure.post(`/api/transport/${id}/record_payment`, payload);
+    return response.data;
+};
+
+export const getTransportPaymentHistory = async (id) => {
+    const response = await axiosSecure.get(`/api/transport/${id}/payment_history`);
+    return response.data;
+};
+
+export const getTransportPaymentsFinance = async (params = {}) => {
+    const response = await axiosSecure.get("/api/finance/transport-payments", { params });
+    return response.data;
+};
+
+// ── Dispatch tracking ───────────────────────────────────────────────────────
+export const getDispatchTracker = async (params = {}) => {
+    // params: { purchase_order } OR { proforma_invoice }
+    const response = await axiosSecure.get("/api/transport/dispatch_tracker", { params });
+    return response.data;
+};
+
+export const getPendingDispatch = async (side = "BUY") => {
+    const response = await axiosSecure.get("/api/transport/pending_dispatch", {
+        params: { side },
+    });
+    return response.data;
+};
+
+// ── Transport note sheet (PDF data) ─────────────────────────────────────────
+export const getTransportNote = async (id) => {
+    const response = await axiosSecure.get(`/api/transport/${id}/transport_note`);
+    return response.data;
+};
+
 
 

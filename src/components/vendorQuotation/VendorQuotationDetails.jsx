@@ -1,56 +1,48 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
+import {
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Box, Typography, Button, TextField, Select, MenuItem,
+  Table, TableHead, TableRow, TableCell, TableBody, TableContainer,
+  Paper, Grid, Card, CardContent, CircularProgress, IconButton
+} from "@mui/material";
+import { Close as CloseIcon, Search as SearchIcon, AttachMoney as MoneyIcon } from "@mui/icons-material";
 import { getQuotationItems, createQuotation } from "../../services/vendorQuotationService";
 import { getCurrencies } from "../../services/currencyService";
 import RequisitionSelector from "../common/RequisitionSelector";
 import VendorSelector from "../common/VendorSelector";
-import { FaFileInvoiceDollar, FaUserTie, FaBoxOpen, FaClipboardList, FaSearch, FaSave, FaTimes, FaGlobe } from "react-icons/fa";
 import AlertToast from "../ui/AlertToast";
 
 const VendorQuotationDetails = ({ open, onClose, onSuccess }) => {
-  const modalRef = useRef(null);
-  
-  // State for the loaded context (header info)
   const [contextData, setContextData] = useState(null);
-  // State for items (editable)
   const [items, setItems] = useState([]);
   const [currency, setCurrency] = useState("INR");
   const [currencies, setCurrencies] = useState([]);
-
-  // New Required Quotation Fields
   const [referenceNumber, setReferenceNumber] = useState("");
   const [validityDate, setValidityDate] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
   const [deliveryTerms, setDeliveryTerms] = useState("");
   const [remarks, setRemarks] = useState("");
-
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [toast, setToast] = useState({ open: false, type: "success", message: "" });
-
-  // Filters
   const [selectedRequisition, setSelectedRequisition] = useState(null);
   const [selectedVendor, setSelectedVendor] = useState(null);
 
-  // Load active currencies from database
   useEffect(() => {
     if (open) {
       getCurrencies({ isActive: true }).then((res) => {
         const results = res.data?.results || res.results || res.data || [];
         setCurrencies(results);
         if (results.length > 0) {
-          // Default to INR or first active currency
           const inr = results.find((c) => c.code === "INR");
           setCurrency(inr ? "INR" : results[0].code);
         }
-      }).catch((err) => {
-        console.error("Failed to load currencies", err);
-      });
+      }).catch((err) => console.error("Failed to load currencies", err));
     }
   }, [open]);
 
-  // Reset form when modal opens/closes
   useEffect(() => {
     if (open) {
       setContextData(null);
@@ -66,49 +58,21 @@ const VendorQuotationDetails = ({ open, onClose, onSuccess }) => {
     }
   }, [open]);
 
-  // Close on Escape key
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    if (open) {
-      document.addEventListener("keydown", handleKeyDown);
-    }
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
-
-  // Close on backdrop click
-  const handleBackdropClick = (e) => {
-    if (e.target.closest(".requisition-selector-portal") || e.target.closest(".vendor-selector-portal")) {
-      return;
-    }
-    if (modalRef.current && !modalRef.current.contains(e.target)) {
-      onClose();
-    }
-  };
-
   const handleSearch = async () => {
     if (!selectedRequisition || !selectedVendor) {
-      setToast({ open: true, type: "error", message: "Please select both Requisition and Vendor to search" });
+      setToast({ open: true, type: "error", message: "Please select both Requisition and Vendor" });
       return;
     }
-
     setLoading(true);
     setHasSearched(true);
     setContextData(null);
     setItems([]);
-
     try {
       const data = await getQuotationItems(selectedRequisition, selectedVendor);
-
-      console.log("Loaded Quotation Details:", data);
       if (data) {
         setContextData(data);
         const rawItems = data.items || [];
-        setItems(rawItems.map(item => ({
-          ...item,
-          quoted_rate: item.quoted_rate || "" 
-        })));
+        setItems(rawItems.map(item => ({ ...item, quoted_rate: item.quoted_rate || "" })));
       }
     } catch (err) {
       console.error(err);
@@ -129,8 +93,6 @@ const VendorQuotationDetails = ({ open, onClose, onSuccess }) => {
     if (!contextData) return;
 
     setSubmitting(true);
-
-    // Prepare Payload exactly matching requirement
     const payload = {
       requisition: selectedRequisition,
       vendor: selectedVendor,
@@ -146,7 +108,6 @@ const VendorQuotationDetails = ({ open, onClose, onSuccess }) => {
       }))
     };
 
-    // Zod Validation Schema
     const schema = z.object({
       requisition: z.string().uuid("Invalid Requisition"),
       vendor: z.string().uuid("Invalid Vendor"),
@@ -160,23 +121,17 @@ const VendorQuotationDetails = ({ open, onClose, onSuccess }) => {
     });
 
     try {
-      // 1. Validate
       schema.parse(payload);
-
-      // 2. Submit
       await createQuotation(payload);
-
       onSuccess?.();
       onClose();
     } catch (err) {
       if (err instanceof z.ZodError) {
-        console.warn("Validation failed:", err.errors);
         const firstError = err.errors[0]?.message || "Please check all required fields";
         setToast({ open: true, type: "error", message: firstError });
       } else {
         console.error("Submission Error:", err);
         let errorMsg = "Failed to submit quotation";
-
         if (err.response?.data) {
           const data = err.response.data;
           if (typeof data === "string") {
@@ -202,7 +157,6 @@ const VendorQuotationDetails = ({ open, onClose, onSuccess }) => {
     }
   };
 
-  // Calculate total in selected currency (No price conversion)
   const totalAmount = items.reduce((sum, item) => {
     const qty = parseFloat(item.quantity) || 0;
     const rate = parseFloat(item.quoted_rate) || 0;
@@ -212,256 +166,190 @@ const VendorQuotationDetails = ({ open, onClose, onSuccess }) => {
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto transition-opacity"
-      onClick={handleBackdropClick}
-    >
-      <div
-        ref={modalRef}
-        className="bg-white w-full max-w-6xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
-      >
+    <>
+      <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth disableEnforceFocus PaperProps={{ sx: { borderRadius: 3, maxHeight: "95vh" } }}>
         {/* HEADER */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-100 text-blue-600 p-2 rounded-lg">
-              <FaFileInvoiceDollar className="text-xl" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-slate-800">Create Vendor Quotation</h3>
-              <p className="text-xs text-slate-500">Provide quotation details and item rates</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-red-500 hover:bg-slate-100 rounded-full transition-colors"
-          >
-            <FaTimes size={18} />
-          </button>
-        </div>
+        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", bgcolor: "#1a1a2e", color: "white", py: 2.5, px: 3, fontWeight: 900 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <MoneyIcon sx={{ color: "#0ea5e9", fontSize: 28 }} />
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 900, textTransform: "uppercase" }}>Create Vendor Quotation</Typography>
+              <Typography variant="caption" sx={{ color: "#cbd5e1", fontSize: "9px", textTransform: "uppercase" }}>Provide quotation details and item rates</Typography>
+            </Box>
+          </Box>
+          <IconButton onClick={onClose} sx={{ color: "#cbd5e1", "&:hover": { color: "white" } }}><CloseIcon /></IconButton>
+        </DialogTitle>
 
         {/* CONTENT */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          
-          {/* SEARCH FILTERS */}
-          <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-              <div className="md:col-span-2 relative z-30">
-                <label className="block text-xs font-semibold text-slate-500 mb-1 ml-1">Select Requisition</label>
-                <RequisitionSelector
-                  value={selectedRequisition}
-                  onChange={(id) => {
-                    setSelectedRequisition(id);
-                    setSelectedVendor(null);
-                  }}
-                  placeholder="Search Requisition..."
-                />
-              </div>
-              <div className="md:col-span-2 relative z-20">
-                <label className="block text-xs font-semibold text-slate-500 mb-1 ml-1">Select Vendor</label>
-                <VendorSelector
-                  value={selectedVendor}
-                  onChange={(id) => setSelectedVendor(id)}
-                  requisitionId={selectedRequisition}
-                  disabled={!selectedRequisition}
-                  placeholder={selectedRequisition ? "Search Vendor..." : "Select Requisition First"}
-                />
-              </div>
-              <div className="md:col-span-1">
-                <button
-                  type="button"
-                  onClick={handleSearch}
-                  className="w-full px-4 py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-500 transition-colors flex items-center justify-center gap-2"
-                >
-                  <FaSearch className="text-xs" />
-                  Search Items
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* SEARCH RESULT SCREEN */}
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-12 space-y-3">
-              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-slate-500 font-medium">Loading items...</p>
-            </div>
-          ) : !hasSearched ? (
-            <div className="p-12 text-center text-slate-400 bg-slate-50/30 border-2 border-dashed border-slate-200 rounded-xl">
-              <FaSearch className="mx-auto text-3xl mb-2 opacity-30 text-blue-500" />
-              <p className="text-sm font-semibold">Select a Requisition and Vendor to retrieve assigned items.</p>
-            </div>
-          ) : !contextData ? (
-            <div className="p-8 text-center text-red-500 bg-red-50 rounded-xl border border-red-100">
-              No items could be loaded. Please check vendor assignments.
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              
-              {/* QUOTATION HEADER FIELDS */}
-              <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 border-b pb-2">
-                  <FaUserTie /> Quotation Details
-                </h4>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-1">Reference Number *</label>
-                    <input
-                      className="input w-full"
-                      value={referenceNumber}
-                      onChange={(e) => setReferenceNumber(e.target.value)}
-                      placeholder="e.g. VENDOR-REF-123"
-                      required
+        <DialogContent sx={{ bgcolor: "#f1f5f9", p: 4, overflowY: "auto" }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 4, mt: 0.5 }}>
+            {/* SEARCH FILTERS */}
+            <Paper sx={{ p: 3.5, bgcolor: "white", border: "2px solid #dbeafe", borderRadius: 2.5, background: "linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%)", boxShadow: "0 2px 8px rgba(30, 64, 175, 0.08)" }}>
+              <Typography sx={{ fontSize: "10px", fontWeight: 900, color: "#1e40af", textTransform: "uppercase", letterSpacing: "0.05em", mb: 3 }}>🔍 Search & Select</Typography>
+              <Grid container spacing={3} alignItems="flex-end">
+                <Grid item xs={12} sm={5}>
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                    <Typography sx={{ fontSize: "10px", fontWeight: 900, color: "#1e40af", textTransform: "uppercase", letterSpacing: "0.05em" }}>📋 Requisition</Typography>
+                    <RequisitionSelector
+                      value={selectedRequisition}
+                      onChange={(id) => {
+                        setSelectedRequisition(id);
+                        setSelectedVendor(null);
+                      }}
+                      placeholder="Search Requisition..."
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-1">Validity Date *</label>
-                    <input
-                      type="date"
-                      className="input w-full"
-                      value={validityDate}
-                      onChange={(e) => setValidityDate(e.target.value)}
-                      required
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={5}>
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                    <Typography sx={{ fontSize: "10px", fontWeight: 900, color: "#1e40af", textTransform: "uppercase", letterSpacing: "0.05em" }}>🏢 Vendor</Typography>
+                    <VendorSelector
+                      value={selectedVendor}
+                      onChange={(id) => setSelectedVendor(id)}
+                      requisitionId={selectedRequisition}
+                      disabled={!selectedRequisition}
+                      placeholder={selectedRequisition ? "Search Vendor..." : "Select Requisition First"}
                     />
-                  </div>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={2}>
+                  <Button onClick={handleSearch} variant="contained" fullWidth startIcon={<SearchIcon />} sx={{ bgcolor: "#1e40af", color: "white", textTransform: "uppercase", fontWeight: 900, py: 1.6, borderRadius: 1.5, "&:hover": { bgcolor: "#1e3a8a" } }}>
+                    Load
+                  </Button>
+                </Grid>
+              </Grid>
+            </Paper>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-1">Currency *</label>
-                    <select
-                      className="input w-full bg-white"
-                      value={currency}
-                      onChange={(e) => setCurrency(e.target.value)}
-                    >
-                      {currencies.map((c) => (
-                        <option key={c.id} value={c.code}>
-                          {c.code} ({c.symbol})
-                        </option>
-                      ))}
-                      {currencies.length === 0 && <option value="INR">INR (₹)</option>}
-                    </select>
-                  </div>
+            {/* SEARCH RESULT SCREEN */}
+            {loading ? (
+              <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", py: 10, gap: 3 }}>
+                <CircularProgress size={45} sx={{ color: "#0ea5e9" }} />
+                <Typography sx={{ fontSize: "12px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Loading items...</Typography>
+              </Box>
+            ) : !hasSearched ? (
+              <Box sx={{ p: 8, textAlign: "center", bgcolor: "white", border: "2px dashed #dbeafe", borderRadius: 2.5, boxShadow: "0 1px 3px rgba(30, 64, 175, 0.05)" }}>
+                <SearchIcon sx={{ fontSize: 52, color: "#cbd5e1", mb: 2 }} />
+                <Typography sx={{ fontSize: "13px", fontWeight: 600, color: "#94a3b8", lineHeight: 1.6 }}>Select a Requisition and Vendor to retrieve assigned items.</Typography>
+              </Box>
+            ) : !contextData ? (
+              <Box sx={{ p: 4, textAlign: "center", bgcolor: "#fee2e2", border: "2px solid #fca5a5", borderRadius: 2.5, boxShadow: "0 1px 3px rgba(220, 38, 38, 0.1)" }}>
+                <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#dc2626", letterSpacing: "0.02em" }}>⚠️ No items could be loaded. Please check vendor assignments.</Typography>
+              </Box>
+            ) : (
+              <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {/* QUOTATION HEADER FIELDS */}
+                <Card sx={{ border: "2px solid #fef08a", bgcolor: "#fffbeb", boxShadow: "0 2px 8px rgba(180, 83, 9, 0.1)", borderRadius: 2.5 }}>
+                  <CardContent sx={{ p: 4 }}>
+                    <Typography sx={{ fontSize: "11px", fontWeight: 900, color: "#b45309", textTransform: "uppercase", letterSpacing: "0.05em", mb: 3.5, pb: 2.5, borderBottom: "2px solid #fde68a" }}>📝 Quotation Details</Typography>
+                    <Grid container spacing={3}>
+                      <Grid item xs={12} sm={6} md={4}>
+                        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.2 }}>
+                          <Typography sx={{ fontSize: "10px", fontWeight: 900, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.02em" }}>Reference Number *</Typography>
+                          <TextField fullWidth size="small" value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} placeholder="e.g. VENDOR-REF-123" required sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1.5, bgcolor: "white", "& fieldset": { borderColor: "#fed7aa" } } }} />
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={4}>
+                        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.2 }}>
+                          <Typography sx={{ fontSize: "10px", fontWeight: 900, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.02em" }}>Validity Date *</Typography>
+                          <TextField fullWidth type="date" size="small" value={validityDate} onChange={(e) => setValidityDate(e.target.value)} required sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1.5, bgcolor: "white", "& fieldset": { borderColor: "#fed7aa" } } }} />
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={4}>
+                        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.2 }}>
+                          <Typography sx={{ fontSize: "10px", fontWeight: 900, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.02em" }}>Currency *</Typography>
+                          <Select fullWidth size="small" value={currency} onChange={(e) => setCurrency(e.target.value)} sx={{ borderRadius: 1.5, bgcolor: "white", "& .MuiOutlinedInput-notchedOutline": { borderColor: "#fed7aa" } }}>
+                            {currencies.map((c) => (
+                              <MenuItem key={c.id} value={c.code}>{c.code} ({c.symbol})</MenuItem>
+                            ))}
+                            {currencies.length === 0 && <MenuItem value="INR">INR (₹)</MenuItem>}
+                          </Select>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={4}>
+                        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.2 }}>
+                          <Typography sx={{ fontSize: "10px", fontWeight: 900, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.02em" }}>Payment Terms</Typography>
+                          <TextField fullWidth size="small" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} placeholder="e.g. 30 days" sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1.5, bgcolor: "white", "& fieldset": { borderColor: "#fed7aa" } } }} />
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={4}>
+                        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.2 }}>
+                          <Typography sx={{ fontSize: "10px", fontWeight: 900, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.02em" }}>Delivery Terms</Typography>
+                          <TextField fullWidth size="small" value={deliveryTerms} onChange={(e) => setDeliveryTerms(e.target.value)} placeholder="e.g. Ex-works" sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1.5, bgcolor: "white", "& fieldset": { borderColor: "#fed7aa" } } }} />
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.2 }}>
+                          <Typography sx={{ fontSize: "10px", fontWeight: 900, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.02em" }}>Remarks</Typography>
+                          <TextField fullWidth multiline rows={2.5} value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="e.g. Prices valid for 30 days" sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1.5, bgcolor: "white", "& fieldset": { borderColor: "#fed7aa" } } }} />
+                        </Box>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-1">Payment Terms</label>
-                    <input
-                      className="input w-full"
-                      value={paymentTerms}
-                      onChange={(e) => setPaymentTerms(e.target.value)}
-                      placeholder="e.g. 30 days"
-                    />
-                  </div>
+                {/* ITEMS ENTRY */}
+                <Card sx={{ border: "2px solid #c7d2fe", bgcolor: "#f0f4ff", boxShadow: "0 2px 8px rgba(99, 102, 241, 0.1)", borderRadius: 2.5 }}>
+                  <CardContent sx={{ p: 4 }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3.5, pb: 2.5, borderBottom: "2px solid #dbeafe" }}>
+                      <Typography sx={{ fontSize: "11px", fontWeight: 900, color: "#1e40af", textTransform: "uppercase", letterSpacing: "0.05em" }}>📊 Quotation Items ({items.length})</Typography>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, bgcolor: "white", px: 2.5, py: 1.2, borderRadius: 2, border: "2px solid #dbeafe", boxShadow: "0 1px 3px rgba(30, 64, 175, 0.08)" }}>
+                        <Typography sx={{ fontSize: "10px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.02em" }}>Total:</Typography>
+                        <Typography sx={{ fontSize: "15px", fontWeight: 900, color: "#0ea5e9", fontFamily: "monospace" }}>{currency} {totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Typography>
+                      </Box>
+                    </Box>
+                    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2.5, border: "1px solid #dbeafe", bgcolor: "white", boxShadow: "0 1px 4px rgba(30, 64, 175, 0.05)" }}>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ bgcolor: "#eff6ff", borderBottom: "2px solid #dbeafe" }}>
+                            <TableCell sx={{ fontWeight: 900, color: "#1e40af", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.05em", py: 1.8 }}>Product</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 900, color: "#1e40af", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.05em", py: 1.8 }}>Qty</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 900, color: "#1e40af", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.05em", py: 1.8 }}>Quoted Rate ({currency}) *</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 900, color: "#1e40af", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.05em", py: 1.8 }}>Amount ({currency})</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody sx={{ "& .MuiTableRow-root:hover": { bgcolor: "#f0f9ff" } }}>
+                          {items.map((item, idx) => (
+                            <TableRow key={item.vendor_item_id || item.id || idx} sx={{ borderBottom: "1px solid #dbeafe", bgcolor: idx % 2 === 0 ? "white" : "#f8fbff" }}>
+                              <TableCell sx={{ py: 2 }}>
+                                <Typography sx={{ fontWeight: 700, color: "#1e293b", fontSize: "13px" }}>{item.product_name}</Typography>
+                                <Typography sx={{ fontSize: "10px", fontFamily: "monospace", color: "#64748b", mt: 0.3 }}>{item.product_code}</Typography>
+                              </TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 600, color: "#475569", fontSize: "12px", py: 2 }}>
+                                {Number(item.quantity).toFixed(2)} <span style={{ fontSize: "10px", color: "#94a3b8" }}>{item.unit}</span>
+                              </TableCell>
+                              <TableCell align="right" sx={{ py: 2 }}>
+                                <TextField type="number" min="0" step="0.01" size="small" placeholder="0.00" required value={item.quoted_rate || ""} onChange={(e) => handleRateChange(idx, e.target.value)} sx={{ width: "120px", "& .MuiOutlinedInput-root": { borderRadius: 1.5, bgcolor: "white", "& fieldset": { borderColor: "#bfdbfe" } } }} />
+                              </TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 900, color: "#0ea5e9", fontSize: "13px", fontFamily: "monospace", py: 2 }}>
+                                {((parseFloat(item.quantity) || 0) * (parseFloat(item.quoted_rate) || 0)).toFixed(2)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </CardContent>
+                </Card>
+              </Box>
+            )}
+          </Box>
+        </DialogContent>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-1">Delivery Terms</label>
-                    <input
-                      className="input w-full"
-                      value={deliveryTerms}
-                      onChange={(e) => setDeliveryTerms(e.target.value)}
-                      placeholder="e.g. Ex-works"
-                    />
-                  </div>
-                </div>
+        {/* FOOTER */}
+        {hasSearched && contextData && (
+          <DialogActions sx={{ bgcolor: "#ffffff", px: 4, py: 3, borderTop: "2px solid #e2e8f0", gap: 2, justifyContent: "flex-end" }}>
+            <Button onClick={onClose} disabled={submitting} sx={{ textTransform: "uppercase", fontWeight: 900, color: "#64748b", "&:hover": { bgcolor: "#f1f5f9" } }}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} variant="contained" disabled={submitting || items.length === 0} startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : undefined} sx={{ bgcolor: "#0ea5e9", color: "white", textTransform: "uppercase", fontWeight: 900, borderRadius: 1.5, py: 1.2, px: 3, "&:hover": { bgcolor: "#0284c7" } }}>
+              {submitting ? "Saving..." : "Submit Quotation"}
+            </Button>
+          </DialogActions>
+        )}
+      </Dialog>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1">Remarks</label>
-                  <textarea
-                    className="input w-full"
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                    placeholder="e.g. Prices valid for 30 days"
-                    rows={2}
-                  />
-                </div>
-              </div>
-
-              {/* ITEMS ENTRY */}
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-5 space-y-4">
-                <div className="flex justify-between items-center border-b pb-2">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <FaClipboardList /> Quotation Items ({items.length})
-                  </h4>
-                  <div className="text-right">
-                    <span className="text-xs font-semibold text-slate-400 mr-2">Quoted Total:</span>
-                    <span className="text-lg font-black text-slate-800">
-                      {currency} {totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                  <table className="w-full text-left text-sm border-collapse">
-                    <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
-                      <tr>
-                        <th className="px-4 py-3">Product Description</th>
-                        <th className="px-4 py-3 text-right">Quantity</th>
-                        <th className="px-4 py-3 text-right w-48">Quoted Rate ({currency}) *</th>
-                        <th className="px-4 py-3 text-right">Amount ({currency})</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {items.map((item, idx) => (
-                        <tr key={item.vendor_item_id || item.id || idx} className="hover:bg-slate-50 transition">
-                          <td className="px-4 py-3">
-                            <div className="font-bold text-slate-800">{item.product_name}</div>
-                            <div className="text-xs text-slate-400 font-mono mt-0.5">{item.product_code}</div>
-                          </td>
-                          <td className="px-4 py-3 text-right font-semibold text-slate-700">
-                            {Number(item.quantity).toFixed(2)} <span className="text-xs text-slate-400">{item.unit}</span>
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              placeholder="0.00"
-                              required
-                              className="w-full text-right px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-bold"
-                              value={item.quoted_rate || ""}
-                              onChange={(e) => handleRateChange(idx, e.target.value)}
-                            />
-                          </td>
-                          <td className="px-4 py-3 text-right font-bold text-slate-900 font-mono">
-                            {((parseFloat(item.quantity) || 0) * (parseFloat(item.quoted_rate) || 0)).toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* ACTION BUTTONS */}
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-5 py-2 text-sm font-semibold rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting || items.length === 0}
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md hover:shadow-lg flex items-center gap-2 disabled:opacity-50 transition-all"
-                >
-                  <FaSave /> {submitting ? "Saving..." : "Submit Quotation"}
-                </button>
-              </div>
-
-            </form>
-          )}
-
-        </div>
-      </div>
-      
-      <AlertToast
-        open={toast.open}
-        type={toast.type}
-        message={toast.message}
-        onClose={() => setToast({ ...toast, open: false })}
-      />
-    </div>
+      <AlertToast open={toast.open} type={toast.type} message={toast.message} onClose={() => setToast({ ...toast, open: false })} />
+    </>
   );
 };
 

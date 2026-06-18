@@ -9,6 +9,35 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { FaSearch, FaBoxOpen, FaCalendarAlt, FaTable, FaCheck, FaFileInvoiceDollar, FaFileExcel, FaTimes, FaPlus, FaTrashAlt, FaInfoCircle } from "react-icons/fa";
 
+// Default Terms & Conditions pre-filled on a new Purchase Order. Editable,
+// removable, and each line can be marked bold via its checkbox.
+const PO_DEFAULT_TERMS = [
+    { key: "Price", value: "Ex-Works" },
+    { key: "GST", value: "0.1% Extra as we shall Exporting these items" },
+    { key: "Production Time", value: "Within 20 days / 60 days / 4 Weeks from the date of (TT / L/C / Advance Payment)" },
+    { key: "Delivery", value: "Within 31.03.2026 / Within 31.10.2025 / Within 4 Weeks after receiving advance" },
+    { key: "Payment", value: "10% Advance & 90% Balance / 25% Advance & 75% Balance / 100% Advance TT / 100% Irrevocable L/C" },
+    { key: "Mode of Shipment", value: "By Road" },
+    { key: "Time of Shipment", value: "Within 25 days / 70 days after the date of (TT / L/C)" },
+    { key: "Terms of Delivery", value: "C&F Jogbani, Bihar / CPT Benapole, Bangladesh / Nepal" },
+    { key: "Packing", value: "Export standard road worthy packing / Standard Wooden Drum Seaworthy Packing / HDPE Packing" },
+    { key: "Warranty", value: "One year from the date of dispatch" },
+    { key: "Test Certificates", value: "All test certificates and catalogues must be provided" },
+    { key: "Tolerance", value: "± 2% / ± 5% / ± 10% on Qty & Value" },
+    { key: "Insurance", value: "To be covered by the applicant" },
+    { key: "PI Validity", value: "Upto 31/08/2025 / 31/08/2026" },
+    { key: "Advising Bank Details", value: "Standard Chartered Bank, Kolkata, SWIFT: SCBLINBB, IFSC: SCBL0036008" },
+    { key: "Partial Shipment", value: "Allowed" },
+    { key: "Transshipment", value: "Allowed" },
+    { key: "Document Presentation Period", value: "Within 21 days after shipment" },
+    { key: "Contract No", value: "EEL/KOL/25/55" },
+    { key: "Contract Date", value: "20/09/2025" },
+    { key: "Other Terms & Condition", value: "Accepted as per your quotation" },
+];
+
+const makePoDefaultTerms = () =>
+    PO_DEFAULT_TERMS.map((t, i) => ({ id: `term-${i + 1}`, key: t.key, value: t.value, bold: false }));
+
 const getCurrencySymbol = (currencyCode) => {
     switch (currencyCode?.toString().toUpperCase()) {
         case "USD": return "$";
@@ -67,7 +96,7 @@ const QuotationComparison = () => {
                     sgstPercentage: 0.00,
                     igstPercentage: 0.00,
                     conversionRate: 1.00,
-                    terms: []
+                    terms: makePoDefaultTerms()
                 };
             });
             setVendorPoDetails(initialDetails);
@@ -106,7 +135,8 @@ const QuotationComparison = () => {
             {
                 id: `term-${Date.now()}`,
                 key: "",
-                value: ""
+                value: "",
+                bold: false
             }
         ];
         updateVendorField("terms", updatedTerms);
@@ -224,13 +254,12 @@ const QuotationComparison = () => {
         setError(null);
 
         const termsAndConditions = (details.terms || [])
-            .filter(t => t.value.trim() !== "")
-            .map(t => {
-                if (t.key.trim() !== "") {
-                    return `${t.key}: ${t.value}`;
-                }
-                return t.value;
-            });
+            .filter(t => (t.value || "").trim() !== "" || (t.key || "").trim() !== "")
+            .map(t => ({
+                key: (t.key || "").trim(),
+                value: (t.value || "").trim(),
+                bold: !!t.bold,
+            }));
 
         const payload = {
             requisition: selectedRequisition,
@@ -901,19 +930,33 @@ const QuotationComparison = () => {
                                                 <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
                                                     Term #{index + 1}
                                                 </span>
-                                                {(currentDetails.terms || []).length > 1 && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            const updated = currentDetails.terms.filter(t => t.id !== term.id);
-                                                            updateVendorField("terms", updated);
-                                                        }}
-                                                        className="text-slate-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"
-                                                        title="Delete Term"
-                                                    >
-                                                        <FaTrashAlt size={12} />
-                                                    </button>
-                                                )}
+                                                <div className="flex items-center gap-3">
+                                                    <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-500 cursor-pointer" title="Make this line bold in the PO">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={!!term.bold}
+                                                            onChange={(e) => {
+                                                                const updated = currentDetails.terms.map(t => t.id === term.id ? { ...t, bold: e.target.checked } : t);
+                                                                updateVendorField("terms", updated);
+                                                            }}
+                                                            className="w-3.5 h-3.5 accent-blue-600 cursor-pointer"
+                                                        />
+                                                        Bold
+                                                    </label>
+                                                    {(currentDetails.terms || []).length > 1 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const updated = currentDetails.terms.filter(t => t.id !== term.id);
+                                                                updateVendorField("terms", updated);
+                                                            }}
+                                                            className="text-slate-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"
+                                                            title="Delete Term"
+                                                        >
+                                                            <FaTrashAlt size={12} />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                                 <div>
@@ -922,7 +965,7 @@ const QuotationComparison = () => {
                                                     </label>
                                                     <input
                                                         type="text"
-                                                        className="w-full text-xs font-medium text-slate-700 border border-slate-200 rounded-md px-2.5 py-1.5 bg-white focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                                                        className={`w-full text-xs ${term.bold ? "font-bold" : "font-medium"} text-slate-700 border border-slate-200 rounded-md px-2.5 py-1.5 bg-white focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400`}
                                                         value={term.key}
                                                         onChange={(e) => {
                                                             const updated = currentDetails.terms.map(t => t.id === term.id ? { ...t, key: e.target.value } : t);
@@ -937,7 +980,7 @@ const QuotationComparison = () => {
                                                     </label>
                                                     <input
                                                         type="text"
-                                                        className="w-full text-xs font-medium text-slate-700 border border-slate-200 rounded-md px-2.5 py-1.5 bg-white focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                                                        className={`w-full text-xs ${term.bold ? "font-bold" : "font-medium"} text-slate-700 border border-slate-200 rounded-md px-2.5 py-1.5 bg-white focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400`}
                                                         value={term.value}
                                                         onChange={(e) => {
                                                             const updated = currentDetails.terms.map(t => t.id === term.id ? { ...t, value: e.target.value } : t);

@@ -1,5 +1,15 @@
 import { useState, useEffect } from "react";
-import { FaPlus, FaSearch, FaEye, FaCheck, FaTimes, FaUndoAlt, FaBoxOpen, FaTruck } from "react-icons/fa";
+import {
+    Box, Card, Typography, Button, TextField, Table, TableBody, TableCell,
+    TableContainer, TableHead, TableRow, IconButton, Tooltip, CircularProgress,
+    Chip, InputAdornment, Tabs, Tab,
+} from "@mui/material";
+import {
+    Add as AddIcon, Search as SearchIcon, Visibility as ViewIcon,
+    Check as CheckIcon, Close as CloseIcon, Undo as UndoIcon,
+    Inventory2 as BoxOpenIcon, LocalShipping as TruckIcon,
+    ChevronLeft as PrevIcon, ChevronRight as NextIcon,
+} from "@mui/icons-material";
 import {
     getSalesReturns, approveSalesReturn, cancelSalesReturn,
     getPurchaseReturns, approvePurchaseReturn, cancelPurchaseReturn,
@@ -52,12 +62,12 @@ const Returns = () => {
         return () => clearTimeout(timer);
     }, [searchText, currentPage, activeTab]);
 
-    const getStatusStyle = (s) => {
+    const getStatusChipProps = (s) => {
         switch (s) {
-            case 'DRAFT': return 'bg-slate-100 text-slate-600 border-slate-200';
-            case 'APPROVED': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
-            case 'CANCELLED': return 'bg-rose-50 text-rose-600 border-rose-100';
-            default: return 'bg-slate-50 text-slate-500 border-slate-200';
+            case 'APPROVED': return { color: "success", variant: "outlined" };
+            case 'CANCELLED': return { color: "error", variant: "outlined" };
+            case 'DRAFT':
+            default: return { color: "default", variant: "outlined" };
         }
     };
 
@@ -69,9 +79,9 @@ const Returns = () => {
                 ? "Stock will be restored (except unusable items) and a Credit Note will be generated."
                 : "Stock will be deducted (items going back to vendor) and a Debit Note will be generated.",
             confirmText: "Approve",
-            confirmButtonClass: "bg-emerald-600 hover:bg-emerald-500",
-            iconBgClass: "bg-emerald-100 text-emerald-600",
-            icon: FaCheck,
+            confirmButtonClass: "green",
+            iconBgClass: "success",
+            icon: CheckIcon,
             action: async () => {
                 setConfirm(prev => ({ ...prev, loading: true }));
                 try {
@@ -96,9 +106,9 @@ const Returns = () => {
             title: `Cancel ${activeTab === "sales" ? "Sales" : "Purchase"} Return?`,
             message: "This will cancel the return. If it was approved, stock changes will be reversed.",
             confirmText: "Cancel Return",
-            confirmButtonClass: "bg-red-600 hover:bg-red-500",
-            iconBgClass: "bg-red-100 text-red-600",
-            icon: FaTimes,
+            confirmButtonClass: "error",
+            iconBgClass: "error",
+            icon: CloseIcon,
             action: async () => {
                 setConfirm(prev => ({ ...prev, loading: true }));
                 try {
@@ -117,151 +127,305 @@ const Returns = () => {
         });
     };
 
+    const colSpan = activeTab === "purchase" ? 8 : 7;
+
     return (
-        <div className="p-1 sm:p-2 space-y-4">
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <Box sx={{ p: { xs: 0.5, sm: 1 }, display: "flex", flexDirection: "column", gap: 2 }}>
+            <Card
+                sx={{
+                    borderRadius: 4,
+                    border: "1px solid",
+                    borderColor: "divider",
+                    boxShadow: 1,
+                    overflow: "hidden",
+                }}
+            >
                 {/* HEADER */}
-                <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                        <h3 className="text-xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-                            <FaUndoAlt className="text-blue-600" /> Returns Management
-                        </h3>
-                        <span className="text-sm text-slate-500 font-semibold mt-1 block">Total: {totalCount}</span>
-                    </div>
-                    <button
+                <Box
+                    sx={{
+                        px: 3,
+                        py: 2.5,
+                        borderBottom: "1px solid",
+                        borderColor: "divider",
+                        display: "flex",
+                        flexDirection: { xs: "column", sm: "row" },
+                        alignItems: { sm: "center" },
+                        justifyContent: "space-between",
+                        gap: 2,
+                    }}
+                >
+                    <Box>
+                        <Typography
+                            variant="h6"
+                            sx={{
+                                fontWeight: 700,
+                                color: "text.primary",
+                                letterSpacing: "-0.01em",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                            }}
+                        >
+                            <UndoIcon sx={{ color: "primary.main" }} /> Returns Management
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 600, mt: 0.5 }}>
+                            Total: {totalCount}
+                        </Typography>
+                    </Box>
+                    <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
                         onClick={() => setCreateModalOpen(true)}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-500 hover:shadow-md transition-all active:scale-[0.98]"
+                        sx={{
+                            textTransform: "none",
+                            fontWeight: 700,
+                            borderRadius: 3,
+                            px: 2.5,
+                            py: 1,
+                        }}
                     >
-                        <FaPlus className="text-xs" />
                         New {activeTab === "sales" ? "Sales" : "Purchase"} Return
-                    </button>
-                </div>
+                    </Button>
+                </Box>
 
                 {/* TABS */}
-                <div className="px-6 pt-4 border-b border-slate-100 flex gap-1">
-                    <button
-                        onClick={() => setActiveTab("sales")}
-                        className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-t-xl border-b-2 transition-all ${
-                            activeTab === "sales"
-                                ? "border-blue-600 text-blue-700 bg-blue-50/50"
-                                : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-                        }`}
+                <Box sx={{ px: 3, borderBottom: "1px solid", borderColor: "divider" }}>
+                    <Tabs
+                        value={activeTab}
+                        onChange={(_, val) => setActiveTab(val)}
+                        sx={{
+                            "& .MuiTab-root": {
+                                textTransform: "none",
+                                fontWeight: 700,
+                                fontSize: "0.875rem",
+                                minHeight: 48,
+                            },
+                        }}
                     >
-                        <FaBoxOpen size={14} /> Sales Returns
-                    </button>
-                    <button
-                        onClick={() => setActiveTab("purchase")}
-                        className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-t-xl border-b-2 transition-all ${
-                            activeTab === "purchase"
-                                ? "border-blue-600 text-blue-700 bg-blue-50/50"
-                                : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-                        }`}
-                    >
-                        <FaTruck size={14} /> Purchase Returns
-                    </button>
-                </div>
+                        <Tab
+                            value="sales"
+                            label="Sales Returns"
+                            icon={<BoxOpenIcon sx={{ fontSize: 18 }} />}
+                            iconPosition="start"
+                        />
+                        <Tab
+                            value="purchase"
+                            label="Purchase Returns"
+                            icon={<TruckIcon sx={{ fontSize: 18 }} />}
+                            iconPosition="start"
+                        />
+                    </Tabs>
+                </Box>
 
                 {/* SEARCH */}
-                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                    <div className="max-w-md relative">
-                        <input
-                            value={searchText}
-                            onChange={(e) => { setSearchText(e.target.value); setCurrentPage(1); }}
-                            placeholder={`Search ${activeTab === "sales" ? "sales" : "purchase"} returns...`}
-                            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                        />
-                        <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                    </div>
-                </div>
+                <Box
+                    sx={{
+                        px: 3,
+                        py: 2,
+                        borderBottom: "1px solid",
+                        borderColor: "divider",
+                        bgcolor: "action.hover",
+                    }}
+                >
+                    <TextField
+                        value={searchText}
+                        onChange={(e) => { setSearchText(e.target.value); setCurrentPage(1); }}
+                        placeholder={`Search ${activeTab === "sales" ? "sales" : "purchase"} returns...`}
+                        size="small"
+                        sx={{ maxWidth: 400 }}
+                        fullWidth
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon sx={{ color: "text.disabled", fontSize: 20 }} />
+                                </InputAdornment>
+                            ),
+                        }}
+                    />
+                </Box>
 
                 {/* TABLE */}
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-600 uppercase tracking-widest">
-                                <th className="px-4 py-3">Return No.</th>
-                                <th className="px-4 py-3">{activeTab === "sales" ? "PI Number" : "PO Number"}</th>
-                                {activeTab === "purchase" && <th className="px-4 py-3">Vendor</th>}
-                                <th className="px-4 py-3">Date</th>
-                                <th className="px-4 py-3 text-right">Amount</th>
-                                <th className="px-4 py-3 text-center">{activeTab === "sales" ? "Credit Note" : "Debit Note"}</th>
-                                <th className="px-4 py-3 text-center">Status</th>
-                                <th className="px-4 py-3 text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
+                <TableContainer>
+                    <Table size="small">
+                        <TableHead>
+                            <TableRow sx={{ bgcolor: "action.hover" }}>
+                                <TableCell sx={{ fontWeight: 700, fontSize: "0.625rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "text.secondary" }}>
+                                    Return No.
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 700, fontSize: "0.625rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "text.secondary" }}>
+                                    {activeTab === "sales" ? "PI Number" : "PO Number"}
+                                </TableCell>
+                                {activeTab === "purchase" && (
+                                    <TableCell sx={{ fontWeight: 700, fontSize: "0.625rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "text.secondary" }}>
+                                        Vendor
+                                    </TableCell>
+                                )}
+                                <TableCell sx={{ fontWeight: 700, fontSize: "0.625rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "text.secondary" }}>
+                                    Date
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 700, fontSize: "0.625rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "text.secondary", textAlign: "right" }}>
+                                    Amount
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 700, fontSize: "0.625rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "text.secondary", textAlign: "center" }}>
+                                    {activeTab === "sales" ? "Credit Note" : "Debit Note"}
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 700, fontSize: "0.625rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "text.secondary", textAlign: "center" }}>
+                                    Status
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 700, fontSize: "0.625rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "text.secondary", textAlign: "center" }}>
+                                    Actions
+                                </TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
                             {loading ? (
-                                <tr><td colSpan="8" className="px-4 py-12 text-center text-slate-400 font-semibold">
-                                    <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                                    Loading...
-                                </td></tr>
+                                <TableRow>
+                                    <TableCell colSpan={colSpan} sx={{ textAlign: "center", py: 6, color: "text.disabled", fontWeight: 600 }}>
+                                        <CircularProgress size={28} sx={{ mb: 1 }} />
+                                        <Typography variant="body2" sx={{ color: "text.disabled", fontWeight: 600 }}>
+                                            Loading...
+                                        </Typography>
+                                    </TableCell>
+                                </TableRow>
                             ) : data.length > 0 ? data.map(item => {
                                 const st = (item.status || "DRAFT").toUpperCase();
+                                const chipProps = getStatusChipProps(st);
+                                const noteNumber = activeTab === "sales" ? item.credit_note_number : item.debit_note_number;
                                 return (
-                                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                                        <td className="px-4 py-3 text-xs font-bold font-mono text-blue-600">{item.return_number}</td>
-                                        <td className="px-4 py-3 text-xs font-mono text-slate-600">
+                                    <TableRow key={item.id} hover>
+                                        <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700, fontFamily: "monospace", color: "primary.main" }}>
+                                            {item.return_number}
+                                        </TableCell>
+                                        <TableCell sx={{ fontSize: "0.75rem", fontFamily: "monospace", color: "text.secondary" }}>
                                             {activeTab === "sales" ? item.pi_number : item.po_number}
-                                        </td>
+                                        </TableCell>
                                         {activeTab === "purchase" && (
-                                            <td className="px-4 py-3 text-sm text-slate-600 font-medium max-w-[150px] truncate">{item.vendor_name}</td>
+                                            <TableCell sx={{ fontSize: "0.875rem", color: "text.secondary", fontWeight: 500, maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                {item.vendor_name}
+                                            </TableCell>
                                         )}
-                                        <td className="px-4 py-3 text-sm text-slate-600 font-medium">{item.return_date}</td>
-                                        <td className="px-4 py-3 text-sm text-right font-bold text-slate-800 font-mono">
-                                            <span className="text-[10px] text-slate-400 mr-1">{item.currency}</span>
+                                        <TableCell sx={{ fontSize: "0.875rem", color: "text.secondary", fontWeight: 500 }}>
+                                            {item.return_date}
+                                        </TableCell>
+                                        <TableCell sx={{ fontSize: "0.875rem", textAlign: "right", fontWeight: 700, color: "text.primary", fontFamily: "monospace" }}>
+                                            <Typography component="span" sx={{ fontSize: "0.625rem", color: "text.disabled", mr: 0.5 }}>
+                                                {item.currency}
+                                            </Typography>
                                             {Number(item.total_return_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            {(activeTab === "sales" ? item.credit_note_number : item.debit_note_number) ? (
-                                                <span className="text-[10px] font-bold font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                                                    {activeTab === "sales" ? item.credit_note_number : item.debit_note_number}
-                                                </span>
-                                            ) : <span className="text-xs text-slate-400">—</span>}
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${getStatusStyle(st)}`}>{st}</span>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <div className="flex justify-center gap-2">
-                                                <button onClick={() => setViewItem(item)} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="View Details">
-                                                    <FaEye size={15} />
-                                                </button>
-                                                <button
-                                                    onClick={() => st === 'DRAFT' && handleApprove(item.id)}
-                                                    disabled={st !== 'DRAFT'}
-                                                    className={`p-2 rounded-xl transition-all ${st === 'DRAFT' ? 'text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50' : 'text-slate-300 cursor-not-allowed opacity-40'}`}
-                                                    title={st === 'DRAFT' ? "Approve" : "Cannot approve"}
-                                                >
-                                                    <FaCheck size={14} />
-                                                </button>
-                                                <button
-                                                    onClick={() => st !== 'CANCELLED' && handleCancel(item.id)}
-                                                    disabled={st === 'CANCELLED'}
-                                                    className={`p-2 rounded-xl transition-all ${st !== 'CANCELLED' ? 'text-rose-600 hover:text-rose-800 hover:bg-rose-50' : 'text-slate-300 cursor-not-allowed opacity-40'}`}
-                                                    title={st === 'CANCELLED' ? "Already cancelled" : "Cancel return"}
-                                                >
-                                                    <FaTimes size={15} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                        </TableCell>
+                                        <TableCell sx={{ textAlign: "center" }}>
+                                            {noteNumber ? (
+                                                <Chip
+                                                    label={noteNumber}
+                                                    size="small"
+                                                    color="success"
+                                                    variant="outlined"
+                                                    sx={{ fontSize: "0.625rem", fontWeight: 700, fontFamily: "monospace" }}
+                                                />
+                                            ) : (
+                                                <Typography variant="body2" sx={{ color: "text.disabled" }}>
+                                                    —
+                                                </Typography>
+                                            )}
+                                        </TableCell>
+                                        <TableCell sx={{ textAlign: "center" }}>
+                                            <Chip
+                                                label={st}
+                                                size="small"
+                                                color={chipProps.color}
+                                                variant={chipProps.variant}
+                                                sx={{ fontWeight: 700, fontSize: "0.75rem" }}
+                                            />
+                                        </TableCell>
+                                        <TableCell sx={{ textAlign: "center" }}>
+                                            <Box sx={{ display: "flex", justifyContent: "center", gap: 0.5 }}>
+                                                <Tooltip title="View Details">
+                                                    <IconButton size="small" onClick={() => setViewItem(item)} sx={{ color: "text.secondary", "&:hover": { color: "primary.main", bgcolor: "primary.lighter" } }}>
+                                                        <ViewIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                                <Tooltip title={st === 'DRAFT' ? "Approve" : "Cannot approve"}>
+                                                    <span>
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => st === 'DRAFT' && handleApprove(item.id)}
+                                                            disabled={st !== 'DRAFT'}
+                                                            sx={{
+                                                                color: st === 'DRAFT' ? "success.main" : "text.disabled",
+                                                                "&:hover": st === 'DRAFT' ? { color: "success.dark", bgcolor: "success.lighter" } : {},
+                                                                opacity: st !== 'DRAFT' ? 0.4 : 1,
+                                                            }}
+                                                        >
+                                                            <CheckIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </span>
+                                                </Tooltip>
+                                                <Tooltip title={st === 'CANCELLED' ? "Already cancelled" : "Cancel return"}>
+                                                    <span>
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => st !== 'CANCELLED' && handleCancel(item.id)}
+                                                            disabled={st === 'CANCELLED'}
+                                                            sx={{
+                                                                color: st !== 'CANCELLED' ? "error.main" : "text.disabled",
+                                                                "&:hover": st !== 'CANCELLED' ? { color: "error.dark", bgcolor: "error.lighter" } : {},
+                                                                opacity: st === 'CANCELLED' ? 0.4 : 1,
+                                                            }}
+                                                        >
+                                                            <CloseIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </span>
+                                                </Tooltip>
+                                            </Box>
+                                        </TableCell>
+                                    </TableRow>
                                 );
                             }) : (
-                                <tr><td colSpan="8" className="px-6 py-12 text-center text-slate-400 font-semibold italic">
-                                    No {activeTab === "sales" ? "sales" : "purchase"} returns found
-                                </td></tr>
+                                <TableRow>
+                                    <TableCell colSpan={colSpan} sx={{ textAlign: "center", py: 6, color: "text.disabled", fontWeight: 600, fontStyle: "italic" }}>
+                                        No {activeTab === "sales" ? "sales" : "purchase"} returns found
+                                    </TableCell>
+                                </TableRow>
                             )}
-                        </tbody>
-                    </table>
-                </div>
+                        </TableBody>
+                    </Table>
+                </TableContainer>
 
                 {/* PAGINATION */}
-                <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
-                    <button onClick={() => prevPage && setCurrentPage(p => p - 1)} disabled={!prevPage} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed">← Previous</button>
-                    <span className="text-xs font-bold text-slate-400">Page {currentPage}</span>
-                    <button onClick={() => nextPage && setCurrentPage(p => p + 1)} disabled={!nextPage} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed">Next →</button>
-                </div>
-            </div>
+                <Box
+                    sx={{
+                        px: 3,
+                        py: 2,
+                        borderTop: "1px solid",
+                        borderColor: "divider",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                    }}
+                >
+                    <Button
+                        size="small"
+                        startIcon={<PrevIcon />}
+                        onClick={() => prevPage && setCurrentPage(p => p - 1)}
+                        disabled={!prevPage}
+                        sx={{ textTransform: "none", fontWeight: 600, color: "text.secondary" }}
+                    >
+                        Previous
+                    </Button>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: "text.disabled" }}>
+                        Page {currentPage}
+                    </Typography>
+                    <Button
+                        size="small"
+                        endIcon={<NextIcon />}
+                        onClick={() => nextPage && setCurrentPage(p => p + 1)}
+                        disabled={!nextPage}
+                        sx={{ textTransform: "none", fontWeight: 600, color: "text.secondary" }}
+                    >
+                        Next
+                    </Button>
+                </Box>
+            </Card>
 
             {/* CREATE MODALS */}
             {activeTab === "sales" ? (
@@ -300,7 +464,7 @@ const Returns = () => {
             />
 
             <AlertToast open={alert.open} type={alert.type} message={alert.message} onClose={() => setAlert({ ...alert, open: false })} />
-        </div>
+        </Box>
     );
 };
 

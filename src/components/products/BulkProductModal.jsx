@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
-import { FaCloudDownloadAlt, FaCloudUploadAlt, FaTimes, FaFileExcel, FaSpinner, FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
+import {
+    Dialog, DialogTitle, DialogContent, DialogActions, Button, Box,
+    Alert, Grid, Typography, Paper, CircularProgress
+} from "@mui/material";
+import {
+    Close as CloseIcon, CloudDownload as DownloadIcon,
+    CloudUpload as UploadIcon, FilePresent as FileIcon,
+    CheckCircle as CheckIcon, Error as ErrorIcon
+} from "@mui/icons-material";
 import { getBulkUploadTemplate, bulkUploadProducts } from "../../services/productService";
 import { saveAs } from "file-saver";
 
@@ -56,7 +64,7 @@ const BulkProductModal = ({ open, onClose, onSuccess }) => {
             const res = await bulkUploadProducts(formData);
             setSuccess(res.data?.message || res.message || "Products uploaded successfully!");
             if (onSuccess) onSuccess();
-            setSelectedFile(null); // Clear after success
+            setSelectedFile(null);
         } catch (err) {
             console.error(err);
             const errorMsg = err.response?.data?.message || err.response?.data?.detail || "Failed to upload file. Check your format.";
@@ -66,124 +74,152 @@ const BulkProductModal = ({ open, onClose, onSuccess }) => {
         }
     };
 
-    if (!open) return null;
-
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                {/* Header */}
-                <div className="px-6 py-4 flex items-center justify-between border-b border-slate-100 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-indigo-100 text-indigo-600 p-2 rounded-lg">
-                            <FaFileExcel className="text-xl" />
-                        </div>
-                        <h3 className="text-lg font-bold text-slate-800">Bulk Product Entry</h3>
-                    </div>
-                    <button onClick={onClose} className="p-2 text-slate-400 hover:text-red-500 hover:bg-slate-100 rounded-lg transition-colors">
-                        <FaTimes />
-                    </button>
-                </div>
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700 }}>
+                Bulk Product Entry
+                <Button
+                    variant="text"
+                    size="small"
+                    onClick={onClose}
+                    sx={{ minWidth: 'auto', color: 'text.secondary' }}
+                >
+                    <CloseIcon />
+                </Button>
+            </DialogTitle>
 
-                {/* Body */}
-                <div className="p-8 space-y-8">
-                    {/* Status Messages */}
+            <DialogContent>
+                <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
                     {error && (
-                        <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-100 rounded-xl text-red-700 animate-in slide-in-from-top-2">
-                            <FaExclamationCircle className="shrink-0" />
-                            <p className="text-sm font-medium">{error}</p>
-                        </div>
+                        <Alert severity="error" icon={<ErrorIcon />} sx={{ borderRadius: 2 }}>
+                            {error}
+                        </Alert>
                     )}
                     {success && (
-                        <div className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 animate-in slide-in-from-top-2">
-                            <FaCheckCircle className="shrink-0" />
-                            <p className="text-sm font-medium">{success}</p>
-                        </div>
+                        <Alert severity="success" icon={<CheckIcon />} sx={{ borderRadius: 2 }}>
+                            {success}
+                        </Alert>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Grid container spacing={2}>
                         {/* Download Template Step */}
-                        <div className="flex flex-col items-center text-center p-6 border-2 border-dashed border-slate-200 rounded-2xl hover:border-indigo-300 hover:bg-indigo-50/10 transition-all group">
-                            <div className="bg-slate-100 text-slate-500 p-4 rounded-full mb-4 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
-                                <FaCloudDownloadAlt size={32} />
-                            </div>
-                            <h4 className="font-bold text-slate-800 mb-2">Step 1: Template</h4>
-                            <p className="text-xs text-slate-500 mb-6 leading-relaxed">
-                                Download the Excel template to ensure your data format is correct.
-                            </p>
-                            <button
-                                onClick={handleDownloadTemplate}
-                                disabled={downloading}
-                                className="w-full py-2.5 bg-white border border-slate-300 text-slate-700 text-sm font-bold rounded-xl hover:border-indigo-500 hover:text-indigo-600 shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                        <Grid item xs={12} sm={6}>
+                            <Paper
+                                sx={{
+                                    p: 3,
+                                    textAlign: 'center',
+                                    cursor: 'pointer',
+                                    border: '2px dashed',
+                                    borderColor: 'divider',
+                                    transition: 'all 0.2s',
+                                    '&:hover': {
+                                        borderColor: 'primary.main',
+                                        bgcolor: 'primary.lighter'
+                                    }
+                                }}
                             >
-                                {downloading ? (
-                                    <><FaSpinner className="animate-spin" /> Downloading...</>
-                                ) : (
-                                    <><FaCloudDownloadAlt /> Download Excel</>
-                                )}
-                            </button>
-                        </div>
+                                <Box sx={{ bgcolor: 'primary.lighter', p: 2, borderRadius: '50%', width: 60, height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 2 }}>
+                                    <DownloadIcon sx={{ fontSize: 32, color: 'primary.main' }} />
+                                </Box>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                                    Step 1: Template
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: 'text.secondary', mb: 2, display: 'block' }}>
+                                    Download the Excel template to ensure your data format is correct.
+                                </Typography>
+                                <Button
+                                    fullWidth
+                                    variant="outlined"
+                                    onClick={handleDownloadTemplate}
+                                    disabled={downloading}
+                                    startIcon={downloading ? <CircularProgress size={16} /> : <DownloadIcon />}
+                                    sx={{ mt: 2, textTransform: 'none', fontWeight: 600 }}
+                                >
+                                    {downloading ? "Downloading..." : "Download Excel"}
+                                </Button>
+                            </Paper>
+                        </Grid>
 
                         {/* Upload Step */}
-                        <div className="flex flex-col items-center text-center p-6 border-2 border-dashed border-slate-200 rounded-2xl hover:border-emerald-300 hover:bg-emerald-50/10 transition-all group">
-                            <div className="bg-slate-100 text-slate-500 p-4 rounded-full mb-4 group-hover:bg-emerald-100 group-hover:text-emerald-600 transition-colors">
-                                <FaCloudUploadAlt size={32} />
-                            </div>
-                            <h4 className="font-bold text-slate-800 mb-2">Step 2: Select File</h4>
-                            <p className="text-xs text-slate-500 mb-6 leading-relaxed">
-                                Select your completed Excel file to proceed.
-                            </p>
-                            <label className={`w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer text-sm font-bold rounded-xl shadow-md flex items-center justify-center gap-2 transition-all`}>
-                                <FaCloudUploadAlt /> {selectedFile ? "Change File" : "Select Excel"}
+                        <Grid item xs={12} sm={6}>
+                            <Paper
+                                sx={{
+                                    p: 3,
+                                    textAlign: 'center',
+                                    border: '2px dashed',
+                                    borderColor: 'divider',
+                                    transition: 'all 0.2s',
+                                    '&:hover': {
+                                        borderColor: 'success.main',
+                                        bgcolor: 'success.lighter'
+                                    }
+                                }}
+                            >
+                                <Box sx={{ bgcolor: 'success.lighter', p: 2, borderRadius: '50%', width: 60, height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 2 }}>
+                                    <UploadIcon sx={{ fontSize: 32, color: 'success.main' }} />
+                                </Box>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                                    Step 2: Select File
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: 'text.secondary', mb: 2, display: 'block' }}>
+                                    Select your completed Excel file to proceed.
+                                </Typography>
                                 <input
                                     type="file"
                                     accept=".xlsx, .xls"
-                                    className="hidden"
                                     onChange={handleFileSelect}
+                                    style={{ display: 'none' }}
+                                    id="file-upload"
                                 />
-                            </label>
-                            {selectedFile && (
-                                <p className="mt-3 text-[11px] font-semibold text-emerald-600 truncate max-w-full">
-                                    Selected: {selectedFile.name}
-                                </p>
-                            )}
-                        </div>
-                    </div>
+                                <label htmlFor="file-upload" style={{ display: 'block' }}>
+                                    <Button
+                                        component="span"
+                                        fullWidth
+                                        variant="contained"
+                                        color="success"
+                                        startIcon={<UploadIcon />}
+                                        sx={{ mt: 2, textTransform: 'none', fontWeight: 600 }}
+                                    >
+                                        {selectedFile ? "Change File" : "Select Excel"}
+                                    </Button>
+                                </label>
+                                {selectedFile && (
+                                    <Typography variant="caption" sx={{ display: 'block', mt: 1.5, color: 'success.main', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        Selected: {selectedFile.name}
+                                    </Typography>
+                                )}
+                            </Paper>
+                        </Grid>
+                    </Grid>
 
-                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                        <h5 className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-2">Important Instructions</h5>
-                        <ul className="text-[11px] text-blue-800 space-y-1 ml-4 list-disc opacity-80">
-                            <li>Keep headers unchanged in the Excel file.</li>
-                            <li>Ensure all mandatory fields are filled correctly.</li>
-                            {/* <li>Product codes must be unique and valid.</li> */}
-                        </ul>
-                    </div>
-                </div>
+                    <Alert severity="info" sx={{ borderRadius: 2 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 700, textTransform: 'uppercase', mb: 1, display: 'block', color: 'info.main' }}>
+                            Important Instructions
+                        </Typography>
+                        <Box component="ul" sx={{ pl: 2, mb: 0 }}>
+                            <Typography component="li" variant="caption" sx={{ color: 'info.dark' }}>
+                                Keep headers unchanged in the Excel file.
+                            </Typography>
+                            <Typography component="li" variant="caption" sx={{ color: 'info.dark' }}>
+                                Ensure all mandatory fields are filled correctly.
+                            </Typography>
+                        </Box>
+                    </Alert>
+                </Box>
+            </DialogContent>
 
-                {/* Footer */}
-                <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-                    <button
-                        onClick={onClose}
-                        className="px-6 py-2 bg-white border border-slate-300 text-slate-700 text-sm font-bold rounded-xl hover:bg-slate-100 transition-colors shadow-sm"
-                    >
-                        Close
-                    </button>
-                    <button
-                        onClick={handleSubmit}
-                        disabled={uploading || !selectedFile}
-                        className={`px-6 py-2 text-sm font-bold rounded-xl transition-all flex items-center gap-2 shadow-md
-                            ${uploading || !selectedFile
-                                ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-                                : 'bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95'}`}
-                    >
-                        {uploading ? (
-                            <><FaSpinner className="animate-spin" /> Submitting...</>
-                        ) : (
-                            "Submit"
-                        )}
-                    </button>
-                </div>
-            </div>
-        </div>
+            <DialogActions sx={{ p: 2, gap: 1 }}>
+                <Button onClick={onClose} disabled={uploading}>Close</Button>
+                <Button
+                    variant="contained"
+                    onClick={handleSubmit}
+                    disabled={uploading || !selectedFile}
+                    startIcon={uploading ? <CircularProgress size={16} color="inherit" /> : undefined}
+                >
+                    {uploading ? "Submitting..." : "Submit"}
+                </Button>
+            </DialogActions>
+        </Dialog>
     );
 };
 

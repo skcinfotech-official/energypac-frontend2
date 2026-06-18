@@ -1,12 +1,58 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { FaPlus, FaSearch, FaEye, FaFileExcel } from "react-icons/fa";
+import {
+    Box,
+    Card,
+    Typography,
+    Button,
+    TextField,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    IconButton,
+    Tooltip,
+    CircularProgress,
+    Chip,
+    InputAdornment,
+    MenuItem,
+    Select,
+    FormControl,
+    InputLabel,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import SearchIcon from "@mui/icons-material/Search";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import DescriptionIcon from "@mui/icons-material/Description";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { getClientQueries, getClientQueryById, getClientQueryReport } from "../services/salesService";
 import EnquiryModal from "../components/sales/EnquiryModal";
 import EnquiryDetailsModal from "../components/sales/EnquiryDetailsModal";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+
+const statusChipProps = (status) => {
+    switch (status) {
+        case "PENDING":
+            return { label: "PENDING", color: "warning" };
+        case "QUOTATION_SENT":
+            return { label: "QUOTATION SENT", color: "info" };
+        case "CONVERTED":
+            return { label: "CONVERTED", color: "success" };
+        case "REJECTED":
+            return { label: "REJECTED", color: "error" };
+        default:
+            return { label: status?.replace("_", " ") || "", color: "default" };
+    }
+};
 
 const Enquiry = () => {
     const [searchText, setSearchText] = useState("");
@@ -173,170 +219,255 @@ const Enquiry = () => {
     };
 
     return (
-        <div>
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <Box>
+            <Card
+                sx={{
+                    borderRadius: 4,
+                    border: "1px solid",
+                    borderColor: "slate.200",
+                    boxShadow: 1,
+                    overflow: "hidden",
+                }}
+            >
                 {/* HEADER */}
-                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                    <div>
-                        <h3 className="font-bold text-slate-800">QUERY</h3>
-                        <span className="text-sm text-slate-500 font-semibold">
+                <Box
+                    sx={{
+                        px: 3,
+                        py: 2,
+                        borderBottom: "1px solid",
+                        borderColor: "grey.200",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                    }}
+                >
+                    <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "grey.800" }}>
+                            QUERY
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: "grey.500", fontWeight: 600 }}>
                             Total: {totalCount}
-                        </span>
-                    </div>
+                        </Typography>
+                    </Box>
 
-                    <div className="flex items-center gap-3">
-                        <button
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                        <Button
+                            variant="contained"
                             onClick={handleOpenReport}
-                            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-500"
+                            startIcon={<DescriptionIcon />}
+                            sx={{
+                                bgcolor: "success.main",
+                                textTransform: "none",
+                                fontWeight: 600,
+                                fontSize: "0.875rem",
+                                borderRadius: 2,
+                                "&:hover": { bgcolor: "success.dark" },
+                            }}
                         >
-                            <FaFileExcel className="text-sm" />
                             Download Report
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                            variant="contained"
                             onClick={() => setIsModalOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-500"
+                            startIcon={<AddIcon />}
+                            sx={{
+                                bgcolor: "primary.main",
+                                textTransform: "none",
+                                fontWeight: 600,
+                                fontSize: "0.875rem",
+                                borderRadius: 2,
+                                "&:hover": { bgcolor: "primary.dark" },
+                            }}
                         >
-                            <FaPlus className="text-xs" />
                             New Query
-                        </button>
-                    </div>
-                </div>
+                        </Button>
+                    </Box>
+                </Box>
 
                 {/* SEARCH & FILTER */}
-                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-                    <div className="flex flex-wrap gap-4 items-end">
+                <Box
+                    sx={{
+                        px: 3,
+                        py: 2,
+                        borderBottom: "1px solid",
+                        borderColor: "grey.200",
+                        bgcolor: "grey.50",
+                    }}
+                >
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "flex-end" }}>
                         {/* Status Filter */}
-                        <div className="w-40">
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                Status
-                            </label>
-                            <select
+                        <FormControl size="small" sx={{ minWidth: 160 }}>
+                            <InputLabel sx={{ fontSize: "0.75rem", fontWeight: 600 }}>Status</InputLabel>
+                            <Select
                                 value={statusFilter}
+                                label="Status"
                                 onChange={(e) => setStatusFilter(e.target.value)}
-                                className="input w-full"
+                                sx={{ bgcolor: "white" }}
                             >
-                                <option value="">All Status</option>
-                                <option value="PENDING">Pending</option>
-                                <option value="QUOTATION_SENT">Quotation Sent</option>
-                                <option value="CONVERTED">Converted</option>
-                                <option value="REJECTED">Rejected</option>
-                            </select>
-                        </div>
+                                <MenuItem value="">All Status</MenuItem>
+                                <MenuItem value="PENDING">Pending</MenuItem>
+                                <MenuItem value="QUOTATION_SENT">Quotation Sent</MenuItem>
+                                <MenuItem value="CONVERTED">Converted</MenuItem>
+                                <MenuItem value="REJECTED">Rejected</MenuItem>
+                            </Select>
+                        </FormControl>
 
                         {/* Search */}
-                        <div className="flex-1 min-w-55">
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                Search Query
-                            </label>
-                            <div className="relative">
-                                <input
-                                    value={searchText}
-                                    onChange={handleSearch}
-                                    placeholder="Search..."
-                                    className="w-full pl-10 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                />
-                                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                        <TextField
+                            size="small"
+                            value={searchText}
+                            onChange={handleSearch}
+                            placeholder="Search..."
+                            label="Search Query"
+                            sx={{ flex: 1, minWidth: 220, bgcolor: "white" }}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon sx={{ color: "grey.400" }} />
+                                    </InputAdornment>
+                                ),
+                            }}
+                        />
+                    </Box>
+                </Box>
 
-                <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="bg-blue-50/50 text-slate-800 uppercase text-[10px] font-bold tracking-widest">
-                            <th className="px-6 py-4 text-[13px]">Query No</th>
-                            <th className="px-6 py-4 text-[13px]">Date</th>
-                            <th className="px-6 py-4 text-[13px]">Customer</th>
-                            <th className="px-6 py-4 text-[13px]">Contact</th>
-                            <th className="px-6 py-4 text-[13px]">Status</th>
-                            <th className="px-6 py-4 text-[13px] text-center">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {loading ? (
-                            <tr>
-                                <td colSpan="6" className="px-6 py-6 text-center text-slate-500">
-                                    Loading...
-                                </td>
-                            </tr>
-                        ) : enquiries.length > 0 ? (
-                            enquiries.map((item) => (
-                                <tr key={item.id} className="odd:bg-slate-100 even:bg-white hover:bg-slate-200   transition-colors">
-                                    <td className="px-6 py-4 font-mono text-blue-600 font-semibold">
-                                        {item.query_number}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-slate-600">
-                                        {item.query_date}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="text-sm font-medium text-slate-800">
-                                            {item.client_name}
-                                        </div>
-                                        <div className="text-xs text-slate-500">
-                                            {item.address}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="text-sm text-slate-700">
-                                            {item.contact_person}
-                                        </div>
-                                        <div className="text-xs text-slate-500">
-                                            {item.phone}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${item.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
-                                            item.status === 'QUOTATION_SENT' ? 'bg-blue-100 text-blue-700' :
-                                                item.status === 'CONVERTED' ? 'bg-green-100 text-green-700' :
-                                                    item.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                                                        'bg-slate-100 text-slate-700'
-                                            }`}>
-                                            {item.status?.replace('_', ' ')}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        <button
-                                            onClick={() => handleView(item.id)}
-                                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                                        >
-                                            <FaEye />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td colSpan="6" className="px-6 py-6 text-center text-slate-500">
-                                    No data found
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                {/* TABLE */}
+                <TableContainer>
+                    <Table>
+                        <TableHead>
+                            <TableRow sx={{ bgcolor: "primary.50", "& th": { fontWeight: 700, fontSize: "0.8125rem", color: "grey.800", textTransform: "uppercase", letterSpacing: "0.05em" } }}>
+                                <TableCell sx={{ px: 3, py: 2 }}>Query No</TableCell>
+                                <TableCell sx={{ px: 3, py: 2 }}>Date</TableCell>
+                                <TableCell sx={{ px: 3, py: 2 }}>Customer</TableCell>
+                                <TableCell sx={{ px: 3, py: 2 }}>Contact</TableCell>
+                                <TableCell sx={{ px: 3, py: 2 }}>Status</TableCell>
+                                <TableCell sx={{ px: 3, py: 2, textAlign: "center" }}>Actions</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={6} sx={{ textAlign: "center", py: 4 }}>
+                                        <CircularProgress size={28} />
+                                        <Typography variant="body2" sx={{ mt: 1, color: "grey.500" }}>
+                                            Loading...
+                                        </Typography>
+                                    </TableCell>
+                                </TableRow>
+                            ) : enquiries.length > 0 ? (
+                                enquiries.map((item, index) => (
+                                    <TableRow
+                                        key={item.id}
+                                        sx={{
+                                            bgcolor: index % 2 === 0 ? "grey.100" : "white",
+                                            "&:hover": { bgcolor: "grey.200" },
+                                            transition: "background-color 0.15s",
+                                        }}
+                                    >
+                                        <TableCell sx={{ px: 3, py: 2, fontFamily: "monospace", color: "primary.main", fontWeight: 600 }}>
+                                            {item.query_number}
+                                        </TableCell>
+                                        <TableCell sx={{ px: 3, py: 2 }}>
+                                            <Typography variant="body2" sx={{ color: "grey.600" }}>
+                                                {item.query_date}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ px: 3, py: 2 }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 500, color: "grey.800" }}>
+                                                {item.client_name}
+                                            </Typography>
+                                            <Typography variant="caption" sx={{ color: "grey.500" }}>
+                                                {item.address}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ px: 3, py: 2 }}>
+                                            <Typography variant="body2" sx={{ color: "grey.700" }}>
+                                                {item.contact_person}
+                                            </Typography>
+                                            <Typography variant="caption" sx={{ color: "grey.500" }}>
+                                                {item.phone}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ px: 3, py: 2 }}>
+                                            <Chip
+                                                size="small"
+                                                {...statusChipProps(item.status)}
+                                            />
+                                        </TableCell>
+                                        <TableCell sx={{ px: 3, py: 2, textAlign: "center" }}>
+                                            <Tooltip title="View Details">
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => handleView(item.id)}
+                                                    sx={{ color: "primary.main" }}
+                                                >
+                                                    <VisibilityIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={6} sx={{ textAlign: "center", py: 4, color: "grey.500" }}>
+                                        No data found
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
 
-            {/* PAGINATION */}
-            <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
-                <button
-                    onClick={handlePrev}
-                    disabled={!prevPage}
-                    className="text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40 disabled:hover:text-slate-600 cursor-pointer disabled:cursor-not-allowed"
+                {/* PAGINATION */}
+                <Box
+                    sx={{
+                        px: 3,
+                        py: 2,
+                        borderTop: "1px solid",
+                        borderColor: "grey.200",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                    }}
                 >
-                    ← Previous
-                </button>
+                    <Button
+                        size="small"
+                        onClick={handlePrev}
+                        disabled={!prevPage}
+                        startIcon={<ChevronLeftIcon />}
+                        sx={{
+                            textTransform: "none",
+                            fontWeight: 600,
+                            fontSize: "0.875rem",
+                            color: "grey.600",
+                            "&:hover": { color: "primary.main" },
+                        }}
+                    >
+                        Previous
+                    </Button>
 
-                <span className="text-xs text-slate-400">Page {currentPage}</span>
+                    <Typography variant="caption" sx={{ color: "grey.400" }}>
+                        Page {currentPage}
+                    </Typography>
 
-                <button
-                    onClick={handleNext}
-                    disabled={!nextPage}
-                    className="text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40 disabled:hover:text-slate-600 cursor-pointer disabled:cursor-not-allowed"
-                >
-                    Next →
-                </button>
-            </div>
-            </div>
+                    <Button
+                        size="small"
+                        onClick={handleNext}
+                        disabled={!nextPage}
+                        endIcon={<ChevronRightIcon />}
+                        sx={{
+                            textTransform: "none",
+                            fontWeight: 600,
+                            fontSize: "0.875rem",
+                            color: "grey.600",
+                            "&:hover": { color: "primary.main" },
+                        }}
+                    >
+                        Next
+                    </Button>
+                </Box>
+            </Card>
+
             {/* Modal */}
             <EnquiryModal
                 isOpen={isModalOpen}
@@ -352,67 +483,104 @@ const Enquiry = () => {
             />
 
             {/* Report Modal */}
-            {showReportModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                                <FaFileExcel className="text-emerald-600" /> Generate Report
-                            </h3>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">Start Date</label>
-                                <input
-                                    type="date"
-                                    value={reportFilters.start_date}
-                                    onChange={(e) => setReportFilters({ ...reportFilters, start_date: e.target.value })}
-                                    className="input w-full"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">End Date</label>
-                                <input
-                                    type="date"
-                                    value={reportFilters.end_date}
-                                    onChange={(e) => setReportFilters({ ...reportFilters, end_date: e.target.value })}
-                                    className="input w-full"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">Status Filter</label>
-                                <select
-                                    value={reportFilters.status}
-                                    onChange={(e) => setReportFilters({ ...reportFilters, status: e.target.value })}
-                                    className="input w-full"
-                                >
-                                    <option value="">All Status</option>
-                                    <option value="PENDING">Pending</option>
-                                    <option value="QUOTATION_SENT">Quotation Sent</option>
-                                    <option value="CONVERTED">Converted</option>
-                                    <option value="REJECTED">Rejected</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50">
-                            <button
-                                onClick={() => setShowReportModal(false)}
-                                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={generateReport}
-                                disabled={downloading}
-                                className="px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-500 disabled:opacity-50 flex items-center gap-2"
-                            >
-                                {downloading ? "Downloading..." : "Download Excel"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
+            <Dialog
+                open={showReportModal}
+                onClose={() => setShowReportModal(false)}
+                maxWidth="xs"
+                fullWidth
+                PaperProps={{
+                    sx: { borderRadius: 3, overflow: "hidden" },
+                }}
+            >
+                <DialogTitle
+                    sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        bgcolor: "grey.50",
+                        borderBottom: "1px solid",
+                        borderColor: "grey.200",
+                        fontWeight: 700,
+                        color: "grey.800",
+                        py: 2,
+                        px: 3,
+                    }}
+                >
+                    <DescriptionIcon sx={{ color: "success.main" }} />
+                    Generate Report
+                </DialogTitle>
+                <DialogContent sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2.5, pt: "20px !important" }}>
+                    <TextField
+                        label="Start Date"
+                        type="date"
+                        size="small"
+                        fullWidth
+                        value={reportFilters.start_date}
+                        onChange={(e) => setReportFilters({ ...reportFilters, start_date: e.target.value })}
+                        InputLabelProps={{ shrink: true }}
+                    />
+                    <TextField
+                        label="End Date"
+                        type="date"
+                        size="small"
+                        fullWidth
+                        value={reportFilters.end_date}
+                        onChange={(e) => setReportFilters({ ...reportFilters, end_date: e.target.value })}
+                        InputLabelProps={{ shrink: true }}
+                    />
+                    <FormControl size="small" fullWidth>
+                        <InputLabel>Status Filter</InputLabel>
+                        <Select
+                            value={reportFilters.status}
+                            label="Status Filter"
+                            onChange={(e) => setReportFilters({ ...reportFilters, status: e.target.value })}
+                        >
+                            <MenuItem value="">All Status</MenuItem>
+                            <MenuItem value="PENDING">Pending</MenuItem>
+                            <MenuItem value="QUOTATION_SENT">Quotation Sent</MenuItem>
+                            <MenuItem value="CONVERTED">Converted</MenuItem>
+                            <MenuItem value="REJECTED">Rejected</MenuItem>
+                        </Select>
+                    </FormControl>
+                </DialogContent>
+                <DialogActions
+                    sx={{
+                        px: 3,
+                        py: 2,
+                        borderTop: "1px solid",
+                        borderColor: "grey.200",
+                        bgcolor: "grey.50",
+                    }}
+                >
+                    <Button
+                        onClick={() => setShowReportModal(false)}
+                        sx={{
+                            textTransform: "none",
+                            fontWeight: 600,
+                            color: "grey.600",
+                            "&:hover": { color: "grey.800" },
+                        }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="contained"
+                        onClick={generateReport}
+                        disabled={downloading}
+                        startIcon={downloading ? <CircularProgress size={16} color="inherit" /> : null}
+                        sx={{
+                            bgcolor: "success.main",
+                            textTransform: "none",
+                            fontWeight: 600,
+                            borderRadius: 2,
+                            "&:hover": { bgcolor: "success.dark" },
+                        }}
+                    >
+                        {downloading ? "Downloading..." : "Download Excel"}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </Box>
     );
 };
 

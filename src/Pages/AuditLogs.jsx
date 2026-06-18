@@ -1,5 +1,14 @@
-import React, { useEffect, useState } from "react";
-import { FaHistory, FaSearch, FaEye, FaCalendarAlt, FaTimes } from "react-icons/fa";
+import { useEffect, useState } from "react";
+import {
+    Box, Card, Typography, Button, TextField, Table, TableBody, TableCell,
+    TableContainer, TableHead, TableRow, CircularProgress, Chip, InputAdornment,
+    Select, MenuItem, FormControl, InputLabel, Grid
+} from "@mui/material";
+import {
+    History as HistoryIcon, Search as SearchIcon, Visibility as ViewIcon,
+    CalendarMonth as CalendarIcon, Clear as ClearIcon,
+    ChevronLeft as PrevIcon, ChevronRight as NextIcon,
+} from "@mui/icons-material";
 import { getAuditLogs } from "../services/auditLogService";
 import AuditLogDetailModal from "../components/audit/AuditLogDetailModal";
 import AlertToast from "../components/ui/AlertToast";
@@ -10,310 +19,190 @@ export default function AuditLogs() {
     const [next, setNext] = useState(null);
     const [previous, setPrevious] = useState(null);
     const [page, setPage] = useState(1);
-    
     const [loading, setLoading] = useState(true);
     const [searchText, setSearchText] = useState("");
-    const [actionFilter, setActionFilter] = useState(""); // "" | "CREATE" | "UPDATE" | "DELETE"
-    const [modelFilter, setModelFilter] = useState(""); // text filter for Model name
-    
-    // Detail Modal State
+    const [actionFilter, setActionFilter] = useState("");
+    const [modelFilter, setModelFilter] = useState("");
     const [selectedLog, setSelectedLog] = useState(null);
     const [modalOpen, setModalOpen] = useState(false);
-    
-    // Alert Toast
-    const [toast, setToast] = useState({
-        open: false,
-        type: "success",
-        message: "",
-    });
+    const [toast, setToast] = useState({ open: false, type: "success", message: "" });
 
     const fetchLogs = async (pageNum = 1, useUrl = null) => {
         try {
             setLoading(true);
-            const res = await getAuditLogs({
-                url: useUrl,
-                search: searchText,
-                action: actionFilter,
-                modelName: modelFilter,
-                page: pageNum
-            });
-
+            const res = await getAuditLogs({ url: useUrl, search: searchText, action: actionFilter, modelName: modelFilter, page: pageNum });
             const results = res.data?.results || res.results || res.data || [];
-            const totalCount = res.data?.count ?? res.count ?? results.length;
-            const nextUrl = res.data?.next ?? res.next ?? null;
-            const prevUrl = res.data?.previous ?? res.previous ?? null;
-
-            setLogs(results);
-            setCount(totalCount);
-            setNext(nextUrl);
-            setPrevious(prevUrl);
+            setLogs(results); setCount(res.data?.count ?? res.count ?? results.length);
+            setNext(res.data?.next ?? res.next ?? null); setPrevious(res.data?.previous ?? res.previous ?? null);
             setPage(pageNum);
         } catch (err) {
-            console.error("Failed to load audit logs:", err);
-            setToast({
-                open: true,
-                type: "error",
-                message: "Failed to fetch audit logs from the server",
-            });
-        } finally {
-            setLoading(false);
-        }
+            setToast({ open: true, type: "error", message: "Failed to fetch audit logs from the server" });
+        } finally { setLoading(false); }
     };
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            fetchLogs(1);
-        }, 400);
+        const timer = setTimeout(() => fetchLogs(1), 400);
         return () => clearTimeout(timer);
     }, [searchText, actionFilter, modelFilter]);
 
     const handlePageChange = (newPageUrl, direction) => {
         if (!newPageUrl) return;
-        const nextPageNum = direction === "next" ? page + 1 : page - 1;
-        fetchLogs(nextPageNum, newPageUrl);
+        fetchLogs(direction === "next" ? page + 1 : page - 1, newPageUrl);
     };
 
-    const handleClearFilters = () => {
-        setSearchText("");
-        setActionFilter("");
-        setModelFilter("");
-    };
+    const handleClearFilters = () => { setSearchText(""); setActionFilter(""); setModelFilter(""); };
 
     const formatTimestamp = (isoString) => {
         if (!isoString) return "-";
-        const date = new Date(isoString);
-        return date.toLocaleString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-        });
+        return new Date(isoString).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    };
+
+    const actionChipColor = (action) => {
+        const a = action?.toUpperCase();
+        if (a === "CREATE") return { bgcolor: '#E8F5E9', color: '#2E7D32' };
+        if (a === "UPDATE") return { bgcolor: '#FFF8E1', color: '#F57F17' };
+        return { bgcolor: '#FFEBEE', color: '#C62828' };
     };
 
     return (
-        <div className="space-y-6">
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                    <div>
-                        <h3 className="font-bold text-slate-800 flex items-center gap-2 text-[16px]">
-                            <FaHistory className="text-blue-600" />
-                            System Audit Logs
-                        </h3>
-                        <span className="text-[12px] text-slate-400 font-semibold block mt-0.5">
-                            Total Records: {count}
-                        </span>
-                    </div>
-
+        <Box>
+            <Card>
+                {/* Header */}
+                <Box sx={{ px: 2.5, py: 2, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+                    <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <HistoryIcon sx={{ color: 'primary.main', fontSize: '1.2rem' }} /> System Audit Logs
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">Total Records: {count}</Typography>
+                    </Box>
                     {(searchText || actionFilter || modelFilter) && (
-                        <button
-                            onClick={handleClearFilters}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-650 rounded-lg text-xs font-semibold transition duration-150"
-                        >
-                            <FaTimes className="text-[10px]" />
+                        <Button size="small" startIcon={<ClearIcon />} onClick={handleClearFilters} sx={{ fontWeight: 600 }}>
                             Clear Filters
-                        </button>
+                        </Button>
                     )}
-                </div>
+                </Box>
 
-                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                        <div className="w-full">
-                            <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1.5">
-                                <FaSearch className="text-slate-450 text-[10px]" /> Search Log Entry
-                            </label>
-                            <input
-                                value={searchText}
-                                onChange={(e) => setSearchText(e.target.value)}
-                                placeholder="Search performer, object ref..."
-                                className="input py-1.5 text-sm bg-white border-slate-200 rounded-lg w-full focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all font-medium"
-                            />
-                        </div>
+                {/* Filters */}
+                <Box sx={{ px: 2.5, py: 2, borderBottom: '1px solid', borderColor: 'divider', bgcolor: '#FAFBFC' }}>
+                    <Grid container spacing={2}>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <TextField fullWidth size="small" placeholder="Search performer, object ref..." value={searchText} onChange={e => setSearchText(e.target.value)}
+                                InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: '1.1rem', color: 'text.secondary' }} /></InputAdornment> }} />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <FormControl fullWidth size="small">
+                                <InputLabel>Component / Model</InputLabel>
+                                <Select value={modelFilter} label="Component / Model" onChange={e => setModelFilter(e.target.value)}>
+                                    <MenuItem value="">All Components</MenuItem>
+                                    <MenuItem value="PurchaseOrder">Purchase Order</MenuItem>
+                                    <MenuItem value="TransportEntry">Transport Entry</MenuItem>
+                                    <MenuItem value="Requisition">Requisition</MenuItem>
+                                    <MenuItem value="Item">Item</MenuItem>
+                                    <MenuItem value="Vendor">Vendor</MenuItem>
+                                    <MenuItem value="Currency">Currency</MenuItem>
+                                    <MenuItem value="User">User</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <FormControl fullWidth size="small">
+                                <InputLabel>Action Type</InputLabel>
+                                <Select value={actionFilter} label="Action Type" onChange={e => setActionFilter(e.target.value)}>
+                                    <MenuItem value="">All Actions</MenuItem>
+                                    <MenuItem value="CREATE">CREATE</MenuItem>
+                                    <MenuItem value="UPDATE">UPDATE</MenuItem>
+                                    <MenuItem value="DELETE">DELETE</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                    </Grid>
+                </Box>
 
-                        <div className="w-full">
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                Component / Model
-                            </label>
-                            <select
-                                value={modelFilter}
-                                onChange={(e) => setModelFilter(e.target.value)}
-                                className="input py-1.5 text-sm bg-white border-slate-200 rounded-lg w-full focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all font-semibold"
-                            >
-                                <option value="">All Components</option>
-                                <option value="PurchaseOrder">Purchase Order</option>
-                                <option value="TransportEntry">Transport Entry</option>
-                                <option value="Requisition">Requisition</option>
-                                <option value="Item">Item</option>
-                                <option value="Vendor">Vendor</option>
-                                <option value="Currency">Currency</option>
-                                <option value="User">User</option>
-                            </select>
-                        </div>
-
-                        <div className="w-full">
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                Action Type
-                            </label>
-                            <select
-                                value={actionFilter}
-                                onChange={(e) => setActionFilter(e.target.value)}
-                                className="input py-1.5 text-sm bg-white border-slate-200 rounded-lg w-full focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all font-semibold"
-                            >
-                                <option value="">All Actions</option>
-                                <option value="CREATE">CREATE</option>
-                                <option value="UPDATE">UPDATE</option>
-                                <option value="DELETE">DELETE</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="odd:bg-slate-100 even:bg-white hover:bg-slate-200 text-slate-600 uppercase text-xs font-bold tracking-wider border-b border-slate-200">
-                                <th className="px-6 py-4">Timestamp</th>
-                                <th className="px-6 py-4">Performer</th>
-                                <th className="px-6 py-4 text-center">Action</th>
-                                <th className="px-6 py-4">Component</th>
-                                <th className="px-6 py-4">Affected Object</th>
-                                <th className="px-6 py-4 text-center">Changes</th>
-                            </tr>
-                        </thead>
-
-                        <tbody className="divide-y divide-slate-100">
+                {/* Table */}
+                <TableContainer>
+                    <Table size="small">
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Timestamp</TableCell>
+                                <TableCell>Performer</TableCell>
+                                <TableCell align="center">Action</TableCell>
+                                <TableCell>Component</TableCell>
+                                <TableCell>Affected Object</TableCell>
+                                <TableCell align="center">Changes</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
                             {loading && (
-                                <tr>
-                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-500 bg-white">
-                                        <div className="flex flex-col items-center justify-center gap-3">
-                                            <div className="w-8 h-8 rounded-full border-4 border-slate-200 border-t-blue-600 animate-spin"></div>
-                                            <span className="text-xs font-bold text-slate-400 animate-pulse uppercase tracking-wider">Loading system audit trail...</span>
-                                        </div>
-                                    </td>
-                                </tr>
+                                <TableRow><TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                                    <CircularProgress size={28} />
+                                    <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 1 }}>Loading audit trail...</Typography>
+                                </TableCell></TableRow>
                             )}
-
                             {!loading && logs.length === 0 && (
-                                <tr>
-                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-500 bg-white">
-                                        No audit logs found for the current filter settings.
-                                    </td>
-                                </tr>
+                                <TableRow><TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                                    <Typography variant="body2" color="text.secondary">No audit logs found for the current filter settings.</Typography>
+                                </TableCell></TableRow>
                             )}
-
-                            {!loading && logs.map((log) => (
-                                <tr 
-                                    key={log.id} 
-                                    className="odd:bg-slate-100 even:bg-white hover:bg-slate-200 transition-colors"
-                                >
-                                    <td className="px-6 py-4 text-slate-600 text-sm whitespace-nowrap">
-                                        <div className="flex items-center gap-2">
-                                            <FaCalendarAlt className="text-slate-400 text-[11px]" />
-                                            <span>{formatTimestamp(log.timestamp)}</span>
-                                        </div>
-                                    </td>
-
-                                    <td className="px-6 py-4 font-medium text-slate-800 text-sm whitespace-nowrap">
-                                        <div>
-                                            <span className="block font-bold text-slate-800">
-                                                {log.user_name || "System"}
-                                            </span>
-                                            <span className="text-[10px] font-mono text-slate-400 block max-w-28 truncate" title={log.user}>
-                                                {log.user || "Auto Job"}
-                                            </span>
-                                        </div>
-                                    </td>
-
-                                    <td className="px-6 py-4 text-center whitespace-nowrap">
-                                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                                            log.action?.toUpperCase() === "CREATE" ? "bg-green-100 text-green-700" :
-                                            log.action?.toUpperCase() === "UPDATE" ? "bg-yellow-100 text-yellow-700" :
-                                            "bg-red-100 text-red-750"
-                                        }`}>
-                                            {log.action}
-                                        </span>
-                                    </td>
-
-                                    <td className="px-6 py-4 text-slate-700 text-sm font-semibold whitespace-nowrap">
-                                        {log.model_name}
-                                    </td>
-
-                                    <td className="px-6 py-4 text-slate-800 text-sm max-w-sm">
-                                        <div className="truncate">
-                                            <span className="font-semibold block truncate" title={log.object_repr}>
-                                                {log.object_repr || "-"}
-                                            </span>
-                                            <span className="text-[10px] font-mono text-slate-400 block truncate" title={log.object_id}>
-                                                Ref ID: {log.object_id}
-                                            </span>
-                                        </div>
-                                    </td>
-
-                                    <td className="px-6 py-4 text-center whitespace-nowrap">
-                                        <button
-                                            onClick={() => {
-                                                setSelectedLog(log);
-                                                setModalOpen(true);
-                                            }}
-                                            className="px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition-colors shadow-sm"
-                                        >
-                                            <div className="flex items-center gap-1">
-                                                <FaEye />
-                                                View Diff
-                                            </div>
-                                        </button>
-                                    </td>
-                                </tr>
+                            {!loading && logs.map(log => (
+                                <TableRow key={log.id}>
+                                    <TableCell>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                            <CalendarIcon sx={{ fontSize: '0.85rem', color: 'text.secondary' }} />
+                                            <Typography variant="body2">{formatTimestamp(log.timestamp)}</Typography>
+                                        </Box>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{log.user_name || "System"}</Typography>
+                                        <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary', display: 'block', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }} title={log.user}>
+                                            {log.user || "Auto Job"}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        <Chip label={log.action} size="small" sx={{ ...actionChipColor(log.action), fontWeight: 700, fontSize: '0.65rem' }} />
+                                    </TableCell>
+                                    <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{log.model_name}</Typography></TableCell>
+                                    <TableCell>
+                                        <Typography variant="body2" sx={{ fontWeight: 600, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.object_repr}>
+                                            {log.object_repr || "-"}
+                                        </Typography>
+                                        <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary' }} title={log.object_id}>
+                                            Ref ID: {log.object_id}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        <Button size="small" variant="outlined" startIcon={<ViewIcon sx={{ fontSize: '0.9rem' }} />}
+                                            onClick={() => { setSelectedLog(log); setModalOpen(true); }}
+                                            sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
+                                            View Diff
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
                             ))}
-                        </tbody>
-                    </table>
-                </div>
+                        </TableBody>
+                    </Table>
+                </TableContainer>
 
+                {/* Pagination */}
                 {!loading && count > 0 && (
-                    <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-white shrink-0">
-                        <button
-                            onClick={() => previous && handlePageChange(previous, "previous")}
-                            disabled={!previous}
-                            className="text-xs font-bold text-slate-500 hover:text-blue-650 disabled:opacity-40 transition"
-                        >
-                            ← Previous
-                        </button>
-
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-800 bg-slate-150 px-2.5 py-1 rounded-full">
-                                Page {page}
-                            </span>
-                            <span className="text-xs text-slate-400 font-semibold hidden sm:inline">
+                    <Box sx={{ px: 2.5, py: 1.5, borderTop: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Button size="small" startIcon={<PrevIcon />} disabled={!previous} onClick={() => handlePageChange(previous, "previous")} sx={{ fontWeight: 600 }}>
+                            Previous
+                        </Button>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Chip label={`Page ${page}`} size="small" sx={{ fontWeight: 700 }} />
+                            <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'inline' } }}>
                                 Showing {logs.length} of {count} records
-                            </span>
-                        </div>
-
-                        <button
-                            onClick={() => next && handlePageChange(next, "next")}
-                            disabled={!next}
-                            className="text-xs font-bold text-slate-500 hover:text-blue-650 disabled:opacity-40 transition"
-                        >
-                            Next →
-                        </button>
-                    </div>
+                            </Typography>
+                        </Box>
+                        <Button size="small" endIcon={<NextIcon />} disabled={!next} onClick={() => handlePageChange(next, "next")} sx={{ fontWeight: 600 }}>
+                            Next
+                        </Button>
+                    </Box>
                 )}
-            </div>
+            </Card>
 
-            <AuditLogDetailModal
-                open={modalOpen}
-                onClose={() => {
-                    setModalOpen(false);
-                    setSelectedLog(null);
-                }}
-                log={selectedLog}
-            />
-
-            <AlertToast
-                open={toast.open}
-                type={toast.type}
-                message={toast.message}
-                onClose={() => setToast({ ...toast, open: false })}
-            />
-        </div>
+            <AuditLogDetailModal open={modalOpen} onClose={() => { setModalOpen(false); setSelectedLog(null); }} log={selectedLog} />
+            <AlertToast open={toast.open} type={toast.type} message={toast.message} onClose={() => setToast({ ...toast, open: false })} />
+        </Box>
     );
 }

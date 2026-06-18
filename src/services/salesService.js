@@ -44,7 +44,7 @@ export const getClientQueryById = async (id) => {
 
 export const getClientQuotationById = async (id) => {
     try {
-        const response = await axiosSecure.get(`/api/sales/quotations/${id}`);
+        const response = await axiosSecure.get(`/api/quotations/${id}`);
         return response.data;
     } catch (error) {
         console.error(`Error fetching client quotation ${id}:`, error);
@@ -59,7 +59,7 @@ export const getClientQuotations = async (page = 1, searchQuery = "", status = "
             search: searchQuery,
             ...(status && { status }),
         };
-        const response = await axiosSecure.get(`/api/sales/quotations`, { params });
+        const response = await axiosSecure.get(`/api/quotations`, { params });
         return response.data;
     } catch (error) {
         console.error("Error fetching client quotations:", error);
@@ -70,7 +70,7 @@ export const getClientQuotations = async (page = 1, searchQuery = "", status = "
 export const createClientQuotation = async (payload) => {
     try {
         const response = await axiosSecure.post(
-            "/api/sales/quotations",
+            "/api/quotations",
             payload
         );
         return response.data;
@@ -83,7 +83,7 @@ export const createClientQuotation = async (payload) => {
 export const updateClientQuotation = async (id, payload) => {
     try {
         const response = await axiosSecure.patch(
-            `/api/sales/quotations/${id}`,
+            `/api/quotations/${id}`,
             payload
         );
         return response.data;
@@ -96,7 +96,7 @@ export const updateClientQuotation = async (id, payload) => {
 export const updateClientQuotationGst = async (id, gstData) => {
     try {
         const response = await axiosSecure.post(
-            `/api/sales/quotations/${id}/update_gst`,
+            `/api/quotations/${id}/update_gst`,
             gstData
         );
         return response.data;
@@ -108,7 +108,7 @@ export const updateClientQuotationGst = async (id, gstData) => {
 
 export const getClientQuotationSummary = async (id) => {
     try {
-        const response = await axiosSecure.get(`/api/sales/quotations/${id}/summary`);
+        const response = await axiosSecure.get(`/api/quotations/${id}/summary`);
         return response.data;
     } catch (error) {
         console.error("Error fetching quotation summary:", error);
@@ -119,7 +119,7 @@ export const getClientQuotationSummary = async (id) => {
 export const updateClientQuotationStatus = async (id, status) => {
     try {
         const response = await axiosSecure.post(
-            `/api/sales/quotations/${id}/update_status`,
+            `/api/quotations/${id}/update_status`,
             { status }
         );
         return response.data;
@@ -234,19 +234,33 @@ export const getBillById = async (id) => {
     }
 };
 
-export const getBills = async (page = 1, searchQuery = "", piId = "") => {
+export const getBills = async (page = 1, searchQuery = "", piId = "", billType = "", source = "") => {
     try {
         const params = {
             page,
             search: searchQuery
         };
-        if (piId) {
-            params.proforma_invoice = piId;
-        }
+        if (piId) params.proforma_invoice = piId;
+        if (billType) params.bill_type = billType;
+        if (source) params.proforma_invoice__source = source;
         const response = await axiosSecure.get("/api/pi-bills", { params });
         return response.data;
     } catch (error) {
         console.error("Error fetching bills:", error);
+        throw error;
+    }
+};
+
+export const getBillsSummary = async (searchQuery = "", billType = "", source = "") => {
+    try {
+        const params = {};
+        if (searchQuery) params.search = searchQuery;
+        if (billType) params.bill_type = billType;
+        if (source) params.proforma_invoice__source = source;
+        const response = await axiosSecure.get("/api/pi-bills/summary", { params });
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching bills summary:", error);
         throw error;
     }
 };
@@ -335,18 +349,30 @@ export const cancelBill = async (id, payload = {}) => {
 };
 
 // Proforma Invoices API
-export const getProformaInvoices = async (page = 1, searchQuery = "") => {
+export const getProformaInvoices = async (page = 1, searchQuery = "", tradeType = "") => {
     try {
         const params = {
             page,
             search: searchQuery,
         };
+        if (tradeType) params.trade_type = tradeType;
         const response = await axiosSecure.get(`/api/proforma-invoices`, { params });
         return response.data;
     } catch (error) {
         console.error("Error fetching proforma invoices:", error);
         throw error;
     }
+};
+
+// Procurement visibility — which PI items still need to be purchased
+export const getPendingPurchasePIs = async (source = "DIRECT") => {
+    const res = await axiosSecure.get(`/api/proforma-invoices/pending_purchase`, { params: { source } });
+    return res.data;
+};
+
+export const getPIProcurement = async (piId) => {
+    const res = await axiosSecure.get(`/api/proforma-invoices/${piId}/procurement`);
+    return res.data;
 };
 
 export const getProformaInvoiceById = async (id) => {

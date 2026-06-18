@@ -2,12 +2,75 @@ import React, { useState, useEffect } from "react";
 import AlertToast from "../components/ui/AlertToast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import BillDetailsModal from "../components/sales/BillDetailsModal";
-import { getBills, getBillById, markBillAsPaid, cancelBill, getBillReport, getOutstandingReport, getBillPaymentHistory } from "../services/salesService";
+import { getBills, getBillsSummary, getBillById, markBillAsPaid, cancelBill, getBillReport, getOutstandingReport, getBillPaymentHistory } from "../services/salesService";
 import PasswordConfirmModal from "../components/ui/PasswordConfirmModal";
-import { FaSearch, FaFilter, FaEye, FaMoneyBillWave, FaTimes, FaFileExcel, FaHistory, FaFileInvoiceDollar, FaCalendarAlt, FaUserTie, FaUserEdit } from "react-icons/fa";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { useSearchParams } from "react-router-dom";
+
+// MUI Components
+import {
+    Box,
+    Card,
+    Typography,
+    Button,
+    TextField,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    IconButton,
+    Tooltip,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    CircularProgress,
+    Chip,
+    InputAdornment,
+    Select,
+    MenuItem,
+    FormControl,
+    InputLabel,
+    RadioGroup,
+    Radio,
+    FormControlLabel,
+    LinearProgress,
+    Skeleton,
+    Paper,
+    ToggleButton,
+    ToggleButtonGroup,
+    Menu,
+    ListItemIcon,
+    ListItemText
+} from "@mui/material";
+
+// MUI Icons
+import SearchIcon from "@mui/icons-material/Search";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import PaymentIcon from "@mui/icons-material/Payment";
+import CancelIcon from "@mui/icons-material/Cancel";
+import DescriptionIcon from "@mui/icons-material/Description";
+import HistoryIcon from "@mui/icons-material/History";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import PersonIcon from "@mui/icons-material/Person";
+import EditIcon from "@mui/icons-material/Edit";
+import CloseIcon from "@mui/icons-material/Close";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import PublicIcon from "@mui/icons-material/Public";
+import HomeWorkIcon from "@mui/icons-material/HomeWork";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+
+const SOURCES = [
+    { value: "", label: "All Sources" },
+    { value: "REQUISITION", label: "Requisition" },
+    { value: "STOCK_SALE", label: "Stock" },
+    { value: "DIRECT", label: "Direct" },
+];
 
 const BillList = () => {
     const [searchParams] = useSearchParams();
@@ -22,6 +85,9 @@ const BillList = () => {
     const [page, setPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState("");
     const [filterPI, setFilterPI] = useState("");
+    const [tab, setTab] = useState("DOMESTIC");        // DOMESTIC | INTERNATIONAL
+    const [sourceFilter, setSourceFilter] = useState(""); // "" = all PI sources
+    const [summary, setSummary] = useState(null);
 
     const [alert, setAlert] = useState({ open: false, type: "success", message: "" });
     const [confirm, setConfirm] = useState({ open: false, title: "", description: "", action: null });
@@ -38,6 +104,12 @@ const BillList = () => {
 
     // Payment History Modal State
     const [historyModal, setHistoryModal] = useState({ open: false, data: null, loading: false });
+
+    // Row action menu (kebab)
+    const [actionMenu, setActionMenu] = useState({ anchorEl: null, bill: null });
+    const openActionMenu = (e, bill) => { e.stopPropagation(); setActionMenu({ anchorEl: e.currentTarget, bill }); };
+    const closeActionMenu = () => setActionMenu({ anchorEl: null, bill: null });
+    const runAction = (fn) => () => { const bill = actionMenu.bill; closeActionMenu(); fn(bill); };
 
     // Report State
     const [showReportModal, setShowReportModal] = useState(false);
@@ -61,7 +133,7 @@ const BillList = () => {
     const fetchBills = async (pageNum = 1) => {
         setLoading(true);
         try {
-            const data = await getBills(pageNum, searchQuery, filterPI);
+            const data = await getBills(pageNum, searchQuery, filterPI, tab, sourceFilter);
             if (data) {
                 setBills(data.results || []);
                 setTotalCount(data.count || 0);
@@ -77,19 +149,42 @@ const BillList = () => {
         }
     };
 
+    const fetchSummary = async () => {
+        try {
+            const data = await getBillsSummary(searchQuery, tab, sourceFilter);
+            setSummary(data);
+        } catch (error) {
+            console.error("Failed to fetch bills summary", error);
+            setSummary(null);
+        }
+    };
+
     useEffect(() => {
         const timeoutId = setTimeout(() => {
             fetchBills(page);
+            fetchSummary();
         }, 500);
         return () => clearTimeout(timeoutId);
-    }, [searchQuery, filterPI, page]);
+    }, [searchQuery, filterPI, page, tab, sourceFilter]);
+
+    const handleTabChange = (_, newTab) => {
+        if (!newTab || newTab === tab) return;
+        setTab(newTab);
+        setSourceFilter("");
+        setPage(1);
+    };
+
+    const handleSourceChange = (val) => {
+        setSourceFilter(val);
+        setPage(1);
+    };
 
     const handleNext = () => { if (next) setPage(p => p + 1); };
     const handlePrev = () => { if (previous) setPage(p => Math.max(1, p - 1)); };
 
     const handleViewDetails = async (id) => {
-        setPaymentModal(prev => ({ ...prev, open: false })); // Ensure payment modal is closed
-        setHistoryModal(prev => ({ ...prev, open: false })); // Ensure history modal is closed
+        setPaymentModal(prev => ({ ...prev, open: false }));
+        setHistoryModal(prev => ({ ...prev, open: false }));
         setSelectedBillId(id);
         setDetailsLoading(true);
         try {
@@ -280,243 +375,412 @@ const BillList = () => {
         return isNaN(date.getTime()) ? dateStr : date.toLocaleDateString();
     };
 
-    const getStatusStyle = (status) => {
+    const getStatusChipProps = (status) => {
         switch (status) {
-            case 'GENERATED': return 'bg-blue-100 text-blue-700 border-blue-200';
-            case 'PAID': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-            case 'CANCELLED': return 'bg-red-100 text-red-700 border-red-200';
-            default: return 'bg-slate-100 text-slate-700 border-slate-200';
+            case 'GENERATED':
+                return { sx: { bgcolor: '#dbeafe', color: '#1d4ed8', border: '1px solid #bfdbfe', fontWeight: 900, fontSize: '0.625rem', letterSpacing: '0.05em', textTransform: 'uppercase' } };
+            case 'PAID':
+                return { sx: { bgcolor: '#d1fae5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: 900, fontSize: '0.625rem', letterSpacing: '0.05em', textTransform: 'uppercase' } };
+            case 'CANCELLED':
+                return { sx: { bgcolor: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', fontWeight: 900, fontSize: '0.625rem', letterSpacing: '0.05em', textTransform: 'uppercase' } };
+            default:
+                return { sx: { bgcolor: '#f1f5f9', color: '#334155', border: '1px solid #e2e8f0', fontWeight: 900, fontSize: '0.625rem', letterSpacing: '0.05em', textTransform: 'uppercase' } };
         }
     };
 
     return (
         <>
-            <div className="max-w-7xl mx-auto space-y-6 animate-fade-in py-1">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
-                        <FaFileInvoiceDollar className="text-emerald-600" />
-                        PI Bills (Finance)
-                    </h1>
-                    <p className="text-slate-500 mt-1 font-medium ">Track client billing, outstanding balances, and financial records for all active proforma invoices</p>
-                </div>
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={() => {
-                            const today = new Date().toISOString().split('T')[0];
-                            const thirtyDaysAgo = new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0];
-                            setReportParams({ start_date: thirtyDaysAgo, end_date: today, status: "", aging: false });
-                            setReportType("bills");
-                            setShowReportModal(true);
-                        }}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-sm font-black rounded-xl hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-600/20 active:scale-95"
-                    >
-                        <FaFileExcel className="text-sm" />
-                        GENERATE REPORT
-                    </button>
-                    <div className="bg-slate-50 px-5 py-2 rounded-xl border border-slate-200">
-                        <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Bills</p>
-                        <p className="text-xl font-black text-slate-800 leading-tight">{totalCount}</p>
-                    </div>
-                </div>
-            </div>
+            <Box sx={{ maxWidth: '80rem', mx: 'auto', py: 0.5, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {/* Header */}
+                <Card variant="outlined" sx={{ p: 3, borderRadius: 4, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, justifyContent: 'space-between', gap: 2 }}>
+                    <Box>
+                        <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <ReceiptLongIcon sx={{ color: '#059669' }} />
+                            PI Bills (Finance)
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5, fontWeight: 500 }}>
+                            Track client billing, outstanding balances, and financial records for all active proforma invoices
+                        </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Button
+                            variant="contained"
+                            startIcon={<DescriptionIcon />}
+                            onClick={() => {
+                                const today = new Date().toISOString().split('T')[0];
+                                const thirtyDaysAgo = new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0];
+                                setReportParams({ start_date: thirtyDaysAgo, end_date: today, status: "", aging: false });
+                                setReportType("bills");
+                                setShowReportModal(true);
+                            }}
+                            sx={{
+                                bgcolor: '#059669',
+                                '&:hover': { bgcolor: '#10b981' },
+                                fontWeight: 900,
+                                fontSize: '0.75rem',
+                                borderRadius: 3,
+                                textTransform: 'uppercase',
+                                px: 2.5,
+                                py: 1.25,
+                                boxShadow: '0 4px 14px 0 rgba(5,150,105,0.2)'
+                            }}
+                        >
+                            Generate Report
+                        </Button>
+                        <Box sx={{ bgcolor: '#f8fafc', px: 2.5, py: 1, borderRadius: 3, border: '1px solid #e2e8f0' }}>
+                            <Typography sx={{ fontSize: '0.625rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Total Bills
+                            </Typography>
+                            <Typography sx={{ fontSize: '1.25rem', fontWeight: 900, color: '#1e293b', lineHeight: 1.2 }}>
+                                {totalCount}
+                            </Typography>
+                        </Box>
+                    </Box>
+                </Card>
 
-            {/* Filters */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {/* Search */}
-                    <div className="lg:col-span-1">
-                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2">Search Bill No. / Client</label>
-                        <div className="relative">
-                            <input
-                                type="text"
+                {/* Category tabs + PI source filter + summary cards */}
+                <Card variant="outlined" sx={{ p: 3, borderRadius: 4, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                        {/* Domestic / International tabs */}
+                        <ToggleButtonGroup
+                            exclusive
+                            value={tab}
+                            onChange={handleTabChange}
+                            sx={{
+                                bgcolor: '#f1f5f9', borderRadius: 3, p: 0.5,
+                                '& .MuiToggleButton-root': {
+                                    textTransform: 'none', fontWeight: 800, fontSize: '0.8rem', px: 2.5, py: 0.8, gap: 0.75,
+                                    border: 'none', borderRadius: '10px !important', color: '#64748b',
+                                    '&.Mui-selected': {
+                                        bgcolor: '#fff', color: '#059669', boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
+                                        '&:hover': { bgcolor: '#fff' },
+                                    },
+                                },
+                            }}
+                        >
+                            <ToggleButton value="DOMESTIC"><HomeWorkIcon sx={{ fontSize: 18 }} />Domestic</ToggleButton>
+                            <ToggleButton value="INTERNATIONAL"><PublicIcon sx={{ fontSize: 18 }} />International</ToggleButton>
+                        </ToggleButtonGroup>
+
+                        {/* PI source chips */}
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                            {SOURCES.map((s) => {
+                                const active = sourceFilter === s.value;
+                                return (
+                                    <Chip
+                                        key={s.value || 'all'}
+                                        label={s.label}
+                                        clickable
+                                        onClick={() => handleSourceChange(s.value)}
+                                        sx={{
+                                            fontWeight: 800, fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.05em',
+                                            borderRadius: 2, height: 30,
+                                            bgcolor: active ? '#059669' : '#fff',
+                                            color: active ? '#fff' : '#475569',
+                                            border: '1px solid', borderColor: active ? '#059669' : '#e2e8f0',
+                                            '&:hover': { bgcolor: active ? '#047857' : '#f1f5f9' },
+                                        }}
+                                    />
+                                );
+                            })}
+                        </Box>
+                    </Box>
+
+                    {/* Summary cards */}
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 2 }}>
+                        {[
+                            { label: 'Bills', value: summary ? summary.count : '—', color: '#1e293b', bg: '#f8fafc', bd: '#e2e8f0' },
+                            { label: 'Total Billed', value: summary ? formatCurrency(summary.total_billed, 'INR') : '—', color: '#1d4ed8', bg: '#eff6ff', bd: '#bfdbfe' },
+                            { label: 'Received', value: summary ? formatCurrency(summary.total_received, 'INR') : '—', color: '#047857', bg: '#ecfdf5', bd: '#a7f3d0' },
+                            { label: 'Outstanding', value: summary ? formatCurrency(summary.total_outstanding, 'INR') : '—', color: '#c2410c', bg: '#fff7ed', bd: '#fed7aa' },
+                        ].map((c) => (
+                            <Box key={c.label} sx={{ p: 2, borderRadius: 3, bgcolor: c.bg, border: '1px solid', borderColor: c.bd }}>
+                                <Typography sx={{ fontSize: '0.625rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.5 }}>
+                                    {c.label}
+                                </Typography>
+                                <Typography sx={{ fontSize: '1.15rem', fontWeight: 900, color: c.color, lineHeight: 1.2 }}>
+                                    {c.value}
+                                </Typography>
+                            </Box>
+                        ))}
+                    </Box>
+                    {tab === 'INTERNATIONAL' && (
+                        <Typography sx={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 700, fontStyle: 'italic' }}>
+                            * International totals shown as INR equivalent (converted at each bill's PI conversion rate).
+                        </Typography>
+                    )}
+                </Card>
+
+                {/* Filters */}
+                <Card variant="outlined" sx={{ p: 3, borderRadius: 4 }}>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr', lg: '1fr 2fr' }, gap: 3 }}>
+                        <Box>
+                            <Typography sx={{ fontSize: '0.6875rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', mb: 1 }}>
+                                Search Bill No. / Client
+                            </Typography>
+                            <TextField
+                                fullWidth
+                                size="small"
                                 placeholder="E.g. BILL/2026/001..."
                                 value={searchQuery}
-                                onChange={(e) => {setSearchQuery(e.target.value); setPage(1);}}
-                                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
+                                onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <SearchIcon sx={{ color: '#94a3b8', fontSize: 20 }} />
+                                        </InputAdornment>
+                                    ),
+                                }}
+                                sx={{
+                                    '& .MuiOutlinedInput-root': {
+                                        borderRadius: 3,
+                                        bgcolor: '#f8fafc',
+                                        fontSize: '0.875rem',
+                                        fontWeight: 500,
+                                        '&:hover fieldset': { borderColor: '#059669' },
+                                        '&.Mui-focused fieldset': { borderColor: '#059669' },
+                                    }
+                                }}
                             />
-                            <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                        </div>
-                    </div>
-
-                    {/* Clear Filters */}
-                    <div className="lg:col-span-2 flex items-end">
-                        {searchQuery && (
-                            <button
-                                onClick={() => {setFilterPI(""); setSearchQuery(""); setPage(1);}}
-                                className="text-[10px] font-black text-red-500 hover:text-red-600 uppercase tracking-widest flex items-center gap-1 mb-2"
-                            >
-                                <FaTimes size={10} /> Clear Filters
-                            </button>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Table Area */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                        <thead>
-                            <tr className="bg-slate-50/80 border-b border-slate-200">
-                                <th className="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Bill Reference</th>
-                                <th className="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Client Info</th>
-                                <th className="px-6 py-4 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Amount</th>
-                                <th className="px-6 py-4 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Paid</th>
-                                <th className="px-6 py-4 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Due Balance</th>
-                                <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                                <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {loading && bills.length === 0 ? (
-                                Array(5).fill(0).map((_, i) => (
-                                    <tr key={i} className="animate-pulse">
-                                        <td colSpan="7" className="px-6 py-10"><div className="h-4 bg-slate-100 rounded w-full"></div></td>
-                                    </tr>
-                                ))
-                            ) : bills.length > 0 ? (
-                                bills.map((bill) => (
-                                    <tr key={bill.id} className="group hover:bg-slate-50 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col">
-                                                <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 self-start text-xs mb-1">
-                                                    {bill.bill_number}
-                                                </span>
-                                                <span className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1">
-                                                    PI: <span className="text-slate-600 ">{bill.pi_number}</span>
-                                                </span>
-                                                <span className="text-[10px] text-slate-400 flex items-center gap-1.5 mt-1">
-                                                    <FaCalendarAlt size={10} />
-                                                    {bill.bill_date}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-                                                    <FaUserTie size={12} className="text-slate-400" />
-                                                    {bill.client_name}
-                                                </span>
-                                                <span className="text-[11px] text-slate-400 font-medium ">{bill.contact_person}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="text-sm font-bold text-slate-800">{formatCurrency(bill.total_amount, bill.currency)}</div>
-                                            {bill.currency && bill.currency !== 'INR' && bill.conversion_rate && (
-                                                <div className="text-[10px] text-blue-600 font-bold">
-                                                    1 {bill.currency} = ₹{parseFloat(bill.conversion_rate)}
-                                                </div>
-                                            )}
-                                            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Net Payable</div>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="text-sm font-bold text-emerald-600">{formatCurrency(bill.amount_paid, bill.currency)}</div>
-                                            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Total Collected</div>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className={`text-sm font-black ${parseFloat(bill.balance) > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                                                {formatCurrency(bill.balance, bill.currency)}
-                                            </div>
-                                            {parseFloat(bill.balance) > 0 && (
-                                                <div className="w-16 h-1 bg-slate-100 rounded-full mt-1.5 ml-auto overflow-hidden">
-                                                    <div className="h-full bg-red-400" style={{ width: `${Math.min(100, (bill.balance / bill.total_amount) * 100)}%` }}></div>
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusStyle(bill.status)}`}>
-                                                {bill.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <button
-                                                    onClick={() => handleViewDetails(bill.id)}
-                                                    className="p-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-90"
-                                                    title="Quick View"
-                                                >
-                                                    <FaEye />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleViewHistory(bill)}
-                                                    className="p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white transition-all shadow-sm active:scale-90"
-                                                    title="Collection History"
-                                                >
-                                                    <FaHistory size={14} />
-                                                </button>
-                                                <button
-                                                    onClick={() => openPaymentModal(bill)}
-                                                    disabled={bill.status === 'PAID' || bill.status === 'CANCELLED'}
-                                                    className={`p-2 rounded-lg transition-all shadow-sm active:scale-90 ${
-                                                        bill.status === 'PAID' || bill.status === 'CANCELLED'
-                                                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-50'
-                                                            : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
-                                                    }`}
-                                                    title={bill.status === 'PAID' ? "Bill Already Paid" : bill.status === 'CANCELLED' ? "Cannot Pay Cancelled Bill" : "Record Payment"}
-                                                >
-                                                    <FaMoneyBillWave />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleCancelBill(bill.id)}
-                                                    disabled={bill.status === 'PAID' || bill.status === 'CANCELLED'}
-                                                    className={`p-2 rounded-lg transition-all shadow-sm active:scale-90 ${
-                                                        bill.status === 'PAID' || bill.status === 'CANCELLED'
-                                                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-50'
-                                                            : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'
-                                                    }`}
-                                                    title={bill.status === 'PAID' ? "Cannot Cancel Paid Bill" : bill.status === 'CANCELLED' ? "Bill Already Cancelled" : "Void Bill"}
-                                                >
-                                                    <FaTimes />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan="7" className="px-6 py-20 text-center">
-                                        <div className="flex flex-col items-center gap-3">
-                                            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center text-slate-300">
-                                                <FaSearch size={32} />
-                                            </div>
-                                            <p className="text-slate-500 font-black uppercase tracking-widest text-sm">No billing records found</p>
-                                            <button onClick={() => {setSearchQuery(""); setPage(1);}} className="text-emerald-600 font-black hover:underline uppercase text-[10px] tracking-widest mt-2">SHOW ALL RECORDS</button>
-                                        </div>
-                                    </td>
-                                </tr>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-end' }}>
+                            {searchQuery && (
+                                <Button
+                                    size="small"
+                                    startIcon={<CloseIcon sx={{ fontSize: 12 }} />}
+                                    onClick={() => { setFilterPI(""); setSearchQuery(""); setPage(1); }}
+                                    sx={{
+                                        color: '#ef4444',
+                                        fontSize: '0.625rem',
+                                        fontWeight: 900,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.1em',
+                                        mb: 1,
+                                        '&:hover': { color: '#dc2626', bgcolor: 'transparent' }
+                                    }}
+                                >
+                                    Clear Filters
+                                </Button>
                             )}
-                        </tbody>
-                    </table>
-                </div>
+                        </Box>
+                    </Box>
+                </Card>
 
-                {/* Pagination */}
-                <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-                    <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">
-                        Showing <span className="text-slate-800">{bills.length}</span> of <span className="text-slate-800">{totalCount}</span> records
-                    </div>
-                    <div className="flex gap-3">
-                        <button
-                            onClick={handlePrev}
-                            disabled={!previous}
-                            className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-all shadow-sm hover:shadow active:scale-95"
-                        >
-                            PREVIOUS
-                        </button>
-                        <button
-                            onClick={handleNext}
-                            disabled={!next}
-                            className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-all shadow-sm hover:shadow active:scale-95"
-                        >
-                            NEXT PAGE
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+                {/* Table Area */}
+                <Card variant="outlined" sx={{ borderRadius: 4, overflow: 'hidden' }}>
+                    <TableContainer>
+                        <Table sx={{
+                            '& .MuiTableCell-root': { fontSize: '0.78rem' },
+                            '& .MuiTypography-body2': { fontSize: '0.78rem' },
+                            '& .MuiTypography-caption': { fontSize: '0.66rem' },
+                        }}>
+                            <TableHead>
+                                <TableRow sx={{ bgcolor: 'rgba(248,250,252,0.8)' }}>
+                                    <TableCell sx={{ fontWeight: 800, fontSize: '0.6875rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Bill Reference</TableCell>
+                                    <TableCell sx={{ fontWeight: 800, fontSize: '0.6875rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Client Info</TableCell>
+                                    <TableCell align="right" sx={{ fontWeight: 800, fontSize: '0.6875rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Amount</TableCell>
+                                    <TableCell align="right" sx={{ fontWeight: 800, fontSize: '0.6875rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Paid</TableCell>
+                                    <TableCell align="right" sx={{ fontWeight: 800, fontSize: '0.6875rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Due Balance</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: 800, fontSize: '0.6875rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: 800, fontSize: '0.6875rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actions</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {loading && bills.length === 0 ? (
+                                    Array(5).fill(0).map((_, i) => (
+                                        <TableRow key={i}>
+                                            <TableCell colSpan={7} sx={{ py: 5 }}>
+                                                <Skeleton variant="rectangular" height={16} sx={{ borderRadius: 1 }} />
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : bills.length > 0 ? (
+                                    bills.map((bill) => (
+                                        <TableRow key={bill.id} hover sx={{ '&:hover': { bgcolor: '#f8fafc' } }}>
+                                            <TableCell sx={{ py: 2 }}>
+                                                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <Typography
+                                                        component="span"
+                                                        sx={{
+                                                            fontFamily: 'monospace',
+                                                            fontWeight: 700,
+                                                            color: '#047857',
+                                                            bgcolor: '#ecfdf5',
+                                                            px: 1,
+                                                            py: 0.25,
+                                                            borderRadius: 1,
+                                                            border: '1px solid #a7f3d0',
+                                                            alignSelf: 'flex-start',
+                                                            fontSize: '0.75rem',
+                                                            mb: 0.5
+                                                        }}
+                                                    >
+                                                        {bill.bill_number}
+                                                    </Typography>
+                                                    <Typography sx={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                        PI: <Box component="span" sx={{ color: '#475569' }}>{bill.pi_number}</Box>
+                                                    </Typography>
+                                                    {bill.pi_source_display && (
+                                                        <Chip
+                                                            label={bill.pi_source_display}
+                                                            size="small"
+                                                            sx={{ alignSelf: 'flex-start', mt: 0.5, height: 18, fontSize: '0.5625rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', bgcolor: '#eef2ff', color: '#4338ca', border: '1px solid #c7d2fe' }}
+                                                        />
+                                                    )}
+                                                    <Typography sx={{ fontSize: '0.625rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.5 }}>
+                                                        <CalendarTodayIcon sx={{ fontSize: 10 }} />
+                                                        {bill.bill_date}
+                                                    </Typography>
+                                                </Box>
+                                            </TableCell>
+                                            <TableCell sx={{ py: 2 }}>
+                                                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <Typography sx={{ fontSize: '0.875rem', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                                        <PersonIcon sx={{ fontSize: 14, color: '#94a3b8' }} />
+                                                        {bill.client_name}
+                                                    </Typography>
+                                                    <Typography sx={{ fontSize: '0.6875rem', color: '#94a3b8', fontWeight: 500 }}>
+                                                        {bill.contact_person}
+                                                    </Typography>
+                                                </Box>
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ py: 2 }}>
+                                                <Typography sx={{ fontSize: '0.875rem', fontWeight: 700, color: '#1e293b' }}>
+                                                    {formatCurrency(bill.total_amount, bill.currency)}
+                                                </Typography>
+                                                {bill.currency && bill.currency !== 'INR' && bill.conversion_rate && (
+                                                    <Typography sx={{ fontSize: '0.625rem', color: '#2563eb', fontWeight: 700 }}>
+                                                        1 {bill.currency} = {"₹"}{parseFloat(bill.conversion_rate)}
+                                                    </Typography>
+                                                )}
+                                                <Typography sx={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '-0.025em' }}>
+                                                    Net Payable
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ py: 2 }}>
+                                                <Typography sx={{ fontSize: '0.875rem', fontWeight: 700, color: '#059669' }}>
+                                                    {formatCurrency(bill.amount_paid, bill.currency)}
+                                                </Typography>
+                                                <Typography sx={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '-0.025em' }}>
+                                                    Total Collected
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ py: 2 }}>
+                                                <Typography sx={{ fontSize: '0.875rem', fontWeight: 900, color: parseFloat(bill.balance) > 0 ? '#dc2626' : '#059669' }}>
+                                                    {formatCurrency(bill.balance, bill.currency)}
+                                                </Typography>
+                                                {parseFloat(bill.balance) > 0 && (
+                                                    <Box sx={{ width: 64, height: 4, bgcolor: '#f1f5f9', borderRadius: 2, mt: 0.75, ml: 'auto', overflow: 'hidden' }}>
+                                                        <Box sx={{ height: '100%', bgcolor: '#f87171', width: `${Math.min(100, (bill.balance / bill.total_amount) * 100)}%` }} />
+                                                    </Box>
+                                                )}
+                                            </TableCell>
+                                            <TableCell align="center" sx={{ py: 2 }}>
+                                                <Chip
+                                                    label={bill.status}
+                                                    size="small"
+                                                    {...getStatusChipProps(bill.status)}
+                                                />
+                                            </TableCell>
+                                            <TableCell sx={{ py: 2 }}>
+                                                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                                                    <Tooltip title="Actions" arrow>
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={(e) => openActionMenu(e, bill)}
+                                                            sx={{ color: '#475569', '&:hover': { bgcolor: '#f1f5f9' }, borderRadius: 2 }}
+                                                        >
+                                                            <MoreVertIcon sx={{ fontSize: 18 }} />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </Box>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={7} sx={{ py: 10, textAlign: 'center' }}>
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
+                                                <Box sx={{ width: 80, height: 80, bgcolor: '#f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1' }}>
+                                                    <SearchIcon sx={{ fontSize: 40 }} />
+                                                </Box>
+                                                <Typography sx={{ color: '#64748b', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '0.875rem' }}>
+                                                    No billing records found
+                                                </Typography>
+                                                <Button
+                                                    onClick={() => { setSearchQuery(""); setPage(1); }}
+                                                    sx={{
+                                                        color: '#059669',
+                                                        fontWeight: 900,
+                                                        textTransform: 'uppercase',
+                                                        fontSize: '0.625rem',
+                                                        letterSpacing: '0.1em',
+                                                        mt: 1,
+                                                        '&:hover': { textDecoration: 'underline', bgcolor: 'transparent' }
+                                                    }}
+                                                >
+                                                    Show All Records
+                                                </Button>
+                                            </Box>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
 
-        {/* Modals outside the animated container */}
+                    {/* Pagination */}
+                    <Box sx={{ px: 3, py: 2, bgcolor: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Typography sx={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                            Showing <Box component="span" sx={{ color: '#1e293b' }}>{bills.length}</Box> of <Box component="span" sx={{ color: '#1e293b' }}>{totalCount}</Box> records
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1.5 }}>
+                            <Button
+                                variant="outlined"
+                                size="small"
+                                startIcon={<ChevronLeftIcon />}
+                                onClick={handlePrev}
+                                disabled={!previous}
+                                sx={{
+                                    borderColor: '#e2e8f0',
+                                    color: '#475569',
+                                    fontWeight: 900,
+                                    fontSize: '0.75rem',
+                                    textTransform: 'uppercase',
+                                    borderRadius: 3,
+                                    px: 2.5,
+                                    '&:hover': { bgcolor: '#f8fafc', borderColor: '#e2e8f0' },
+                                    '&.Mui-disabled': { opacity: 0.5 }
+                                }}
+                            >
+                                Previous
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                size="small"
+                                endIcon={<ChevronRightIcon />}
+                                onClick={handleNext}
+                                disabled={!next}
+                                sx={{
+                                    borderColor: '#e2e8f0',
+                                    color: '#475569',
+                                    fontWeight: 900,
+                                    fontSize: '0.75rem',
+                                    textTransform: 'uppercase',
+                                    borderRadius: 3,
+                                    px: 2.5,
+                                    '&:hover': { bgcolor: '#f8fafc', borderColor: '#e2e8f0' },
+                                    '&.Mui-disabled': { opacity: 0.5 }
+                                }}
+                            >
+                                Next Page
+                            </Button>
+                        </Box>
+                    </Box>
+                </Card>
+            </Box>
+
+            {/* Modals outside the animated container */}
             <AlertToast
                 open={alert.open}
                 type={alert.type}
@@ -550,242 +814,468 @@ const BillList = () => {
                 />
             )}
 
-            {/* Redesigned Payment Collection Modal */}
-            {paymentModal.open && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setPaymentModal({ open: false, bill: null, amount: "", payment_date: "", payment_mode: "NEFT", reference_number: "", remarks: "" })}></div>
-                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="bg-slate-900 text-white p-6">
-                            <h3 className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
-                                <FaMoneyBillWave className="text-emerald-400" /> Record Collection
-                            </h3>
-                            <div className="mt-4 flex justify-between items-end border-t border-white/10 pt-4">
-                                <div>
-                                    <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Bill Reference</p>
-                                    <p className="font-mono font-bold text-emerald-400">{paymentModal.bill?.bill_number}</p>
-                                    <p className="text-[10px] text-slate-500 font-bold mt-1">Currency: <span className="text-blue-400">{paymentModal.bill?.currency || "INR"}</span></p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Due Balance</p>
-                                    <p className="text-2xl font-black text-red-400">{formatCurrency(paymentModal.bill?.balance, paymentModal.bill?.currency)}</p>
-                                </div>
-                            </div>
-                        </div>
+            {/* Row action menu */}
+            <Menu
+                anchorEl={actionMenu.anchorEl}
+                open={Boolean(actionMenu.anchorEl)}
+                onClose={closeActionMenu}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                PaperProps={{ sx: { borderRadius: 2, minWidth: 210, boxShadow: '0 8px 24px rgba(0,0,0,0.12)' } }}
+            >
+                <MenuItem onClick={runAction((bill) => handleViewDetails(bill.id))}>
+                    <ListItemIcon><VisibilityIcon sx={{ fontSize: 18, color: '#2563eb' }} /></ListItemIcon>
+                    <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}>Quick View</ListItemText>
+                </MenuItem>
+                <MenuItem onClick={runAction((bill) => handleViewHistory(bill))}>
+                    <ListItemIcon><HistoryIcon sx={{ fontSize: 18, color: '#d97706' }} /></ListItemIcon>
+                    <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}>Collection History</ListItemText>
+                </MenuItem>
+                <MenuItem
+                    disabled={actionMenu.bill?.status === 'PAID' || actionMenu.bill?.status === 'CANCELLED'}
+                    onClick={runAction((bill) => openPaymentModal(bill))}
+                >
+                    <ListItemIcon><PaymentIcon sx={{ fontSize: 18, color: '#059669' }} /></ListItemIcon>
+                    <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}>Record Payment</ListItemText>
+                </MenuItem>
+                <MenuItem
+                    disabled={actionMenu.bill?.status === 'PAID' || actionMenu.bill?.status === 'CANCELLED'}
+                    onClick={runAction((bill) => handleCancelBill(bill.id))}
+                >
+                    <ListItemIcon><CancelIcon sx={{ fontSize: 18, color: '#dc2626' }} /></ListItemIcon>
+                    <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600, color: '#dc2626' }}>Void Bill</ListItemText>
+                </MenuItem>
+            </Menu>
 
-                        <form onSubmit={handlePaymentSubmit} className="p-8 space-y-6 bg-slate-50">
-                            <div className="grid grid-cols-1 gap-6">
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Collected Amount ({paymentModal.bill?.currency || "INR"}) *</label>
-                                    <div className="relative">
-                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
+            {/* Payment Collection Modal */}
+            <Dialog
+                open={paymentModal.open}
+                onClose={() => setPaymentModal({ open: false, bill: null, amount: "", payment_date: "", payment_mode: "NEFT", reference_number: "", remarks: "" })}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 4, overflow: 'hidden' } }}
+            >
+                <Box sx={{ bgcolor: '#0f172a', color: '#fff', p: 3 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.025em', display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <PaymentIcon sx={{ color: '#34d399' }} /> Record Collection
+                    </Typography>
+                    <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '1px solid rgba(255,255,255,0.1)', pt: 2 }}>
+                        <Box>
+                            <Typography sx={{ fontSize: '0.625rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, mb: 0.5 }}>
+                                Bill Reference
+                            </Typography>
+                            <Typography sx={{ fontFamily: 'monospace', fontWeight: 700, color: '#34d399' }}>
+                                {paymentModal.bill?.bill_number}
+                            </Typography>
+                            <Typography sx={{ fontSize: '0.625rem', color: '#64748b', fontWeight: 700, mt: 0.5 }}>
+                                Currency: <Box component="span" sx={{ color: '#60a5fa' }}>{paymentModal.bill?.currency || "INR"}</Box>
+                            </Typography>
+                        </Box>
+                        <Box sx={{ textAlign: 'right' }}>
+                            <Typography sx={{ fontSize: '0.625rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, mb: 0.5 }}>
+                                Due Balance
+                            </Typography>
+                            <Typography sx={{ fontSize: '1.5rem', fontWeight: 900, color: '#f87171' }}>
+                                {formatCurrency(paymentModal.bill?.balance, paymentModal.bill?.currency)}
+                            </Typography>
+                        </Box>
+                    </Box>
+                </Box>
+                <Box component="form" onSubmit={handlePaymentSubmit} sx={{ p: 4, bgcolor: '#f8fafc', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <Box>
+                        <Typography sx={{ fontSize: '0.625rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', mb: 1 }}>
+                            Collected Amount ({paymentModal.bill?.currency || "INR"}) *
+                        </Typography>
+                        <TextField
+                            fullWidth
+                            type="number"
+                            required
+                            inputProps={{ step: "0.01", min: "0" }}
+                            value={paymentModal.amount}
+                            onChange={(e) => setPaymentModal({ ...paymentModal, amount: e.target.value })}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <Typography sx={{ fontWeight: 700, color: '#94a3b8' }}>
                                             {getCurrencySymbol(paymentModal.bill?.currency)}
-                                        </div>
-                                        <input
-                                            type="number" step="0.01" min="0" required
-                                            value={paymentModal.amount}
-                                            onChange={(e) => setPaymentModal({ ...paymentModal, amount: e.target.value })}
-                                            className="w-full pl-10 pr-5 py-3.5 bg-white border border-slate-200 rounded-xl text-xl font-black focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
-                                        />
-                                    </div>
-                                    {paymentModal.bill?.currency && paymentModal.bill.currency !== 'INR' && paymentModal.bill?.conversion_rate && (
-                                        <p className="mt-2 text-[10px] text-slate-400 font-bold uppercase italic">
-                                            Approx. ₹{(parseFloat(paymentModal.amount || 0) * parseFloat(paymentModal.bill.conversion_rate)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (1 {paymentModal.bill.currency} = ₹{parseFloat(paymentModal.bill.conversion_rate)})
-                                        </p>
-                                    )}
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Collection Date *</label>
-                                    <input
-                                        type="date" required
-                                        value={paymentModal.payment_date}
-                                        onChange={(e) => setPaymentModal({ ...paymentModal, payment_date: e.target.value })}
-                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-emerald-500 outline-none transition-all"
-                                    />
-                                </div>
-                            </div>
-                            <div className="flex gap-3 pt-4 border-t border-slate-200">
-                                <button
-                                    type="button"
-                                    onClick={() => setPaymentModal({ open: false, bill: null, amount: "", payment_date: "", payment_mode: "CASH", reference_number: "", remarks: "" })}
-                                    className="flex-1 py-3 text-xs font-black text-slate-500 uppercase tracking-widest hover:bg-slate-100 rounded-xl transition-all active:scale-95"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={paymentSubmitting}
-                                    className="flex-[2] py-3.5 bg-emerald-600 text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
-                                >
-                                    {paymentSubmitting ? "PROCESSING..." : "CONFIRM COLLECTION"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+                                        </Typography>
+                                    </InputAdornment>
+                                ),
+                            }}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: 3,
+                                    bgcolor: '#fff',
+                                    fontSize: '1.25rem',
+                                    fontWeight: 900,
+                                    '&.Mui-focused fieldset': { borderColor: '#059669' },
+                                }
+                            }}
+                        />
+                        {paymentModal.bill?.currency && paymentModal.bill.currency !== 'INR' && paymentModal.bill?.conversion_rate && (
+                            <Typography sx={{ mt: 1, fontSize: '0.625rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', fontStyle: 'italic' }}>
+                                Approx. {"₹"}{(parseFloat(paymentModal.amount || 0) * parseFloat(paymentModal.bill.conversion_rate)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (1 {paymentModal.bill.currency} = {"₹"}{parseFloat(paymentModal.bill.conversion_rate)})
+                            </Typography>
+                        )}
+                    </Box>
+                    <Box>
+                        <Typography sx={{ fontSize: '0.625rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', mb: 1 }}>
+                            Collection Date *
+                        </Typography>
+                        <TextField
+                            fullWidth
+                            type="date"
+                            required
+                            value={paymentModal.payment_date}
+                            onChange={(e) => setPaymentModal({ ...paymentModal, payment_date: e.target.value })}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: 3,
+                                    bgcolor: '#fff',
+                                    fontSize: '0.875rem',
+                                    fontWeight: 700,
+                                    '&.Mui-focused fieldset': { borderColor: '#059669' },
+                                }
+                            }}
+                        />
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1.5, pt: 2, borderTop: '1px solid #e2e8f0' }}>
+                        <Button
+                            onClick={() => setPaymentModal({ open: false, bill: null, amount: "", payment_date: "", payment_mode: "CASH", reference_number: "", remarks: "" })}
+                            sx={{
+                                flex: 1,
+                                py: 1.5,
+                                fontSize: '0.75rem',
+                                fontWeight: 900,
+                                color: '#64748b',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.1em',
+                                borderRadius: 3,
+                                '&:hover': { bgcolor: '#f1f5f9' }
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            variant="contained"
+                            disabled={paymentSubmitting}
+                            sx={{
+                                flex: 2,
+                                py: 1.75,
+                                bgcolor: '#059669',
+                                fontSize: '0.75rem',
+                                fontWeight: 900,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.1em',
+                                borderRadius: 3,
+                                '&:hover': { bgcolor: '#047857' },
+                                boxShadow: '0 4px 14px 0 rgba(5,150,105,0.2)'
+                            }}
+                        >
+                            {paymentSubmitting ? "Processing..." : "Confirm Collection"}
+                        </Button>
+                    </Box>
+                </Box>
+            </Dialog>
 
             {/* History Modal */}
-            {historyModal.open && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setHistoryModal({ open: false, data: null, loading: false })}></div>
-                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
-                        <div className="bg-slate-900 text-white p-6 flex justify-between items-center">
-                            <div>
-                                <h3 className="text-lg font-black uppercase tracking-tighter flex items-center gap-2">
-                                    <FaHistory className="text-amber-400" /> Collection Tracking
-                                </h3>
-                                <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">History for {historyModal.data?.bill_number}</p>
-                            </div>
-                            <button onClick={() => setHistoryModal({ open: false, data: null, loading: false })} className="p-2 hover:bg-white/10 rounded-full transition-colors"><FaTimes size={18} /></button>
-                        </div>
-                        <div className="p-6 flex-1 overflow-y-auto bg-slate-50 space-y-6">
-                            {historyModal.loading ? (
-                                <div className="py-20 flex justify-center"><div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>
-                            ) : historyModal.data ? (
-                                <>
-                                    {/* Summary Cards */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md">
-                                            <p className="text-[10px] text-slate-500 uppercase font-black tracking-wider mb-1">Net Bill Amount</p>
-                                            <p className="text-xl font-black text-slate-800">{formatCurrency(historyModal.data.net_payable, historyModal.data.currency)}</p>
-                                        </div>
-                                        <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 shadow-sm hover:shadow-md">
-                                            <p className="text-[10px] text-emerald-600 uppercase font-black tracking-wider mb-1">Total Collected</p>
-                                            <p className="text-xl font-black text-emerald-700">{formatCurrency(historyModal.data.total_paid, historyModal.data.currency)}</p>
-                                        </div>
-                                        <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 shadow-sm hover:shadow-md">
-                                            <p className="text-[10px] text-orange-600 uppercase font-black tracking-wider mb-1">Current Balance</p>
-                                            <p className="text-xl font-black text-orange-700">{formatCurrency(historyModal.data.balance, historyModal.data.currency)}</p>
-                                        </div>
-                                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 shadow-sm hover:shadow-md">
-                                            <p className="text-[10px] text-blue-600 uppercase font-black tracking-wider mb-1">Payment Count</p>
-                                            <p className="text-xl font-black text-blue-700">{historyModal.data.payments?.length || 0} <span className="text-xs font-bold uppercase tracking-tighter">Collections</span></p>
-                                        </div>
-                                    </div>
+            <Dialog
+                open={historyModal.open}
+                onClose={() => setHistoryModal({ open: false, data: null, loading: false })}
+                maxWidth="lg"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 4, overflow: 'hidden', maxHeight: '85vh', display: 'flex', flexDirection: 'column' } }}
+            >
+                <Box sx={{ bgcolor: '#0f172a', color: '#fff', p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.025em', display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <HistoryIcon sx={{ color: '#fbbf24' }} /> Collection Tracking
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 700, mt: 0.5, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                            History for {historyModal.data?.bill_number}
+                        </Typography>
+                    </Box>
+                    <IconButton onClick={() => setHistoryModal({ open: false, data: null, loading: false })} sx={{ color: '#fff', '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}>
+                        <CloseIcon />
+                    </IconButton>
+                </Box>
+                <Box sx={{ p: 3, flex: 1, overflowY: 'auto', bgcolor: '#f8fafc', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {historyModal.loading ? (
+                        <Box sx={{ py: 10, display: 'flex', justifyContent: 'center' }}>
+                            <CircularProgress sx={{ color: '#059669' }} />
+                        </Box>
+                    ) : historyModal.data ? (
+                        <>
+                            {/* Summary Cards */}
+                            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(4, 1fr)' }, gap: 2 }}>
+                                <Card variant="outlined" sx={{ p: 2, borderRadius: 3, '&:hover': { boxShadow: 2 } }}>
+                                    <Typography sx={{ fontSize: '0.625rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 900, letterSpacing: '0.05em', mb: 0.5 }}>
+                                        Net Bill Amount
+                                    </Typography>
+                                    <Typography sx={{ fontSize: '1.25rem', fontWeight: 900, color: '#1e293b' }}>
+                                        {formatCurrency(historyModal.data.net_payable, historyModal.data.currency)}
+                                    </Typography>
+                                </Card>
+                                <Card variant="outlined" sx={{ p: 2, borderRadius: 3, bgcolor: '#ecfdf5', borderColor: '#a7f3d0', '&:hover': { boxShadow: 2 } }}>
+                                    <Typography sx={{ fontSize: '0.625rem', color: '#059669', textTransform: 'uppercase', fontWeight: 900, letterSpacing: '0.05em', mb: 0.5 }}>
+                                        Total Collected
+                                    </Typography>
+                                    <Typography sx={{ fontSize: '1.25rem', fontWeight: 900, color: '#047857' }}>
+                                        {formatCurrency(historyModal.data.total_paid, historyModal.data.currency)}
+                                    </Typography>
+                                </Card>
+                                <Card variant="outlined" sx={{ p: 2, borderRadius: 3, bgcolor: '#fff7ed', borderColor: '#fed7aa', '&:hover': { boxShadow: 2 } }}>
+                                    <Typography sx={{ fontSize: '0.625rem', color: '#ea580c', textTransform: 'uppercase', fontWeight: 900, letterSpacing: '0.05em', mb: 0.5 }}>
+                                        Current Balance
+                                    </Typography>
+                                    <Typography sx={{ fontSize: '1.25rem', fontWeight: 900, color: '#c2410c' }}>
+                                        {formatCurrency(historyModal.data.balance, historyModal.data.currency)}
+                                    </Typography>
+                                </Card>
+                                <Card variant="outlined" sx={{ p: 2, borderRadius: 3, bgcolor: '#eff6ff', borderColor: '#bfdbfe', '&:hover': { boxShadow: 2 } }}>
+                                    <Typography sx={{ fontSize: '0.625rem', color: '#2563eb', textTransform: 'uppercase', fontWeight: 900, letterSpacing: '0.05em', mb: 0.5 }}>
+                                        Payment Count
+                                    </Typography>
+                                    <Typography sx={{ fontSize: '1.25rem', fontWeight: 900, color: '#1d4ed8' }}>
+                                        {historyModal.data.payments?.length || 0}{' '}
+                                        <Box component="span" sx={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '-0.025em' }}>Collections</Box>
+                                    </Typography>
+                                </Card>
+                            </Box>
 
-                                    {/* Payments Table */}
-                                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                                        <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <FaMoneyBillWave className="text-slate-400" />
-                                                <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Collection Breakdown</h4>
-                                            </div>
-                                        </div>
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-left">
-                                                <thead>
-                                                    <tr className="bg-slate-50/50 border-b border-slate-100">
-                                                        <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
-                                                        <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Mode</th>
-                                                        <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Reference</th>
-                                                        <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Amount Collected</th>
-                                                        <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Balance After</th>
-                                                        <th className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Recorded By</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-100">
-                                                    {historyModal.data.payments?.map((payment, idx) => (
-                                                        <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                                                            <td className="px-5 py-4">
-                                                                <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5 whitespace-nowrap">
-                                                                    <FaCalendarAlt size={12} className="text-slate-300" />
-                                                                    {formatDate(payment.payment_date || payment.created_at)}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-5 py-4">
-                                                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-100 px-2 py-1 rounded">
-                                                                    {payment.payment_mode_display}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-5 py-4">
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-xs font-mono font-bold text-slate-700">
-                                                                        {payment.reference_number || "N/A"}
-                                                                    </span>
-                                                                    {payment.remarks && (
-                                                                        <span className="text-[10px] text-slate-400 font-medium italic mt-0.5 max-w-[200px] truncate" title={payment.remarks}>
-                                                                            {payment.remarks}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-5 py-4 text-right">
-                                                                <span className="text-sm font-black text-slate-800">{formatCurrency(payment.amount, historyModal.data.currency)}</span>
-                                                            </td>
-                                                            <td className="px-5 py-4 text-right">
-                                                                <span className="text-xs font-bold text-slate-400">{formatCurrency(payment.balance_after, historyModal.data.currency)}</span>
-                                                            </td>
-                                                            <td className="px-5 py-4">
-                                                                <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5 whitespace-nowrap">
-                                                                    <FaUserEdit size={12} className="text-slate-300" />
-                                                                    {payment.recorded_by_name}
-                                                                </span>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </>
-                            ) : null}
-                        </div>
-                    </div>
-                </div>
-            )}
+                            {/* Payments Table */}
+                            <Card variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden' }}>
+                                <Box sx={{ px: 2.5, py: 2, borderBottom: '1px solid #f1f5f9', bgcolor: 'rgba(248,250,252,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <PaymentIcon sx={{ color: '#94a3b8', fontSize: 18 }} />
+                                        <Typography sx={{ fontSize: '0.625rem', fontWeight: 900, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                                            Collection Breakdown
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                                <TableContainer>
+                                    <Table size="small">
+                                        <TableHead>
+                                            <TableRow sx={{ bgcolor: 'rgba(248,250,252,0.5)' }}>
+                                                <TableCell sx={{ fontSize: '0.625rem', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Date</TableCell>
+                                                <TableCell sx={{ fontSize: '0.625rem', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Mode</TableCell>
+                                                <TableCell sx={{ fontSize: '0.625rem', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Reference</TableCell>
+                                                <TableCell align="right" sx={{ fontSize: '0.625rem', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Amount Collected</TableCell>
+                                                <TableCell align="right" sx={{ fontSize: '0.625rem', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Balance After</TableCell>
+                                                <TableCell sx={{ fontSize: '0.625rem', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Recorded By</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {historyModal.data.payments?.map((payment, idx) => (
+                                                <TableRow key={idx} hover sx={{ '&:hover': { bgcolor: 'rgba(248,250,252,0.5)' } }}>
+                                                    <TableCell sx={{ py: 2 }}>
+                                                        <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', display: 'flex', alignItems: 'center', gap: 0.75, whiteSpace: 'nowrap' }}>
+                                                            <CalendarTodayIcon sx={{ fontSize: 12, color: '#cbd5e1' }} />
+                                                            {formatDate(payment.payment_date || payment.created_at)}
+                                                        </Typography>
+                                                    </TableCell>
+                                                    <TableCell sx={{ py: 2 }}>
+                                                        <Chip
+                                                            label={payment.payment_mode_display}
+                                                            size="small"
+                                                            sx={{
+                                                                fontSize: '0.625rem',
+                                                                fontWeight: 900,
+                                                                color: '#64748b',
+                                                                textTransform: 'uppercase',
+                                                                letterSpacing: '0.1em',
+                                                                bgcolor: '#f1f5f9',
+                                                                height: 24
+                                                            }}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell sx={{ py: 2 }}>
+                                                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <Typography sx={{ fontSize: '0.75rem', fontFamily: 'monospace', fontWeight: 700, color: '#334155' }}>
+                                                                {payment.reference_number || "N/A"}
+                                                            </Typography>
+                                                            {payment.remarks && (
+                                                                <Tooltip title={payment.remarks} arrow>
+                                                                    <Typography sx={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 500, fontStyle: 'italic', mt: 0.25, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                        {payment.remarks}
+                                                                    </Typography>
+                                                                </Tooltip>
+                                                            )}
+                                                        </Box>
+                                                    </TableCell>
+                                                    <TableCell align="right" sx={{ py: 2 }}>
+                                                        <Typography sx={{ fontSize: '0.875rem', fontWeight: 900, color: '#1e293b' }}>
+                                                            {formatCurrency(payment.amount, historyModal.data.currency)}
+                                                        </Typography>
+                                                    </TableCell>
+                                                    <TableCell align="right" sx={{ py: 2 }}>
+                                                        <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8' }}>
+                                                            {formatCurrency(payment.balance_after, historyModal.data.currency)}
+                                                        </Typography>
+                                                    </TableCell>
+                                                    <TableCell sx={{ py: 2 }}>
+                                                        <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', display: 'flex', alignItems: 'center', gap: 0.75, whiteSpace: 'nowrap' }}>
+                                                            <EditIcon sx={{ fontSize: 12, color: '#cbd5e1' }} />
+                                                            {payment.recorded_by_name}
+                                                        </Typography>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            </Card>
+                        </>
+                    ) : null}
+                </Box>
+            </Dialog>
 
             {/* Report Selection Modal */}
-            {showReportModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setShowReportModal(false)}></div>
-                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                        <div className="bg-slate-900 text-white p-6 border-b border-white/5">
-                            <h3 className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
-                                <FaFileExcel className="text-emerald-400" /> Export Financial Report
-                            </h3>
-                            <p className="text-xs text-slate-400 font-bold mt-1 uppercase tracking-widest">Select report parameters</p>
-                        </div>
-                        <div className="p-8 space-y-6">
-                            <div className="space-y-3">
-                                <label className="flex items-center gap-4 p-4 border-2 border-slate-100 rounded-2xl cursor-pointer hover:border-emerald-500/50 hover:bg-emerald-50/10 transition-all group">
-                                    <input type="radio" name="rpt" value="bills" checked={reportType === "bills"} onChange={(e) => setReportType(e.target.value)} className="w-5 h-5 text-emerald-600 border-slate-300 focus:ring-emerald-500" />
-                                    <div>
-                                        <p className="text-xs font-black text-slate-800 uppercase tracking-widest">Comprehensive Bill Report</p>
-                                        <p className="text-[10px] text-slate-400 font-bold mt-0.5">Transaction history & tax summaries</p>
-                                    </div>
-                                </label>
-                                <label className="flex items-center gap-4 p-4 border-2 border-slate-100 rounded-2xl cursor-pointer hover:border-emerald-500/50 hover:bg-emerald-50/10 transition-all group">
-                                    <input type="radio" name="rpt" value="outstanding" checked={reportType === "outstanding"} onChange={(e) => setReportType(e.target.value)} className="w-5 h-5 text-emerald-600 border-slate-300 focus:ring-emerald-500" />
-                                    <div>
-                                        <p className="text-xs font-black text-slate-800 uppercase tracking-widest">Outstanding Collection Report</p>
-                                        <p className="text-[10px] text-slate-400 font-bold mt-0.5">Pending balances & aging analysis</p>
-                                    </div>
-                                </label>
-                            </div>
-                            {reportType === "bills" && (
-                                <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
-                                    <div>
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">From</label>
-                                        <input type="date" value={reportParams.start_date} onChange={(e) => setReportParams({...reportParams, start_date: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-emerald-500" />
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">To</label>
-                                        <input type="date" value={reportParams.end_date} onChange={(e) => setReportParams({...reportParams, end_date: e.target.value})} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-emerald-500" />
-                                    </div>
-                                </div>
-                            )}
-                            <button
-                                onClick={handleDownloadReport}
-                                disabled={downloading}
-                                className="w-full py-4 bg-emerald-600 text-white text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-emerald-700 shadow-xl shadow-emerald-500/30 active:scale-95 transition-all flex items-center justify-center gap-2"
+            <Dialog
+                open={showReportModal}
+                onClose={() => setShowReportModal(false)}
+                maxWidth="xs"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 4, overflow: 'hidden' } }}
+            >
+                <Box sx={{ bgcolor: '#0f172a', color: '#fff', p: 3, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <Typography variant="h6" sx={{ fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.025em', display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <DescriptionIcon sx={{ color: '#34d399' }} /> Export Financial Report
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700, mt: 0.5, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                        Select report parameters
+                    </Typography>
+                </Box>
+                <Box sx={{ p: 4, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <RadioGroup value={reportType} onChange={(e) => setReportType(e.target.value)}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                            <Box
+                                sx={{
+                                    p: 2,
+                                    border: '2px solid',
+                                    borderColor: reportType === 'bills' ? 'rgba(5,150,105,0.5)' : '#f1f5f9',
+                                    borderRadius: 4,
+                                    cursor: 'pointer',
+                                    '&:hover': { borderColor: 'rgba(5,150,105,0.5)', bgcolor: 'rgba(5,150,105,0.02)' },
+                                    transition: 'all 0.2s'
+                                }}
+                                onClick={() => setReportType('bills')}
                             >
-                                {downloading ? (<div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>) : <FaFileExcel />}
-                                {downloading ? "GENERATING..." : "DOWNLOAD EXCEL REPORT"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                                <FormControlLabel
+                                    value="bills"
+                                    control={<Radio sx={{ color: '#cbd5e1', '&.Mui-checked': { color: '#059669' } }} />}
+                                    label={
+                                        <Box>
+                                            <Typography sx={{ fontSize: '0.75rem', fontWeight: 900, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                                                Comprehensive Bill Report
+                                            </Typography>
+                                            <Typography sx={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 700, mt: 0.25 }}>
+                                                Transaction history & tax summaries
+                                            </Typography>
+                                        </Box>
+                                    }
+                                    sx={{ m: 0, width: '100%' }}
+                                />
+                            </Box>
+                            <Box
+                                sx={{
+                                    p: 2,
+                                    border: '2px solid',
+                                    borderColor: reportType === 'outstanding' ? 'rgba(5,150,105,0.5)' : '#f1f5f9',
+                                    borderRadius: 4,
+                                    cursor: 'pointer',
+                                    '&:hover': { borderColor: 'rgba(5,150,105,0.5)', bgcolor: 'rgba(5,150,105,0.02)' },
+                                    transition: 'all 0.2s'
+                                }}
+                                onClick={() => setReportType('outstanding')}
+                            >
+                                <FormControlLabel
+                                    value="outstanding"
+                                    control={<Radio sx={{ color: '#cbd5e1', '&.Mui-checked': { color: '#059669' } }} />}
+                                    label={
+                                        <Box>
+                                            <Typography sx={{ fontSize: '0.75rem', fontWeight: 900, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                                                Outstanding Collection Report
+                                            </Typography>
+                                            <Typography sx={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 700, mt: 0.25 }}>
+                                                Pending balances & aging analysis
+                                            </Typography>
+                                        </Box>
+                                    }
+                                    sx={{ m: 0, width: '100%' }}
+                                />
+                            </Box>
+                        </Box>
+                    </RadioGroup>
+                    {reportType === "bills" && (
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                            <Box>
+                                <Typography sx={{ fontSize: '0.625rem', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', mb: 1 }}>
+                                    From
+                                </Typography>
+                                <TextField
+                                    fullWidth
+                                    type="date"
+                                    size="small"
+                                    value={reportParams.start_date}
+                                    onChange={(e) => setReportParams({ ...reportParams, start_date: e.target.value })}
+                                    sx={{
+                                        '& .MuiOutlinedInput-root': {
+                                            borderRadius: 3,
+                                            bgcolor: '#f8fafc',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 700,
+                                            '&.Mui-focused fieldset': { borderColor: '#059669' },
+                                        }
+                                    }}
+                                />
+                            </Box>
+                            <Box>
+                                <Typography sx={{ fontSize: '0.625rem', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', mb: 1 }}>
+                                    To
+                                </Typography>
+                                <TextField
+                                    fullWidth
+                                    type="date"
+                                    size="small"
+                                    value={reportParams.end_date}
+                                    onChange={(e) => setReportParams({ ...reportParams, end_date: e.target.value })}
+                                    sx={{
+                                        '& .MuiOutlinedInput-root': {
+                                            borderRadius: 3,
+                                            bgcolor: '#f8fafc',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 700,
+                                            '&.Mui-focused fieldset': { borderColor: '#059669' },
+                                        }
+                                    }}
+                                />
+                            </Box>
+                        </Box>
+                    )}
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleDownloadReport}
+                        disabled={downloading}
+                        startIcon={downloading ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : <DescriptionIcon />}
+                        sx={{
+                            py: 2,
+                            bgcolor: '#059669',
+                            fontSize: '0.75rem',
+                            fontWeight: 900,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.1em',
+                            borderRadius: 4,
+                            '&:hover': { bgcolor: '#047857' },
+                            boxShadow: '0 10px 25px -5px rgba(5,150,105,0.3)'
+                        }}
+                    >
+                        {downloading ? "Generating..." : "Download Excel Report"}
+                    </Button>
+                </Box>
+            </Dialog>
         </>
     );
 };

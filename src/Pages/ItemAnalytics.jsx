@@ -1,5 +1,43 @@
 import React, { useState, useEffect } from "react";
-import { FaBox, FaSearch, FaShoppingCart, FaStore, FaExclamationTriangle, FaEye, FaTimes, FaArrowRight } from "react-icons/fa";
+import {
+    Box,
+    Card,
+    CardContent,
+    Typography,
+    TextField,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    IconButton,
+    Tooltip,
+    CircularProgress,
+    Chip,
+    InputAdornment,
+    Select,
+    MenuItem,
+    FormControl,
+    InputLabel,
+    Grid,
+    Divider,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Button,
+} from "@mui/material";
+import {
+    Inventory2 as BoxIcon,
+    Search as SearchIcon,
+    ShoppingCart as ShoppingCartIcon,
+    Store as StoreIcon,
+    Warning as WarningIcon,
+    Visibility as EyeIcon,
+    Close as CloseIcon,
+    ArrowForward as ArrowForwardIcon,
+} from "@mui/icons-material";
 import { getItemAnalytics } from "../services/financeService";
 import { getProductTracking } from "../services/productService";
 
@@ -57,242 +95,486 @@ export default function ItemAnalytics() {
 
     return (
         <>
-            <div className="max-w-7xl mx-auto space-y-6 animate-fade-in py-1">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <div>
-                        <h1 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-3"><FaBox className="text-blue-600" /> Item Analytics</h1>
-                        <p className="text-slate-500 mt-1 text-sm font-medium">Product-wise purchase, sale & lifecycle tracking</p>
-                    </div>
-                </div>
+            <Box sx={{ maxWidth: 1280, mx: "auto", py: 1, display: "flex", flexDirection: "column", gap: 3 }}>
+                {/* Header */}
+                <Card variant="outlined" sx={{ borderRadius: 4, border: "1px solid #e2e8f0", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+                    <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
+                        <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, alignItems: { sm: "center" }, justifyContent: "space-between", gap: 2 }}>
+                            <Box>
+                                <Typography variant="h5" sx={{ fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: 1.5, fontSize: { xs: "1.25rem", sm: "1.5rem" } }}>
+                                    <BoxIcon sx={{ color: "#1565C0" }} /> Item Analytics
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: "#64748b", mt: 0.5, fontWeight: 500 }}>
+                                    Product-wise purchase, sale & lifecycle tracking
+                                </Typography>
+                            </Box>
+                        </Box>
+                    </CardContent>
+                </Card>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                        <p className="text-[10px] text-slate-400 uppercase font-black tracking-wider mb-1">Total Qty Purchased</p>
-                        <p className="text-2xl font-black text-slate-800">{totalPurchased.toLocaleString()}</p>
-                    </div>
-                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                        <p className="text-[10px] text-slate-400 uppercase font-black tracking-wider mb-1">Total Qty Sold</p>
-                        <p className="text-2xl font-black text-slate-800">{totalSold.toLocaleString()}</p>
-                    </div>
-                    <div className="bg-amber-50 p-5 rounded-2xl border border-amber-100 shadow-sm">
-                        <p className="text-[10px] text-amber-600 uppercase font-black tracking-wider mb-1">Purchased but Not Sold</p>
-                        <p className="text-2xl font-black text-amber-700">{purchasedNotSold} items</p>
-                    </div>
-                </div>
+                {/* Summary Cards */}
+                <Grid container spacing={2}>
+                    <Grid item xs={12} sm={4}>
+                        <Card variant="outlined" sx={{ borderRadius: 4, border: "1px solid #e2e8f0", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+                            <CardContent sx={{ p: 2.5, "&:last-child": { pb: 2.5 } }}>
+                                <Typography sx={{ fontSize: "10px", color: "#94a3b8", textTransform: "uppercase", fontWeight: 900, letterSpacing: "0.05em", mb: 0.5 }}>
+                                    Total Qty Purchased
+                                </Typography>
+                                <Typography sx={{ fontSize: "1.5rem", fontWeight: 900, color: "#1e293b" }}>
+                                    {totalPurchased.toLocaleString()}
+                                </Typography>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                        <Card variant="outlined" sx={{ borderRadius: 4, border: "1px solid #e2e8f0", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+                            <CardContent sx={{ p: 2.5, "&:last-child": { pb: 2.5 } }}>
+                                <Typography sx={{ fontSize: "10px", color: "#94a3b8", textTransform: "uppercase", fontWeight: 900, letterSpacing: "0.05em", mb: 0.5 }}>
+                                    Total Qty Sold
+                                </Typography>
+                                <Typography sx={{ fontSize: "1.5rem", fontWeight: 900, color: "#1e293b" }}>
+                                    {totalSold.toLocaleString()}
+                                </Typography>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                        <Card variant="outlined" sx={{ borderRadius: 4, border: "1px solid #fde68a", bgcolor: "#fffbeb", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+                            <CardContent sx={{ p: 2.5, "&:last-child": { pb: 2.5 } }}>
+                                <Typography sx={{ fontSize: "10px", color: "#d97706", textTransform: "uppercase", fontWeight: 900, letterSpacing: "0.05em", mb: 0.5 }}>
+                                    Purchased but Not Sold
+                                </Typography>
+                                <Typography sx={{ fontSize: "1.5rem", fontWeight: 900, color: "#b45309" }}>
+                                    {purchasedNotSold} items
+                                </Typography>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                </Grid>
 
-                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-3">
-                    <div className="flex-1 relative">
-                        <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input type="text" placeholder="Search item name or code..." value={search} onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium" />
-                    </div>
-                    <select value={filter} onChange={(e) => setFilter(e.target.value)} className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700">
-                        <option value="all">All Items</option>
-                        <option value="purchased_not_sold">Purchased but Not Sold</option>
-                        <option value="sold_not_purchased">Sold but Not Purchased</option>
-                        <option value="in_stock">In Stock</option>
-                    </select>
-                </div>
+                {/* Search & Filter */}
+                <Card variant="outlined" sx={{ borderRadius: 4, border: "1px solid #e2e8f0", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+                    <CardContent sx={{ p: 2, "&:last-child": { pb: 2 }, display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1.5 }}>
+                        <TextField
+                            fullWidth
+                            size="small"
+                            placeholder="Search item name or code..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon sx={{ color: "#94a3b8", fontSize: 20 }} />
+                                    </InputAdornment>
+                                ),
+                            }}
+                            sx={{
+                                flex: 1,
+                                "& .MuiOutlinedInput-root": {
+                                    borderRadius: 3,
+                                    bgcolor: "#f8fafc",
+                                    fontSize: "0.875rem",
+                                    fontWeight: 500,
+                                },
+                            }}
+                        />
+                        <FormControl size="small" sx={{ minWidth: 220 }}>
+                            <Select
+                                value={filter}
+                                onChange={(e) => setFilter(e.target.value)}
+                                sx={{
+                                    borderRadius: 3,
+                                    bgcolor: "#f8fafc",
+                                    fontSize: "0.875rem",
+                                    fontWeight: 700,
+                                    color: "#334155",
+                                }}
+                            >
+                                <MenuItem value="all">All Items</MenuItem>
+                                <MenuItem value="purchased_not_sold">Purchased but Not Sold</MenuItem>
+                                <MenuItem value="sold_not_purchased">Sold but Not Purchased</MenuItem>
+                                <MenuItem value="in_stock">In Stock</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </CardContent>
+                </Card>
 
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-[900px] text-sm">
-                            <thead className="bg-slate-50 border-b border-slate-200">
-                                <tr className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                                    <th className="px-4 py-3 text-left">Product</th>
-                                    <th className="px-4 py-3 text-center">Stock</th>
-                                    <th className="px-4 py-3 text-center"><FaShoppingCart className="inline mr-1" size={10}/>Purchased</th>
-                                    <th className="px-4 py-3 text-right">Qty Bought</th>
-                                    <th className="px-4 py-3 text-center"><FaStore className="inline mr-1" size={10}/>Sold</th>
-                                    <th className="px-4 py-3 text-right">Qty Sold</th>
-                                    <th className="px-4 py-3 text-center">Last Buy</th>
-                                    <th className="px-4 py-3 text-center">Last Sale</th>
-                                    <th className="px-4 py-3 text-center">Status</th>
-                                    <th className="px-4 py-3 text-center">Track</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
+                {/* Main Table */}
+                <Card variant="outlined" sx={{ borderRadius: 4, border: "1px solid #e2e8f0", boxShadow: "0 1px 2px rgba(0,0,0,0.05)", overflow: "hidden" }}>
+                    <TableContainer>
+                        <Table sx={{ minWidth: 900 }} size="small">
+                            <TableHead>
+                                <TableRow sx={{ bgcolor: "#f8fafc" }}>
+                                    <TableCell sx={thStyle} align="left">Product</TableCell>
+                                    <TableCell sx={thStyle} align="center">Stock</TableCell>
+                                    <TableCell sx={thStyle} align="center">
+                                        <ShoppingCartIcon sx={{ fontSize: 10, mr: 0.5, verticalAlign: "middle" }} />Purchased
+                                    </TableCell>
+                                    <TableCell sx={thStyle} align="right">Qty Bought</TableCell>
+                                    <TableCell sx={thStyle} align="center">
+                                        <StoreIcon sx={{ fontSize: 10, mr: 0.5, verticalAlign: "middle" }} />Sold
+                                    </TableCell>
+                                    <TableCell sx={thStyle} align="right">Qty Sold</TableCell>
+                                    <TableCell sx={thStyle} align="center">Last Buy</TableCell>
+                                    <TableCell sx={thStyle} align="center">Last Sale</TableCell>
+                                    <TableCell sx={thStyle} align="center">Status</TableCell>
+                                    <TableCell sx={thStyle} align="center">Track</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
                                 {loading ? (
-                                    <tr><td colSpan="10" className="px-4 py-16 text-center"><div className="w-7 h-7 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div></td></tr>
+                                    <TableRow>
+                                        <TableCell colSpan={10} align="center" sx={{ py: 8 }}>
+                                            <CircularProgress size={28} sx={{ color: "#1565C0" }} />
+                                        </TableCell>
+                                    </TableRow>
                                 ) : filtered.length > 0 ? filtered.map((item, i) => (
-                                    <tr key={i} className="hover:bg-slate-50 transition-colors group">
-                                        <td className="px-4 py-3">
-                                            <div className="font-bold text-slate-800">{item.item_name}</div>
-                                            <div className="text-[10px] text-slate-400 font-mono">{item.item_code} · {item.unit}</div>
-                                        </td>
-                                        <td className="px-4 py-3 text-center font-bold text-slate-700">{item.current_stock}</td>
-                                        <td className="px-4 py-3 text-center font-bold text-blue-600">{item.total_times_purchased}</td>
-                                        <td className="px-4 py-3 text-right font-mono font-bold text-slate-700">{item.total_qty_purchased}</td>
-                                        <td className="px-4 py-3 text-center font-bold text-emerald-600">{item.total_times_sold}</td>
-                                        <td className="px-4 py-3 text-right font-mono font-bold text-slate-700">{item.total_qty_sold}</td>
-                                        <td className="px-4 py-3 text-center text-xs text-slate-500">{item.last_purchase_date || "-"}</td>
-                                        <td className="px-4 py-3 text-center text-xs text-slate-500">{item.last_sale_date || "-"}</td>
-                                        <td className="px-4 py-3 text-center">
+                                    <TableRow
+                                        key={i}
+                                        hover
+                                        sx={{
+                                            "&:hover .track-btn": { opacity: 1 },
+                                            "& td": { borderBottom: "1px solid #f1f5f9" },
+                                        }}
+                                    >
+                                        <TableCell sx={{ px: 2, py: 1.5 }}>
+                                            <Typography sx={{ fontWeight: 700, color: "#1e293b", fontSize: "0.875rem" }}>{item.item_name}</Typography>
+                                            <Typography sx={{ fontSize: "10px", color: "#94a3b8", fontFamily: "monospace" }}>{item.item_code} · {item.unit}</Typography>
+                                        </TableCell>
+                                        <TableCell align="center" sx={{ fontWeight: 700, color: "#334155", fontSize: "0.875rem" }}>{item.current_stock}</TableCell>
+                                        <TableCell align="center" sx={{ fontWeight: 700, color: "#1565C0", fontSize: "0.875rem" }}>{item.total_times_purchased}</TableCell>
+                                        <TableCell align="right" sx={{ fontFamily: "monospace", fontWeight: 700, color: "#334155", fontSize: "0.875rem" }}>{item.total_qty_purchased}</TableCell>
+                                        <TableCell align="center" sx={{ fontWeight: 700, color: "#059669", fontSize: "0.875rem" }}>{item.total_times_sold}</TableCell>
+                                        <TableCell align="right" sx={{ fontFamily: "monospace", fontWeight: 700, color: "#334155", fontSize: "0.875rem" }}>{item.total_qty_sold}</TableCell>
+                                        <TableCell align="center" sx={{ fontSize: "0.75rem", color: "#64748b" }}>{item.last_purchase_date || "-"}</TableCell>
+                                        <TableCell align="center" sx={{ fontSize: "0.75rem", color: "#64748b" }}>{item.last_sale_date || "-"}</TableCell>
+                                        <TableCell align="center">
                                             {item.purchased_not_sold ? (
-                                                <span className="text-[9px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full uppercase"><FaExclamationTriangle className="inline mr-0.5" size={8}/>Unsold</span>
+                                                <Chip
+                                                    icon={<WarningIcon sx={{ fontSize: "10px !important" }} />}
+                                                    label="Unsold"
+                                                    size="small"
+                                                    sx={{ fontSize: "9px", fontWeight: 900, textTransform: "uppercase", bgcolor: "#fffbeb", color: "#b45309", border: "1px solid #fde68a", height: 22, "& .MuiChip-icon": { color: "#b45309" } }}
+                                                />
                                             ) : item.sold_not_purchased ? (
-                                                <span className="text-[9px] font-black text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full uppercase">No PO</span>
+                                                <Chip
+                                                    label="No PO"
+                                                    size="small"
+                                                    sx={{ fontSize: "9px", fontWeight: 900, textTransform: "uppercase", bgcolor: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca", height: 22 }}
+                                                />
                                             ) : item.total_times_sold > 0 ? (
-                                                <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full uppercase">Active</span>
+                                                <Chip
+                                                    label="Active"
+                                                    size="small"
+                                                    sx={{ fontSize: "9px", fontWeight: 900, textTransform: "uppercase", bgcolor: "#ecfdf5", color: "#047857", border: "1px solid #a7f3d0", height: 22 }}
+                                                />
                                             ) : (
-                                                <span className="text-[9px] font-black text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full uppercase">New</span>
+                                                <Chip
+                                                    label="New"
+                                                    size="small"
+                                                    sx={{ fontSize: "9px", fontWeight: 900, textTransform: "uppercase", bgcolor: "#f8fafc", color: "#64748b", border: "1px solid #e2e8f0", height: 22 }}
+                                                />
                                             )}
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
+                                        </TableCell>
+                                        <TableCell align="center">
                                             {(item.total_times_purchased > 0 || item.total_times_sold > 0) && (
-                                                <button onClick={() => openTracking(item.product_id)} className="p-1.5 rounded-md bg-slate-100 text-slate-500 hover:bg-blue-600 hover:text-white transition-all active:scale-90 opacity-60 group-hover:opacity-100" title="View Full Tracking">
-                                                    <FaEye size={12} />
-                                                </button>
+                                                <Tooltip title="View Full Tracking">
+                                                    <IconButton
+                                                        className="track-btn"
+                                                        onClick={() => openTracking(item.product_id)}
+                                                        size="small"
+                                                        sx={{
+                                                            bgcolor: "#f1f5f9",
+                                                            color: "#64748b",
+                                                            opacity: 0.6,
+                                                            "&:hover": { bgcolor: "#1565C0", color: "#fff" },
+                                                            transition: "all 0.2s",
+                                                        }}
+                                                    >
+                                                        <EyeIcon sx={{ fontSize: 14 }} />
+                                                    </IconButton>
+                                                </Tooltip>
                                             )}
-                                        </td>
-                                    </tr>
+                                        </TableCell>
+                                    </TableRow>
                                 )) : (
-                                    <tr><td colSpan="10" className="px-4 py-16 text-center text-slate-400 font-bold uppercase text-[10px] tracking-widest">No items found</td></tr>
+                                    <TableRow>
+                                        <TableCell colSpan={10} align="center" sx={{ py: 8 }}>
+                                            <Typography sx={{ color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", fontSize: "10px", letterSpacing: "0.1em" }}>
+                                                No items found
+                                            </Typography>
+                                        </TableCell>
+                                    </TableRow>
                                 )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                </Card>
+            </Box>
 
             {/* Tracking Modal */}
-            {trackingModal.open && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4">
-                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={closeTracking}></div>
-                    <div className="relative bg-white w-full max-w-5xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-                        {/* Header */}
-                        <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between shrink-0">
-                            <div className="min-w-0">
-                                <h3 className="text-sm sm:text-base font-black uppercase tracking-tight truncate">
-                                    Product Lifecycle — {trackingModal.data?.product?.item_name || "Loading..."}
-                                </h3>
-                                {trackingModal.data?.product && (
-                                    <p className="text-[10px] text-slate-400 font-bold mt-0.5">
-                                        {trackingModal.data.product.item_code} · {trackingModal.data.product.unit} · Stock: {trackingModal.data.product.current_stock}
-                                    </p>
-                                )}
-                            </div>
-                            <button onClick={closeTracking} className="p-2 hover:bg-white/10 rounded-lg shrink-0 ml-2"><FaTimes size={16} /></button>
-                        </div>
-
-                        {trackingModal.loading ? (
-                            <div className="flex items-center justify-center py-16"><div className="w-7 h-7 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div>
-                        ) : trackingModal.data ? (
-                            <div className="flex-1 overflow-y-auto">
-                                {/* Purchase History */}
-                                <div className="border-b border-slate-200">
-                                    <div className="bg-blue-50 px-5 py-3 flex items-center justify-between">
-                                        <h4 className="text-xs font-black text-blue-800 uppercase tracking-widest flex items-center gap-2">
-                                            <FaShoppingCart size={12} /> Purchase History ({trackingModal.data.total_purchases})
-                                        </h4>
-                                    </div>
-                                    {trackingModal.data.purchases.length > 0 ? (
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full min-w-[650px] text-xs">
-                                                <thead className="bg-slate-50 border-b border-slate-200">
-                                                    <tr className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
-                                                        <th className="px-4 py-2.5 text-left">Requisition</th>
-                                                        <th className="px-4 py-2.5 text-left">PO Number</th>
-                                                        <th className="px-4 py-2.5 text-left">Vendor</th>
-                                                        <th className="px-4 py-2.5 text-center">Date</th>
-                                                        <th className="px-4 py-2.5 text-right">Qty</th>
-                                                        <th className="px-4 py-2.5 text-right">Rate</th>
-                                                        <th className="px-4 py-2.5 text-right">Amount</th>
-                                                        <th className="px-4 py-2.5 text-right">INR Value</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-100">
-                                                    {trackingModal.data.purchases.map((p, i) => (
-                                                        <tr key={i} className="hover:bg-slate-50 transition-colors">
-                                                            <td className="px-4 py-2.5"><span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 text-[10px]">{p.requisition_number}</span></td>
-                                                            <td className="px-4 py-2.5"><span className="font-mono font-bold text-slate-700 text-[10px]">{p.po_number}</span></td>
-                                                            <td className="px-4 py-2.5 font-bold text-slate-700">{p.vendor_name}</td>
-                                                            <td className="px-4 py-2.5 text-center text-slate-500">{p.po_date}</td>
-                                                            <td className="px-4 py-2.5 text-right font-mono font-bold">{p.quantity}</td>
-                                                            <td className="px-4 py-2.5 text-right font-mono">{fmt(p.rate, p.currency)}</td>
-                                                            <td className="px-4 py-2.5 text-right font-mono font-bold">
-                                                                {fmt(p.amount, p.currency)}
-                                                                {p.currency !== 'INR' && <div className="text-[9px] text-slate-400 mt-0.5">@{p.conversion_rate}</div>}
-                                                            </td>
-                                                            <td className="px-4 py-2.5 text-right font-mono font-bold text-slate-800">{fmt(p.amount_inr, 'INR')}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    ) : (
-                                        <div className="px-5 py-8 text-center text-slate-400 text-[10px] font-bold uppercase tracking-widest">No purchase records</div>
-                                    )}
-                                </div>
-
-                                {/* Flow Arrow */}
-                                <div className="flex items-center justify-center py-2 bg-slate-50">
-                                    <FaArrowRight className="text-slate-300" />
-                                </div>
-
-                                {/* Sale History */}
-                                <div>
-                                    <div className="bg-emerald-50 px-5 py-3 flex items-center justify-between">
-                                        <h4 className="text-xs font-black text-emerald-800 uppercase tracking-widest flex items-center gap-2">
-                                            <FaStore size={12} /> Sale History ({trackingModal.data.total_sales})
-                                        </h4>
-                                    </div>
-                                    {trackingModal.data.sales.length > 0 ? (
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full min-w-[600px] text-xs">
-                                                <thead className="bg-slate-50 border-b border-slate-200">
-                                                    <tr className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
-                                                        <th className="px-4 py-2.5 text-left">Requisition</th>
-                                                        <th className="px-4 py-2.5 text-left">PI Number</th>
-                                                        <th className="px-4 py-2.5 text-center">Date</th>
-                                                        <th className="px-4 py-2.5 text-center">Status</th>
-                                                        <th className="px-4 py-2.5 text-right">Qty</th>
-                                                        <th className="px-4 py-2.5 text-right">Unit Price</th>
-                                                        <th className="px-4 py-2.5 text-right">Amount</th>
-                                                        <th className="px-4 py-2.5 text-right">INR Value</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-100">
-                                                    {trackingModal.data.sales.map((s, i) => (
-                                                        <tr key={i} className="hover:bg-slate-50 transition-colors">
-                                                            <td className="px-4 py-2.5"><span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 text-[10px]">{s.requisition_number}</span></td>
-                                                            <td className="px-4 py-2.5"><span className="font-mono font-bold text-emerald-700 text-[10px]">{s.pi_number}</span></td>
-                                                            <td className="px-4 py-2.5 text-center text-slate-500">{s.pi_date}</td>
-                                                            <td className="px-4 py-2.5 text-center">
-                                                                <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
-                                                                    s.status === 'ACCEPTED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                                                                    s.status === 'SENT' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
-                                                                    s.status === 'DRAFT' ? 'bg-slate-50 text-slate-600 border border-slate-200' :
-                                                                    'bg-red-50 text-red-700 border border-red-200'
-                                                                }`}>{s.status}</span>
-                                                            </td>
-                                                            <td className="px-4 py-2.5 text-right font-mono font-bold">{s.quantity}</td>
-                                                            <td className="px-4 py-2.5 text-right font-mono">{fmt(s.unit_price, s.currency)}</td>
-                                                            <td className="px-4 py-2.5 text-right font-mono font-bold">
-                                                                {fmt(s.amount, s.currency)}
-                                                                {s.currency !== 'INR' && <div className="text-[9px] text-slate-400 mt-0.5">@{s.conversion_rate}</div>}
-                                                            </td>
-                                                            <td className="px-4 py-2.5 text-right font-mono font-bold text-slate-800">{fmt(s.amount_inr, 'INR')}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    ) : (
-                                        <div className="px-5 py-8 text-center text-slate-400 text-[10px] font-bold uppercase tracking-widest">No sale records</div>
-                                    )}
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="py-16 text-center text-slate-400 font-bold uppercase text-[10px]">Failed to load tracking data</div>
+            <Dialog
+                open={trackingModal.open}
+                onClose={closeTracking}
+                maxWidth="lg"
+                fullWidth
+                PaperProps={{
+                    sx: {
+                        borderRadius: 4,
+                        maxHeight: "90vh",
+                        overflow: "hidden",
+                    },
+                }}
+                BackdropProps={{
+                    sx: { bgcolor: "rgba(15,23,42,0.6)", backdropFilter: "blur(4px)" },
+                }}
+            >
+                {/* Header */}
+                <DialogTitle
+                    sx={{
+                        bgcolor: "#0f172a",
+                        color: "#fff",
+                        px: 2.5,
+                        py: 2,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                    }}
+                >
+                    <Box sx={{ minWidth: 0 }}>
+                        <Typography
+                            sx={{
+                                fontSize: { xs: "0.875rem", sm: "1rem" },
+                                fontWeight: 900,
+                                textTransform: "uppercase",
+                                letterSpacing: "-0.01em",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                            }}
+                        >
+                            Product Lifecycle — {trackingModal.data?.product?.item_name || "Loading..."}
+                        </Typography>
+                        {trackingModal.data?.product && (
+                            <Typography sx={{ fontSize: "10px", color: "#94a3b8", fontWeight: 700, mt: 0.25 }}>
+                                {trackingModal.data.product.item_code} · {trackingModal.data.product.unit} · Stock: {trackingModal.data.product.current_stock}
+                            </Typography>
                         )}
+                    </Box>
+                    <IconButton onClick={closeTracking} sx={{ color: "#fff", ml: 1, "&:hover": { bgcolor: "rgba(255,255,255,0.1)" } }}>
+                        <CloseIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                </DialogTitle>
 
-                        <div className="bg-slate-50 px-5 py-3 border-t border-slate-200 flex justify-end shrink-0">
-                            <button onClick={closeTracking} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-lg transition-colors">Close</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                <DialogContent sx={{ p: 0, overflow: "auto" }}>
+                    {trackingModal.loading ? (
+                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", py: 8 }}>
+                            <CircularProgress size={28} sx={{ color: "#1565C0" }} />
+                        </Box>
+                    ) : trackingModal.data ? (
+                        <>
+                            {/* Purchase History */}
+                            <Box sx={{ borderBottom: "1px solid #e2e8f0" }}>
+                                <Box sx={{ bgcolor: "#eff6ff", px: 2.5, py: 1.5, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                    <Typography sx={{ fontSize: "0.75rem", fontWeight: 900, color: "#1e40af", textTransform: "uppercase", letterSpacing: "0.1em", display: "flex", alignItems: "center", gap: 1 }}>
+                                        <ShoppingCartIcon sx={{ fontSize: 14 }} /> Purchase History ({trackingModal.data.total_purchases})
+                                    </Typography>
+                                </Box>
+                                {trackingModal.data.purchases.length > 0 ? (
+                                    <TableContainer>
+                                        <Table sx={{ minWidth: 650 }} size="small">
+                                            <TableHead>
+                                                <TableRow sx={{ bgcolor: "#f8fafc" }}>
+                                                    <TableCell sx={modalThStyle} align="left">Requisition</TableCell>
+                                                    <TableCell sx={modalThStyle} align="left">PO Number</TableCell>
+                                                    <TableCell sx={modalThStyle} align="left">Vendor</TableCell>
+                                                    <TableCell sx={modalThStyle} align="center">Date</TableCell>
+                                                    <TableCell sx={modalThStyle} align="right">Qty</TableCell>
+                                                    <TableCell sx={modalThStyle} align="right">Rate</TableCell>
+                                                    <TableCell sx={modalThStyle} align="right">Amount</TableCell>
+                                                    <TableCell sx={modalThStyle} align="right">INR Value</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {trackingModal.data.purchases.map((p, i) => (
+                                                    <TableRow key={i} hover sx={{ "& td": { borderBottom: "1px solid #f1f5f9" } }}>
+                                                        <TableCell sx={{ px: 2, py: 1.25 }}>
+                                                            <Chip
+                                                                label={p.requisition_number}
+                                                                size="small"
+                                                                sx={{ fontFamily: "monospace", fontWeight: 700, bgcolor: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", fontSize: "10px", height: 22 }}
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell sx={{ px: 2, py: 1.25 }}>
+                                                            <Typography sx={{ fontFamily: "monospace", fontWeight: 700, color: "#334155", fontSize: "10px" }}>{p.po_number}</Typography>
+                                                        </TableCell>
+                                                        <TableCell sx={{ px: 2, py: 1.25, fontWeight: 700, color: "#334155", fontSize: "0.75rem" }}>{p.vendor_name}</TableCell>
+                                                        <TableCell align="center" sx={{ px: 2, py: 1.25, color: "#64748b", fontSize: "0.75rem" }}>{p.po_date}</TableCell>
+                                                        <TableCell align="right" sx={{ px: 2, py: 1.25, fontFamily: "monospace", fontWeight: 700, fontSize: "0.75rem" }}>{p.quantity}</TableCell>
+                                                        <TableCell align="right" sx={{ px: 2, py: 1.25, fontFamily: "monospace", fontSize: "0.75rem" }}>{fmt(p.rate, p.currency)}</TableCell>
+                                                        <TableCell align="right" sx={{ px: 2, py: 1.25 }}>
+                                                            <Typography sx={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.75rem" }}>
+                                                                {fmt(p.amount, p.currency)}
+                                                            </Typography>
+                                                            {p.currency !== 'INR' && (
+                                                                <Typography sx={{ fontSize: "9px", color: "#94a3b8", mt: 0.25 }}>@{p.conversion_rate}</Typography>
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell align="right" sx={{ px: 2, py: 1.25, fontFamily: "monospace", fontWeight: 700, color: "#1e293b", fontSize: "0.75rem" }}>
+                                                            {fmt(p.amount_inr, 'INR')}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                ) : (
+                                    <Box sx={{ px: 2.5, py: 4, textAlign: "center" }}>
+                                        <Typography sx={{ color: "#94a3b8", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                                            No purchase records
+                                        </Typography>
+                                    </Box>
+                                )}
+                            </Box>
+
+                            {/* Flow Arrow */}
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", py: 1, bgcolor: "#f8fafc" }}>
+                                <ArrowForwardIcon sx={{ color: "#cbd5e1" }} />
+                            </Box>
+
+                            {/* Sale History */}
+                            <Box>
+                                <Box sx={{ bgcolor: "#ecfdf5", px: 2.5, py: 1.5, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                    <Typography sx={{ fontSize: "0.75rem", fontWeight: 900, color: "#065f46", textTransform: "uppercase", letterSpacing: "0.1em", display: "flex", alignItems: "center", gap: 1 }}>
+                                        <StoreIcon sx={{ fontSize: 14 }} /> Sale History ({trackingModal.data.total_sales})
+                                    </Typography>
+                                </Box>
+                                {trackingModal.data.sales.length > 0 ? (
+                                    <TableContainer>
+                                        <Table sx={{ minWidth: 600 }} size="small">
+                                            <TableHead>
+                                                <TableRow sx={{ bgcolor: "#f8fafc" }}>
+                                                    <TableCell sx={modalThStyle} align="left">Requisition</TableCell>
+                                                    <TableCell sx={modalThStyle} align="left">PI Number</TableCell>
+                                                    <TableCell sx={modalThStyle} align="center">Date</TableCell>
+                                                    <TableCell sx={modalThStyle} align="center">Status</TableCell>
+                                                    <TableCell sx={modalThStyle} align="right">Qty</TableCell>
+                                                    <TableCell sx={modalThStyle} align="right">Unit Price</TableCell>
+                                                    <TableCell sx={modalThStyle} align="right">Amount</TableCell>
+                                                    <TableCell sx={modalThStyle} align="right">INR Value</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {trackingModal.data.sales.map((s, i) => (
+                                                    <TableRow key={i} hover sx={{ "& td": { borderBottom: "1px solid #f1f5f9" } }}>
+                                                        <TableCell sx={{ px: 2, py: 1.25 }}>
+                                                            <Chip
+                                                                label={s.requisition_number}
+                                                                size="small"
+                                                                sx={{ fontFamily: "monospace", fontWeight: 700, bgcolor: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", fontSize: "10px", height: 22 }}
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell sx={{ px: 2, py: 1.25 }}>
+                                                            <Typography sx={{ fontFamily: "monospace", fontWeight: 700, color: "#047857", fontSize: "10px" }}>{s.pi_number}</Typography>
+                                                        </TableCell>
+                                                        <TableCell align="center" sx={{ px: 2, py: 1.25, color: "#64748b", fontSize: "0.75rem" }}>{s.pi_date}</TableCell>
+                                                        <TableCell align="center" sx={{ px: 2, py: 1.25 }}>
+                                                            <Chip
+                                                                label={s.status}
+                                                                size="small"
+                                                                sx={{
+                                                                    fontSize: "9px",
+                                                                    fontWeight: 900,
+                                                                    textTransform: "uppercase",
+                                                                    height: 22,
+                                                                    ...(s.status === 'ACCEPTED'
+                                                                        ? { bgcolor: "#ecfdf5", color: "#047857", border: "1px solid #a7f3d0" }
+                                                                        : s.status === 'SENT'
+                                                                        ? { bgcolor: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe" }
+                                                                        : s.status === 'DRAFT'
+                                                                        ? { bgcolor: "#f8fafc", color: "#475569", border: "1px solid #e2e8f0" }
+                                                                        : { bgcolor: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" }),
+                                                                }}
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell align="right" sx={{ px: 2, py: 1.25, fontFamily: "monospace", fontWeight: 700, fontSize: "0.75rem" }}>{s.quantity}</TableCell>
+                                                        <TableCell align="right" sx={{ px: 2, py: 1.25, fontFamily: "monospace", fontSize: "0.75rem" }}>{fmt(s.unit_price, s.currency)}</TableCell>
+                                                        <TableCell align="right" sx={{ px: 2, py: 1.25 }}>
+                                                            <Typography sx={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.75rem" }}>
+                                                                {fmt(s.amount, s.currency)}
+                                                            </Typography>
+                                                            {s.currency !== 'INR' && (
+                                                                <Typography sx={{ fontSize: "9px", color: "#94a3b8", mt: 0.25 }}>@{s.conversion_rate}</Typography>
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell align="right" sx={{ px: 2, py: 1.25, fontFamily: "monospace", fontWeight: 700, color: "#1e293b", fontSize: "0.75rem" }}>
+                                                            {fmt(s.amount_inr, 'INR')}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                ) : (
+                                    <Box sx={{ px: 2.5, py: 4, textAlign: "center" }}>
+                                        <Typography sx={{ color: "#94a3b8", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                                            No sale records
+                                        </Typography>
+                                    </Box>
+                                )}
+                            </Box>
+                        </>
+                    ) : (
+                        <Box sx={{ py: 8, textAlign: "center" }}>
+                            <Typography sx={{ color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", fontSize: "10px" }}>
+                                Failed to load tracking data
+                            </Typography>
+                        </Box>
+                    )}
+                </DialogContent>
+
+                <DialogActions sx={{ bgcolor: "#f8fafc", px: 2.5, py: 1.5, borderTop: "1px solid #e2e8f0" }}>
+                    <Button
+                        onClick={closeTracking}
+                        variant="contained"
+                        disableElevation
+                        sx={{
+                            bgcolor: "#e2e8f0",
+                            color: "#334155",
+                            fontWeight: 700,
+                            fontSize: "0.75rem",
+                            borderRadius: 2,
+                            textTransform: "none",
+                            "&:hover": { bgcolor: "#cbd5e1" },
+                        }}
+                    >
+                        Close
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </>
     );
 }
+
+// Shared table header cell styles
+const thStyle = {
+    fontSize: "10px",
+    fontWeight: 700,
+    color: "#64748b",
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+    px: 2,
+    py: 1.5,
+    borderBottom: "1px solid #e2e8f0",
+};
+
+const modalThStyle = {
+    fontSize: "9px",
+    fontWeight: 700,
+    color: "#64748b",
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+    px: 2,
+    py: 1.25,
+    borderBottom: "1px solid #e2e8f0",
+};

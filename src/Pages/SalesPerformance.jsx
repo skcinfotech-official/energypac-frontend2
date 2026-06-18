@@ -1,11 +1,31 @@
 
 import { useState, useEffect } from "react";
-import { FaChartLine, FaDownload, FaUsers, FaTrophy, FaCalendarAlt } from "react-icons/fa";
+import {
+    Box,
+    Card,
+    CardContent,
+    Typography,
+    Button,
+    TextField,
+    Grid,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    CircularProgress,
+    Chip,
+    Divider,
+    Paper,
+} from "@mui/material";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import GroupIcon from "@mui/icons-material/Group";
 import { getSalesPerformanceReport } from "../services/salesService";
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
-    RadialBarChart, RadialBar,
-} from 'recharts';
+} from "recharts";
 
 const SalesPerformance = () => {
     const [performanceData, setPerformanceData] = useState(null);
@@ -19,7 +39,6 @@ const SalesPerformance = () => {
         fetchPerformance();
     }, [filters]);
 
-    
     const fetchPerformance = async () => {
         setLoading(true);
         try {
@@ -38,207 +57,557 @@ const SalesPerformance = () => {
     };
 
     const handleFilterChange = (key, value) => {
-        setFilters(prev => ({ ...prev, [key]: value }));
+        setFilters((prev) => ({ ...prev, [key]: value }));
     };
 
     // Formatter for Currency
     const formatCurrency = (val) => {
-        return Number(val || 0).toLocaleString('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-            maximumFractionDigits: 0
+        return Number(val || 0).toLocaleString("en-IN", {
+            style: "currency",
+            currency: "INR",
+            maximumFractionDigits: 0,
         });
     };
 
     if (loading && !performanceData) {
         return (
-            <div className="flex h-screen items-center justify-center">
-                <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-            </div>
+            <Box
+                sx={{
+                    display: "flex",
+                    height: "100vh",
+                    alignItems: "center",
+                    justifyContent: "center",
+                }}
+            >
+                <CircularProgress size={40} sx={{ color: "#1565C0" }} />
+            </Box>
         );
     }
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-700">
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
             {/* Header & Filters */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div>
-                        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                            <FaTrophy className="text-yellow-500" />
-                            Sales Performance Report
-                        </h2>
-                        <p className="text-slate-500 text-sm">Detailed breakdown of team and individual performance.</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <button className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-medium transition-colors">
-                            <FaDownload /> Export PDF
-                        </button>
-                    </div>
-                </div>
+            <Card
+                sx={{
+                    borderRadius: 4,
+                    border: "1px solid",
+                    borderColor: "grey.200",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                }}
+            >
+                <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
+                    <Box
+                        sx={{
+                            display: "flex",
+                            flexDirection: { xs: "column", md: "row" },
+                            justifyContent: "space-between",
+                            alignItems: { xs: "flex-start", md: "center" },
+                            gap: 2,
+                        }}
+                    >
+                        <Box>
+                            <Typography
+                                variant="h5"
+                                sx={{
+                                    fontWeight: 700,
+                                    color: "grey.800",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 1,
+                                }}
+                            >
+                                <EmojiEventsIcon sx={{ color: "#f59e0b" }} />
+                                Sales Performance Report
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: "grey.500", mt: 0.5 }}>
+                                Detailed breakdown of team and individual performance.
+                            </Typography>
+                        </Box>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                            <Button
+                                variant="contained"
+                                startIcon={<FileDownloadIcon />}
+                                sx={{
+                                    backgroundColor: "grey.100",
+                                    color: "grey.600",
+                                    textTransform: "none",
+                                    fontWeight: 500,
+                                    fontSize: "0.875rem",
+                                    boxShadow: "none",
+                                    borderRadius: 2,
+                                    "&:hover": {
+                                        backgroundColor: "grey.200",
+                                        boxShadow: "none",
+                                    },
+                                }}
+                            >
+                                Export PDF
+                            </Button>
+                        </Box>
+                    </Box>
 
-                <div className="flex flex-wrap items-end gap-4 pt-4 border-t border-slate-100">
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Start Date</label>
-                        <input
+                    <Divider sx={{ my: 2, borderColor: "grey.100" }} />
+
+                    <Box
+                        sx={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            alignItems: "flex-end",
+                            gap: 2,
+                        }}
+                    >
+                        <TextField
+                            label="Start Date"
                             type="date"
-                            className="input py-1.5 text-sm"
+                            size="small"
                             value={filters.start_date}
                             onChange={(e) => handleFilterChange("start_date", e.target.value)}
+                            slotProps={{ inputLabel: { shrink: true } }}
+                            sx={{ minWidth: 160 }}
                         />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">End Date</label>
-                        <input
+                        <TextField
+                            label="End Date"
                             type="date"
-                            className="input py-1.5 text-sm"
+                            size="small"
                             value={filters.end_date}
                             onChange={(e) => handleFilterChange("end_date", e.target.value)}
+                            slotProps={{ inputLabel: { shrink: true } }}
+                            sx={{ minWidth: 160 }}
                         />
-                    </div>
-                    <div className="ml-auto text-xs text-slate-400 self-center">
-                        Report Generated: {performanceData ? new Date(performanceData.generated_at).toLocaleString() : '-'}
-                    </div>
-                </div>
-            </div>
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                color: "grey.400",
+                                ml: "auto",
+                                alignSelf: "center",
+                            }}
+                        >
+                            Report Generated:{" "}
+                            {performanceData
+                                ? new Date(performanceData.generated_at).toLocaleString()
+                                : "-"}
+                        </Typography>
+                    </Box>
+                </CardContent>
+            </Card>
 
             {performanceData && (
                 <>
                     {/* Overall Metrics */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <MetricCard
-                            title="Total Queries"
-                            value={performanceData.overall_metrics?.total_queries}
-                            subtitle="Inbound leads"
-                            color="blue"
-                        />
-                        <MetricCard
-                            title="Total Quotations"
-                            value={performanceData.overall_metrics?.total_quotations}
-                            subtitle="Proposals sent"
-                            color="purple"
-                        />
-                        <MetricCard
-                            title="Win Rate"
-                            value={`${performanceData.overall_metrics?.win_rate}%`}
-                            subtitle={`${performanceData.overall_metrics?.total_won} Won / ${performanceData.overall_metrics?.total_lost} Lost`}
-                            color="green"
-                        />
-                        <MetricCard
-                            title="Avg Response Time"
-                            value={`${performanceData.overall_metrics?.average_response_time_days} Days`}
-                            subtitle="Speed to quote"
-                            color="orange"
-                        />
-                    </div>
+                    <Grid container spacing={2}>
+                        <Grid size={{ xs: 12, md: 6, lg: 3 }}>
+                            <MetricCard
+                                title="Total Queries"
+                                value={performanceData.overall_metrics?.total_queries}
+                                subtitle="Inbound leads"
+                                color="blue"
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 6, lg: 3 }}>
+                            <MetricCard
+                                title="Total Quotations"
+                                value={performanceData.overall_metrics?.total_quotations}
+                                subtitle="Proposals sent"
+                                color="purple"
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 6, lg: 3 }}>
+                            <MetricCard
+                                title="Win Rate"
+                                value={`${performanceData.overall_metrics?.win_rate}%`}
+                                subtitle={`${performanceData.overall_metrics?.total_won} Won / ${performanceData.overall_metrics?.total_lost} Lost`}
+                                color="green"
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 6, lg: 3 }}>
+                            <MetricCard
+                                title="Avg Response Time"
+                                value={`${performanceData.overall_metrics?.average_response_time_days} Days`}
+                                subtitle="Speed to quote"
+                                color="orange"
+                            />
+                        </Grid>
+                    </Grid>
 
                     {/* User Performance Table */}
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                                <FaUsers className="text-blue-600" />
+                    <Card
+                        sx={{
+                            borderRadius: 4,
+                            border: "1px solid",
+                            borderColor: "grey.200",
+                            boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                            overflow: "hidden",
+                        }}
+                    >
+                        <Box
+                            sx={{
+                                px: 3,
+                                py: 2,
+                                borderBottom: "1px solid",
+                                borderColor: "grey.100",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                            }}
+                        >
+                            <Typography
+                                variant="subtitle1"
+                                sx={{
+                                    fontWeight: 700,
+                                    color: "grey.800",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 1,
+                                }}
+                            >
+                                <GroupIcon sx={{ color: "#1565C0" }} />
                                 Sales Representative Performance
-                            </h3>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="odd:bg-slate-100 even:bg-white hover:bg-slate-200  text-slate-600 uppercase text-xs font-bold tracking-wider ">
-                                        <th className="px-6 py-4">Sales Rep</th>
-                                        <th className="px-6 py-4 text-center">Quotations</th>
-                                        <th className="px-6 py-4 text-right">Total Value</th>
-                                        <th className="px-6 py-4 text-right">Avg Value</th>
-                                        <th className="px-6 py-4 text-center">Accepted</th>
-                                        <th className="px-6 py-4 text-center">Rejected</th>
-                                        <th className="px-6 py-4 text-center">Conversion Rate</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
+                            </Typography>
+                        </Box>
+                        <TableContainer>
+                            <Table>
+                                <TableHead>
+                                    <TableRow
+                                        sx={{
+                                            backgroundColor: "grey.100",
+                                        }}
+                                    >
+                                        <TableCell
+                                            sx={{
+                                                fontWeight: 700,
+                                                fontSize: "0.75rem",
+                                                color: "grey.600",
+                                                textTransform: "uppercase",
+                                                letterSpacing: "0.05em",
+                                                py: 2,
+                                            }}
+                                        >
+                                            Sales Rep
+                                        </TableCell>
+                                        <TableCell
+                                            align="center"
+                                            sx={{
+                                                fontWeight: 700,
+                                                fontSize: "0.75rem",
+                                                color: "grey.600",
+                                                textTransform: "uppercase",
+                                                letterSpacing: "0.05em",
+                                                py: 2,
+                                            }}
+                                        >
+                                            Quotations
+                                        </TableCell>
+                                        <TableCell
+                                            align="right"
+                                            sx={{
+                                                fontWeight: 700,
+                                                fontSize: "0.75rem",
+                                                color: "grey.600",
+                                                textTransform: "uppercase",
+                                                letterSpacing: "0.05em",
+                                                py: 2,
+                                            }}
+                                        >
+                                            Total Value
+                                        </TableCell>
+                                        <TableCell
+                                            align="right"
+                                            sx={{
+                                                fontWeight: 700,
+                                                fontSize: "0.75rem",
+                                                color: "grey.600",
+                                                textTransform: "uppercase",
+                                                letterSpacing: "0.05em",
+                                                py: 2,
+                                            }}
+                                        >
+                                            Avg Value
+                                        </TableCell>
+                                        <TableCell
+                                            align="center"
+                                            sx={{
+                                                fontWeight: 700,
+                                                fontSize: "0.75rem",
+                                                color: "grey.600",
+                                                textTransform: "uppercase",
+                                                letterSpacing: "0.05em",
+                                                py: 2,
+                                            }}
+                                        >
+                                            Accepted
+                                        </TableCell>
+                                        <TableCell
+                                            align="center"
+                                            sx={{
+                                                fontWeight: 700,
+                                                fontSize: "0.75rem",
+                                                color: "grey.600",
+                                                textTransform: "uppercase",
+                                                letterSpacing: "0.05em",
+                                                py: 2,
+                                            }}
+                                        >
+                                            Rejected
+                                        </TableCell>
+                                        <TableCell
+                                            align="center"
+                                            sx={{
+                                                fontWeight: 700,
+                                                fontSize: "0.75rem",
+                                                color: "grey.600",
+                                                textTransform: "uppercase",
+                                                letterSpacing: "0.05em",
+                                                py: 2,
+                                            }}
+                                        >
+                                            Conversion Rate
+                                        </TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
                                     {performanceData.user_performance?.length > 0 ? (
-                                        performanceData.user_performance.map((user) => (
-                                            <tr key={user.user_id} className="odd:bg-slate-100 even:bg-white hover:bg-slate-200   transition-colors">
-                                                <td className="px-6 py-4 font-medium text-slate-800">
+                                        performanceData.user_performance.map((user, index) => (
+                                            <TableRow
+                                                key={user.user_id}
+                                                sx={{
+                                                    backgroundColor:
+                                                        index % 2 === 0 ? "grey.50" : "white",
+                                                    "&:hover": {
+                                                        backgroundColor: "grey.200",
+                                                    },
+                                                    transition: "background-color 0.15s",
+                                                }}
+                                            >
+                                                <TableCell
+                                                    sx={{
+                                                        fontWeight: 500,
+                                                        color: "grey.800",
+                                                    }}
+                                                >
                                                     {user.user_name}
-                                                </td>
-                                                <td className="px-6 py-4 text-center text-slate-600">
+                                                </TableCell>
+                                                <TableCell
+                                                    align="center"
+                                                    sx={{ color: "grey.600" }}
+                                                >
                                                     {user.quotations_count}
-                                                </td>
-                                                <td className="px-6 py-4 text-right font-medium text-slate-800">
+                                                </TableCell>
+                                                <TableCell
+                                                    align="right"
+                                                    sx={{
+                                                        fontWeight: 500,
+                                                        color: "grey.800",
+                                                    }}
+                                                >
                                                     {formatCurrency(user.total_value)}
-                                                </td>
-                                                <td className="px-6 py-4 text-right text-slate-600">
+                                                </TableCell>
+                                                <TableCell
+                                                    align="right"
+                                                    sx={{ color: "grey.600" }}
+                                                >
                                                     {formatCurrency(user.average_value)}
-                                                </td>
-                                                <td className="px-6 py-4 text-center text-green-600 font-medium">
+                                                </TableCell>
+                                                <TableCell
+                                                    align="center"
+                                                    sx={{
+                                                        color: "success.main",
+                                                        fontWeight: 500,
+                                                    }}
+                                                >
                                                     {user.accepted_count}
-                                                </td>
-                                                <td className="px-6 py-4 text-center text-red-500 font-medium">
+                                                </TableCell>
+                                                <TableCell
+                                                    align="center"
+                                                    sx={{
+                                                        color: "error.main",
+                                                        fontWeight: 500,
+                                                    }}
+                                                >
                                                     {user.rejected_count}
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${user.acceptance_rate >= 50 ? 'bg-green-100 text-green-700' :
-                                                            user.acceptance_rate >= 30 ? 'bg-yellow-100 text-yellow-700' :
-                                                                'bg-red-100 text-red-700'
-                                                        }`}>
-                                                        {user.acceptance_rate}%
-                                                    </span>
-                                                </td>
-                                            </tr>
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                    <Chip
+                                                        label={`${user.acceptance_rate}%`}
+                                                        size="small"
+                                                        sx={{
+                                                            fontWeight: 700,
+                                                            fontSize: "0.75rem",
+                                                            ...(user.acceptance_rate >= 50
+                                                                ? {
+                                                                      backgroundColor: "#dcfce7",
+                                                                      color: "#15803d",
+                                                                  }
+                                                                : user.acceptance_rate >= 30
+                                                                  ? {
+                                                                        backgroundColor: "#fef9c3",
+                                                                        color: "#a16207",
+                                                                    }
+                                                                  : {
+                                                                        backgroundColor: "#fee2e2",
+                                                                        color: "#b91c1c",
+                                                                    }),
+                                                        }}
+                                                    />
+                                                </TableCell>
+                                            </TableRow>
                                         ))
                                     ) : (
-                                        <tr>
-                                            <td colSpan="7" className="px-6 py-8 text-center text-slate-500">
+                                        <TableRow>
+                                            <TableCell
+                                                colSpan={7}
+                                                align="center"
+                                                sx={{
+                                                    py: 4,
+                                                    color: "grey.500",
+                                                }}
+                                            >
                                                 No performance data found for the selected period.
-                                            </td>
-                                        </tr>
+                                            </TableCell>
+                                        </TableRow>
                                     )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </Card>
 
                     {/* Performance Comparison Chart */}
-                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                        <h3 className="font-bold text-slate-800 mb-6">Individual Performance Comparison</h3>
-                        <div className="h-80">
+                    <Card
+                        sx={{
+                            borderRadius: 4,
+                            border: "1px solid",
+                            borderColor: "grey.200",
+                            boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                            p: 3,
+                        }}
+                    >
+                        <Typography
+                            variant="subtitle1"
+                            sx={{ fontWeight: 700, color: "grey.800", mb: 3 }}
+                        >
+                            Individual Performance Comparison
+                        </Typography>
+                        <Box sx={{ height: 320 }}>
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={performanceData.user_performance} barSize={40}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis dataKey="user_name" tick={{ fontSize: 12 }} />
-                                    <YAxis yAxisId="left" orientation="left" stroke="#3b82f6" />
-                                    <YAxis yAxisId="right" orientation="right" stroke="#10b981" />
-                                    <RechartsTooltip formatter={(value, name) => [name === 'Total Value' ? formatCurrency(value) : value, name]} />
+                                <BarChart
+                                    data={performanceData.user_performance}
+                                    barSize={40}
+                                >
+                                    <CartesianGrid
+                                        strokeDasharray="3 3"
+                                        vertical={false}
+                                    />
+                                    <XAxis
+                                        dataKey="user_name"
+                                        tick={{ fontSize: 12 }}
+                                    />
+                                    <YAxis
+                                        yAxisId="left"
+                                        orientation="left"
+                                        stroke="#3b82f6"
+                                    />
+                                    <YAxis
+                                        yAxisId="right"
+                                        orientation="right"
+                                        stroke="#10b981"
+                                    />
+                                    <RechartsTooltip
+                                        formatter={(value, name) => [
+                                            name === "Total Value"
+                                                ? formatCurrency(value)
+                                                : value,
+                                            name,
+                                        ]}
+                                    />
                                     <Legend />
-                                    <Bar yAxisId="left" dataKey="total_value" name="Total Value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                                    <Bar yAxisId="right" dataKey="quotations_count" name="Quotations Sent" fill="#10b981" radius={[4, 4, 0, 0]} />
+                                    <Bar
+                                        yAxisId="left"
+                                        dataKey="total_value"
+                                        name="Total Value"
+                                        fill="#3b82f6"
+                                        radius={[4, 4, 0, 0]}
+                                    />
+                                    <Bar
+                                        yAxisId="right"
+                                        dataKey="quotations_count"
+                                        name="Quotations Sent"
+                                        fill="#10b981"
+                                        radius={[4, 4, 0, 0]}
+                                    />
                                 </BarChart>
                             </ResponsiveContainer>
-                        </div>
-                    </div>
+                        </Box>
+                    </Card>
                 </>
             )}
-        </div>
+        </Box>
     );
 };
 
 const MetricCard = ({ title, value, subtitle, color }) => {
-    const colorClasses = {
-        blue: "text-blue-600 bg-blue-50 border-blue-100",
-        green: "text-green-600 bg-green-50 border-green-100",
-        purple: "text-purple-600 bg-purple-50 border-purple-100",
-        orange: "text-orange-600 bg-orange-50 border-orange-100",
+    const colorMap = {
+        blue: { text: "#1565C0", bg: "#eff6ff", border: "#dbeafe" },
+        green: { text: "#16a34a", bg: "#f0fdf4", border: "#dcfce7" },
+        purple: { text: "#9333ea", bg: "#faf5ff", border: "#f3e8ff" },
+        orange: { text: "#ea580c", bg: "#fff7ed", border: "#ffedd5" },
     };
 
+    const colors = colorMap[color] || colorMap.blue;
+
     return (
-        <div className={`p-5 rounded-2xl border ${colorClasses[color]?.split(" ")[2]} bg-white shadow-sm`}>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{title}</p>
-            <div className="flex items-end justify-between">
-                <p className={`text-2xl font-bold ${colorClasses[color]?.split(" ")[0]}`}>{value}</p>
-                <div className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase ${colorClasses[color]}`}>
-                    {subtitle}
-                </div>
-            </div>
-        </div>
+        <Card
+            sx={{
+                p: 2.5,
+                borderRadius: 4,
+                border: "1px solid",
+                borderColor: colors.border,
+                backgroundColor: "white",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+            }}
+        >
+            <Typography
+                variant="caption"
+                sx={{
+                    fontWeight: 700,
+                    color: "grey.400",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    mb: 1,
+                    display: "block",
+                }}
+            >
+                {title}
+            </Typography>
+            <Box
+                sx={{
+                    display: "flex",
+                    alignItems: "flex-end",
+                    justifyContent: "space-between",
+                }}
+            >
+                <Typography
+                    variant="h5"
+                    sx={{
+                        fontWeight: 700,
+                        color: colors.text,
+                    }}
+                >
+                    {value}
+                </Typography>
+                <Chip
+                    label={subtitle}
+                    size="small"
+                    sx={{
+                        fontWeight: 700,
+                        fontSize: "0.625rem",
+                        textTransform: "uppercase",
+                        color: colors.text,
+                        backgroundColor: colors.bg,
+                        borderRadius: 2,
+                        height: 24,
+                    }}
+                />
+            </Box>
+        </Card>
     );
 };
 

@@ -1,105 +1,112 @@
 import { useState, useEffect } from "react";
-import { FaUsers, FaShieldAlt, FaKey, FaDatabase, FaUserCheck, FaUserSlash } from "react-icons/fa";
+import {
+    Box, Card, CardContent, Typography, Grid, Avatar, CircularProgress, Skeleton, Chip
+} from "@mui/material";
+import {
+    People as PeopleIcon, AdminPanelSettings as AdminIcon,
+    VpnKey as KeyIcon, PersonOff as PersonOffIcon,
+    VerifiedUser as VerifiedUserIcon,
+} from "@mui/icons-material";
 import { adminService } from "../services/adminService";
 
 export default function AdminDashboard() {
-  const [statsData, setStatsData] = useState(null);
-  const [loading, setLoading] = useState(true);
+    const [statsData, setStatsData] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const data = await adminService.getUserStats();
-        setStatsData(data);
-      } catch (error) {
-        console.error("Failed to fetch user stats:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStats();
-  }, []);
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const data = await adminService.getUserStats();
+                setStatsData(data);
+            } catch (error) {
+                console.error("Failed to fetch user stats:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchStats();
+    }, []);
 
-  const stats = [
-    { 
-      label: "Total Users", 
-      value: statsData?.total_users || "0", 
-      icon: <FaUsers />, 
-      color: "bg-blue-500" 
-    },
-    { 
-      label: "Active Users", 
-      value: statsData?.active_users || "0", 
-      icon: <FaUserCheck />, 
-      color: "bg-emerald-500" 
-    },
-    { 
-      label: "Admin Roles", 
-      value: statsData?.admin_count || "0", 
-      icon: <FaShieldAlt />, 
-      color: "bg-indigo-500" 
-    },
-    { 
-      label: "Inactive Users", 
-      value: statsData?.inactive_users || "0", 
-      icon: <FaUserSlash />, 
-      color: "bg-amber-500" 
-    },
-  ];
+    const stats = [
+        { label: "Total Users", value: statsData?.total_users || "0", icon: <PeopleIcon />, color: '#1565C0', bgColor: '#EBF5FF' },
+        { label: "Active Users", value: statsData?.active_users || "0", icon: <VerifiedUserIcon />, color: '#2E7D32', bgColor: '#E8F5E9' },
+        { label: "Admin Roles", value: statsData?.admin_count || "0", icon: <AdminIcon />, color: '#5E35B1', bgColor: '#EDE7F6' },
+        { label: "Inactive Users", value: statsData?.inactive_users || "0", icon: <PersonOffIcon />, color: '#E65100', bgColor: '#FFF3E0' },
+    ];
 
-  return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-3xl font-bold text-slate-800 tracking-tight">Admin Dashboard</h2>
-        <p className="text-slate-500">System overview and administrative controls.</p>
-      </div>
+    return (
+        <Box>
+            {/* Header */}
+            <Box sx={{ mb: 3 }}>
+                <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary' }}>Admin Dashboard</Typography>
+                <Typography variant="body2" color="text.secondary">System overview and administrative controls.</Typography>
+            </Box>
 
+            {/* Stats Grid */}
+            <Grid container spacing={2.5} sx={{ mb: 3 }}>
+                {loading ? (
+                    [1, 2, 3, 4].map((i) => (
+                        <Grid size={{ xs: 12, sm: 6, lg: 3 }} key={i}>
+                            <Card sx={{ height: '100%' }}>
+                                <CardContent sx={{ p: 2.5 }}>
+                                    <Skeleton variant="rounded" width={42} height={42} sx={{ mb: 2 }} />
+                                    <Skeleton width="60%" height={16} sx={{ mb: 1 }} />
+                                    <Skeleton width="40%" height={32} />
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                    ))
+                ) : (
+                    stats.map((stat, idx) => (
+                        <Grid size={{ xs: 12, sm: 6, lg: 3 }} key={idx}>
+                            <Card sx={{ height: '100%' }}>
+                                <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                                        <Avatar sx={{ bgcolor: stat.bgColor, color: stat.color, width: 42, height: 42, borderRadius: 2.5 }}>
+                                            {stat.icon}
+                                        </Avatar>
+                                    </Box>
+                                    <Typography variant="caption" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'text.secondary', display: 'block', mb: 0.5 }}>
+                                        {stat.label}
+                                    </Typography>
+                                    <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary' }}>
+                                        {stat.value}
+                                    </Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                    ))
+                )}
+            </Grid>
 
-      {/* STATS GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {loading ? (
-          [1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-white border border-slate-200 p-6 rounded-3xl animate-pulse h-32"></div>
-          ))
-
-        ) : (
-          stats.map((stat, idx) => (
-            <div key={idx} className="bg-white border border-slate-200 p-6 rounded-3xl hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-500/10 transition-all group">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-2xl ${stat.color} bg-opacity-10 transition-transform group-hover:scale-110`}>
-                  <span className={`text-xl ${stat.color.replace('bg-', 'text-')}`}>{stat.icon}</span>
-                </div>
-              </div>
-              <h3 className="text-slate-500 text-sm font-bold uppercase tracking-wider">{stat.label}</h3>
-              <p className="text-3xl font-bold text-slate-800 mt-1">{stat.value}</p>
-            </div>
-          ))
-
-        )}
-      </div>
-
-      {/* RECENT ACTIVITY MOCKUP */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm">
-        <h3 className="text-xl font-bold text-slate-800 mb-6">Recent System Activity</h3>
-        <div className="space-y-6">
-          {[1, 2, 3].map((_, i) => (
-            <div key={i} className="flex items-center gap-4 p-4 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
-              <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-indigo-600">
-                <FaKey />
-              </div>
-              <div className="flex-1">
-                <p className="text-slate-700 font-bold">User Login Detected</p>
-                <p className="text-slate-500 text-sm">System integrity check performed</p>
-              </div>
-              <div className="text-right">
-                <p className="text-slate-400 text-xs">{i * 5 + 2} minutes ago</p>
-                <p className="text-emerald-500 text-[10px] font-bold uppercase tracking-widest mt-1">Success</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-    </div>
-  );
+            {/* Recent Activity */}
+            <Card>
+                <Box sx={{ px: 2.5, py: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Recent System Activity</Typography>
+                </Box>
+                <Box>
+                    {[1, 2, 3].map((_, i) => (
+                        <Box key={i} sx={{
+                            px: 2.5, py: 2, display: 'flex', alignItems: 'center', gap: 2,
+                            borderBottom: '1px solid', borderColor: 'divider',
+                            '&:last-child': { borderBottom: 0 },
+                            '&:hover': { bgcolor: '#FAFBFC' },
+                        }}>
+                            <Avatar sx={{ bgcolor: '#EDE7F6', color: '#5E35B1', width: 40, height: 40 }}>
+                                <KeyIcon sx={{ fontSize: '1.1rem' }} />
+                            </Avatar>
+                            <Box sx={{ flex: 1 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 700 }}>User Login Detected</Typography>
+                                <Typography variant="caption" color="text.secondary">System integrity check performed</Typography>
+                            </Box>
+                            <Box sx={{ textAlign: 'right' }}>
+                                <Typography variant="caption" color="text.secondary">{i * 5 + 2} minutes ago</Typography>
+                                <Chip label="Success" size="small" sx={{ display: 'block', mt: 0.5, bgcolor: '#E8F5E9', color: '#2E7D32', fontWeight: 700, fontSize: '0.6rem' }} />
+                            </Box>
+                        </Box>
+                    ))}
+                </Box>
+            </Card>
+        </Box>
+    );
 }

@@ -1,17 +1,44 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { getProformaInvoices, getProformaInvoiceById, createBill, getBillsByPI } from "../services/salesService";
-import { FaFileInvoiceDollar, FaSearch, FaChevronDown, FaTimes, FaCalendarAlt, FaUserTie, FaEnvelope, FaPhone, FaMapMarkerAlt, FaPercent, FaCoins, FaRegCommentDots, FaBoxes, FaTrash, FaPlus, FaCheck, FaInfoCircle } from "react-icons/fa";
+import {
+    Box, Card, Paper, Typography, Button, TextField, Table, TableBody, TableCell,
+    TableContainer, TableHead, TableRow, IconButton, Tooltip, CircularProgress, Chip,
+    InputAdornment, Select, MenuItem, FormControl, InputLabel, Alert, Divider, Grid,
+    ToggleButton, ToggleButtonGroup
+} from "@mui/material";
+import PublicIcon from "@mui/icons-material/Public";
+import HomeWorkIcon from "@mui/icons-material/HomeWork";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import SearchIcon from "@mui/icons-material/Search";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import CloseIcon from "@mui/icons-material/Close";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import PersonIcon from "@mui/icons-material/Person";
+import EmailIcon from "@mui/icons-material/Email";
+import PhoneIcon from "@mui/icons-material/Phone";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
+import PercentIcon from "@mui/icons-material/Percent";
+import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
+import ChatBubbleIcon from "@mui/icons-material/ChatBubble";
+import Inventory2Icon from "@mui/icons-material/Inventory2";
+import DeleteIcon from "@mui/icons-material/Delete";
+import AddIcon from "@mui/icons-material/Add";
+import CheckIcon from "@mui/icons-material/Check";
+import InfoIcon from "@mui/icons-material/Info";
 import AlertToast from "../components/ui/AlertToast";
 
 const CreateBill = () => {
     const navigate = useNavigate();
-    
+
     // Page Status
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [alert, setAlert] = useState({ open: false, type: "success", message: "" });
-    
+
+    // Trade-type mode: separates Domestic PIs from International PIs (separate bills)
+    const [mode, setMode] = useState("DOMESTIC"); // "DOMESTIC" | "INTERNATIONAL"
+
     // PI Selection dropdown states
     const [piList, setPiList] = useState([]);
     const [piSearch, setPiSearch] = useState("");
@@ -22,17 +49,20 @@ const CreateBill = () => {
 
     // Currency from selected PI
     const [piCurrency, setPiCurrency] = useState("INR");
-    const [piConversionRate, setPiConversionRate] = useState(1);
     const [billAlreadyExists, setBillAlreadyExists] = useState(null);
 
     const getCurrencySymbol = (code) => {
         switch (code?.toUpperCase()) {
-            case "USD": return "$";
+            case "USD": case "AUD": case "CAD": case "SGD": case "HKD": return "$";
             case "INR": return "₹";
             case "EUR": return "€";
             case "GBP": return "£";
-            case "JPY": return "¥";
-            default: return code || "₹";
+            case "JPY": case "CNY": return "¥";
+            case "AED": return "د.إ";
+            case "SAR": return "﷼";
+            case "BDT": return "৳";
+            // Any other ISO code: show the code itself (e.g. "CHF 1,200.00")
+            default: return code || "";
         }
     };
 
@@ -68,12 +98,11 @@ const CreateBill = () => {
     // Fetch PI list when dropdown is opened or search text changes
     useEffect(() => {
         if (!isPiDropdownOpen) return;
-        
+
         const fetchPIs = async () => {
             setPiListLoading(true);
             try {
-                const response = await getProformaInvoices(1, piSearch);
-                // Filter accepted or sent invoices to make billing cleaner
+                const response = await getProformaInvoices(1, piSearch, mode);
                 const results = response.results || [];
                 setPiList(results);
             } catch (err) {
@@ -88,7 +117,35 @@ const CreateBill = () => {
         }, 300);
 
         return () => clearTimeout(timer);
-    }, [piSearch, isPiDropdownOpen]);
+    }, [piSearch, isPiDropdownOpen, mode]);
+
+    // Switch trade-type mode: reset current selection so domestic/international stay separate
+    const handleModeChange = (_, newMode) => {
+        if (!newMode || newMode === mode) return;
+        setMode(newMode);
+        setSelectedPi(null);
+        setBillAlreadyExists(null);
+        setPiList([]);
+        setPiSearch("");
+        // International currency is whatever the chosen PI uses — stay neutral until one is picked.
+        setPiCurrency(newMode === "INTERNATIONAL" ? "" : "INR");
+        setFormData(prev => ({
+            ...prev,
+            proforma_invoice: "",
+            bill_type: newMode,
+            client_name: "",
+            contact_person: "",
+            phone: "",
+            email: "",
+            address: "",
+            cgst_percentage: 0,
+            sgst_percentage: 0,
+            igst_percentage: 0,   // No GST on international/export bills
+            discount_amount: 0,
+            remarks: "",
+            items: []
+        }));
+    };
 
     // Handle selection of a Proforma Invoice
     const handlePiSelect = async (pi) => {
@@ -115,17 +172,14 @@ const CreateBill = () => {
 
             const details = await getProformaInvoiceById(pi.id);
             if (details) {
-                // Set PI currency
                 const currency = details.currency || "INR";
                 setPiCurrency(currency);
-                setPiConversionRate(details.conversion_rate || 1);
 
-                // Determine default bill type from currency
-                const isInternational = currency !== "INR";
-                const defaultBillType = isInternational ? "INTERNATIONAL" : "DOMESTIC";
-                const defaultIgst = isInternational ? 18 : 0;
-                
-                // Map items
+                // Bill type follows the selected tab (trade_type), not the currency.
+                // International/export bills carry NO GST — taxes stay 0.
+                const defaultBillType = mode;
+                const defaultIgst = 0;
+
                 const mappedItems = (details.items || []).map(item => ({
                     pi_item: item.id || null,
                     product: item.product || null,
@@ -174,15 +228,15 @@ const CreateBill = () => {
     // Calculate real-time summary financials
     const calculateFinancials = () => {
         const subtotal = formData.items.reduce((sum, item) => sum + (Number(item.quantity || 0) * Number(item.rate || 0)), 0);
-        
+
         const cgst = subtotal * (Number(formData.cgst_percentage || 0) / 100);
         const sgst = subtotal * (Number(formData.sgst_percentage || 0) / 100);
         const igst = subtotal * (Number(formData.igst_percentage || 0) / 100);
         const totalTax = cgst + sgst + igst;
-        
+
         const discount = Number(formData.discount_amount || 0);
         const netPayable = Math.max(0, subtotal + totalTax - discount);
-        
+
         return {
             subtotal,
             cgst,
@@ -200,8 +254,8 @@ const CreateBill = () => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: name.endsWith("_percentage") || name === "discount_amount" 
-                ? (parseFloat(value) || 0) 
+            [name]: name.endsWith("_percentage") || name === "discount_amount"
+                ? (parseFloat(value) || 0)
                 : value
         }));
     };
@@ -229,12 +283,10 @@ const CreateBill = () => {
         }));
     };
 
-
-
     // Form submit handler
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         if (!formData.proforma_invoice) {
             setAlert({ open: true, type: "error", message: "Please select a Proforma Invoice first." });
             return;
@@ -278,8 +330,7 @@ const CreateBill = () => {
 
             await createBill(payload);
             setAlert({ open: true, type: "success", message: "Bill generated successfully!" });
-            
-            // Redirect to PI Bills List after a short delay
+
             setTimeout(() => {
                 navigate("/finance/pi-bills");
             }, 1500);
@@ -294,487 +345,655 @@ const CreateBill = () => {
     };
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6 py-2 px-1">
+        <Box sx={{ maxWidth: 1280, mx: "auto", py: 2, px: 1, display: "flex", flexDirection: "column", gap: 3 }}>
             {/* HEADER */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
-                        <FaFileInvoiceDollar className="text-blue-600" />
-                        Create PI Bill
-                    </h1>
-                    <p className="text-slate-500 mt-1 font-medium">Issue bills against existing proforma invoices. Fields and item lists are pre-populated automatically.</p>
-                </div>
-            </div>
+            <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: "1px solid", borderColor: "grey.200" }}>
+                <Box sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 2 }}>
+                    <Box>
+                        <Typography variant="h5" sx={{ fontWeight: 700, color: "grey.800", display: "flex", alignItems: "center", gap: 1.5 }}>
+                            <ReceiptLongIcon sx={{ color: "primary.main" }} />
+                            Create PI Bill
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: "grey.500", mt: 0.5, fontWeight: 500 }}>
+                            Issue bills against existing proforma invoices. Fields and item lists are pre-populated automatically.
+                        </Typography>
+                    </Box>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-                {/* PI SELECTION & CORE PROPERTIES */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    {/* SEARCH/SELECT PROFORMA INVOICE */}
-                    <div className="relative" ref={dropdownRef}>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-0.5">
-                            Select Proforma Invoice *
-                        </label>
-                        <div 
-                            onClick={() => setIsPiDropdownOpen(!isPiDropdownOpen)}
-                            className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-blue-400 transition-colors min-h-[44px]"
-                        >
-                            <span className={selectedPi ? "text-slate-800 font-bold" : "text-slate-400 font-semibold"}>
-                                {selectedPi ? `${selectedPi.pi_number} (${selectedPi.applicant_importer})` : "Select an active PI..."}
-                            </span>
-                            <FaChevronDown className={`text-slate-400 transition-transform ${isPiDropdownOpen ? "rotate-180" : ""}`} size={12} />
-                        </div>
+                    {/* DOMESTIC / INTERNATIONAL mode toggle */}
+                    <ToggleButtonGroup
+                        exclusive
+                        value={mode}
+                        onChange={handleModeChange}
+                        sx={{
+                            bgcolor: "grey.50",
+                            borderRadius: 3,
+                            p: 0.5,
+                            "& .MuiToggleButton-root": {
+                                textTransform: "none",
+                                fontWeight: 700,
+                                fontSize: "0.82rem",
+                                px: 2,
+                                py: 0.8,
+                                gap: 0.75,
+                                border: "none",
+                                borderRadius: "10px !important",
+                                color: "grey.600",
+                                "&.Mui-selected": {
+                                    bgcolor: "#fff",
+                                    color: "primary.main",
+                                    boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+                                    "&:hover": { bgcolor: "#fff" },
+                                },
+                            },
+                        }}
+                    >
+                        <ToggleButton value="DOMESTIC"><HomeWorkIcon sx={{ fontSize: 18 }} />Domestic PI</ToggleButton>
+                        <ToggleButton value="INTERNATIONAL"><PublicIcon sx={{ fontSize: 18 }} />International PI</ToggleButton>
+                    </ToggleButtonGroup>
+                </Box>
+            </Paper>
 
-                        {isPiDropdownOpen && (
-                            <div className="absolute left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
-                                <div className="p-2.5 border-b border-slate-100 bg-slate-50">
-                                    <div className="relative">
-                                        <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                        <input
-                                            type="text"
-                                            placeholder="Search by PI ref or client..."
-                                            value={piSearch}
-                                            onChange={(e) => setPiSearch(e.target.value)}
-                                            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                            autoFocus
-                                        />
-                                    </div>
-                                </div>
-                                <div className="max-h-60 overflow-y-auto divide-y divide-slate-50 py-1">
-                                    {piListLoading ? (
-                                        <div className="p-4 text-center text-sm text-slate-400 flex items-center justify-center gap-2">
-                                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-slate-400 border-t-transparent"></div>
-                                            Loading proforma invoices...
-                                        </div>
-                                    ) : piList.length > 0 ? (
-                                        piList.map((pi) => (
-                                            <div
-                                                key={pi.id}
-                                                onClick={() => handlePiSelect(pi)}
-                                                className="px-4 py-3 hover:bg-blue-50/50 cursor-pointer transition-colors text-sm"
-                                            >
-                                                <div className="font-bold text-slate-800 font-mono">{pi.pi_number || `#${pi.id.substring(0,8)}`}</div>
-                                                <div className="flex justify-between items-center text-xs text-slate-500 mt-1">
-                                                    <span className="font-medium">{pi.applicant_importer}</span>
-                                                    <span className="font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{pi.currency} {Number(pi.grand_total).toLocaleString()}</span>
-                                                </div>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="p-4 text-center text-xs text-slate-400 italic">No matching proforma invoices found</div>
+            <form onSubmit={handleSubmit}>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                    {/* PI SELECTION & CORE PROPERTIES */}
+                    <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: "1px solid", borderColor: "grey.200" }}>
+                        <Grid container spacing={3}>
+                            {/* SEARCH/SELECT PROFORMA INVOICE */}
+                            <Grid item xs={12} md={4}>
+                                <Box ref={dropdownRef} sx={{ position: "relative" }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 700, color: "grey.500", textTransform: "uppercase", letterSpacing: 1, mb: 1, display: "block" }}>
+                                        Select Proforma Invoice *
+                                    </Typography>
+                                    <Box
+                                        onClick={() => setIsPiDropdownOpen(!isPiDropdownOpen)}
+                                        sx={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "space-between",
+                                            px: 2,
+                                            py: 1.5,
+                                            bgcolor: "grey.50",
+                                            border: "1px solid",
+                                            borderColor: "grey.200",
+                                            borderRadius: 3,
+                                            cursor: "pointer",
+                                            minHeight: 44,
+                                            "&:hover": { borderColor: "primary.main" },
+                                            transition: "border-color 0.2s"
+                                        }}
+                                    >
+                                        <Typography variant="body2" sx={{ fontWeight: selectedPi ? 700 : 600, color: selectedPi ? "grey.800" : "grey.400" }}>
+                                            {selectedPi ? `${selectedPi.pi_number} (${selectedPi.applicant_importer})` : `Select a ${mode === "INTERNATIONAL" ? "International" : "Domestic"} PI...`}
+                                        </Typography>
+                                        <KeyboardArrowDownIcon sx={{ color: "grey.400", fontSize: 18, transition: "transform 0.2s", transform: isPiDropdownOpen ? "rotate(180deg)" : "none" }} />
+                                    </Box>
+
+                                    {isPiDropdownOpen && (
+                                        <Paper elevation={8} sx={{ position: "absolute", left: 0, right: 0, mt: 1, borderRadius: 3, zIndex: 50, overflow: "hidden", border: "1px solid", borderColor: "grey.200" }}>
+                                            <Box sx={{ p: 1.5, borderBottom: "1px solid", borderColor: "grey.100", bgcolor: "grey.50" }}>
+                                                <TextField
+                                                    fullWidth
+                                                    size="small"
+                                                    placeholder="Search by PI ref or client..."
+                                                    value={piSearch}
+                                                    onChange={(e) => setPiSearch(e.target.value)}
+                                                    autoFocus
+                                                    InputProps={{
+                                                        startAdornment: (
+                                                            <InputAdornment position="start">
+                                                                <SearchIcon sx={{ color: "grey.400", fontSize: 18 }} />
+                                                            </InputAdornment>
+                                                        ),
+                                                        sx: { borderRadius: 2, fontSize: 14 }
+                                                    }}
+                                                />
+                                            </Box>
+                                            <Box sx={{ maxHeight: 240, overflowY: "auto", py: 0.5 }}>
+                                                {piListLoading ? (
+                                                    <Box sx={{ p: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
+                                                        <CircularProgress size={16} />
+                                                        <Typography variant="caption" sx={{ color: "grey.400" }}>Loading proforma invoices...</Typography>
+                                                    </Box>
+                                                ) : piList.length > 0 ? (
+                                                    piList.map((pi) => (
+                                                        <Box
+                                                            key={pi.id}
+                                                            onClick={() => handlePiSelect(pi)}
+                                                            sx={{
+                                                                px: 2,
+                                                                py: 1.5,
+                                                                cursor: "pointer",
+                                                                "&:hover": { bgcolor: "primary.50" },
+                                                                transition: "background-color 0.15s",
+                                                                borderBottom: "1px solid",
+                                                                borderColor: "grey.50"
+                                                            }}
+                                                        >
+                                                            <Typography variant="body2" sx={{ fontWeight: 700, color: "grey.800", fontFamily: "monospace" }}>
+                                                                {pi.pi_number || `#${pi.id.substring(0, 8)}`}
+                                                            </Typography>
+                                                            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 0.5 }}>
+                                                                <Typography variant="caption" sx={{ color: "grey.500", fontWeight: 500 }}>
+                                                                    {pi.applicant_importer}
+                                                                </Typography>
+                                                                <Chip
+                                                                    label={`${pi.currency} ${Number(pi.grand_total).toLocaleString()}`}
+                                                                    size="small"
+                                                                    sx={{ fontWeight: 600, fontSize: 11, bgcolor: "primary.50", color: "primary.main", height: 22 }}
+                                                                />
+                                                            </Box>
+                                                        </Box>
+                                                    ))
+                                                ) : (
+                                                    <Typography variant="caption" sx={{ p: 2, display: "block", textAlign: "center", color: "grey.400", fontStyle: "italic" }}>
+                                                        No {mode === "INTERNATIONAL" ? "International" : "Domestic"} proforma invoices found
+                                                    </Typography>
+                                                )}
+                                            </Box>
+                                        </Paper>
                                     )}
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                                </Box>
+                            </Grid>
 
-                    {/* BILL DATE */}
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-0.5">
-                            Bill Date *
-                        </label>
-                        <div className="relative">
-                            <input
-                                type="date"
-                                name="bill_date"
-                                value={formData.bill_date}
-                                onChange={handleInputChange}
-                                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                                required
-                            />
-                            <FaCalendarAlt className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                        </div>
-                    </div>
+                            {/* BILL DATE */}
+                            <Grid item xs={12} md={4}>
+                                <Typography variant="caption" sx={{ fontWeight: 700, color: "grey.500", textTransform: "uppercase", letterSpacing: 1, mb: 1, display: "block" }}>
+                                    Bill Date *
+                                </Typography>
+                                <TextField
+                                    fullWidth
+                                    type="date"
+                                    name="bill_date"
+                                    value={formData.bill_date}
+                                    onChange={handleInputChange}
+                                    required
+                                    size="small"
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <CalendarTodayIcon sx={{ color: "grey.400", fontSize: 16 }} />
+                                            </InputAdornment>
+                                        ),
+                                        sx: { borderRadius: 3, bgcolor: "grey.50", fontWeight: 700, fontSize: 14 }
+                                    }}
+                                />
+                            </Grid>
 
-                    {/* BILL TYPE */}
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-0.5">
-                            Bill Type *
-                        </label>
-                        <select
-                            name="bill_type"
-                            value={formData.bill_type}
-                            onChange={handleInputChange}
-                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                            required
+                            {/* BILL TYPE */}
+                            <Grid item xs={12} md={4}>
+                                <Typography variant="caption" sx={{ fontWeight: 700, color: "grey.500", textTransform: "uppercase", letterSpacing: 1, mb: 1, display: "block" }}>
+                                    Bill Type *
+                                </Typography>
+                                <FormControl fullWidth size="small">
+                                    <Select
+                                        name="bill_type"
+                                        value={formData.bill_type}
+                                        disabled
+                                        sx={{ borderRadius: 3, bgcolor: "grey.100", fontWeight: 700, fontSize: 14 }}
+                                    >
+                                        <MenuItem value="DOMESTIC">DOMESTIC</MenuItem>
+                                        <MenuItem value="INTERNATIONAL">INTERNATIONAL</MenuItem>
+                                    </Select>
+                                    <Typography variant="caption" sx={{ color: "grey.400", mt: 0.5, fontStyle: "italic" }}>
+                                        Set by the {mode === "INTERNATIONAL" ? "International" : "Domestic"} tab above
+                                    </Typography>
+                                </FormControl>
+                            </Grid>
+                        </Grid>
+                    </Paper>
+
+                    {/* BILL ALREADY EXISTS ALERT */}
+                    {billAlreadyExists && (
+                        <Alert
+                            severity="error"
+                            icon={<InfoIcon />}
+                            sx={{ borderRadius: 4, border: "1px solid", borderColor: "error.200" }}
                         >
-                            <option value="DOMESTIC">DOMESTIC</option>
-                            <option value="INTERNATIONAL">INTERNATIONAL</option>
-                        </select>
-                    </div>
-                </div>
-
-                {billAlreadyExists && (
-                    <div className="bg-red-50 border border-red-200 rounded-2xl p-5 flex items-start gap-3">
-                        <FaInfoCircle className="text-red-500 mt-0.5 shrink-0" size={18} />
-                        <div>
-                            <p className="text-sm font-bold text-red-800">
+                            <Typography variant="body2" sx={{ fontWeight: 700 }}>
                                 Bill Already Generated for this PI
-                            </p>
-                            <p className="text-xs text-red-600 mt-1">
-                                Bill <span className="font-mono font-bold">{billAlreadyExists.bill_number}</span> has already been created for this Proforma Invoice.
+                            </Typography>
+                            <Typography variant="caption" sx={{ display: "block", mt: 0.5 }}>
+                                Bill <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 700 }}>{billAlreadyExists.bill_number}</Box> has already been created for this Proforma Invoice.
                                 You cannot create a duplicate bill. Please select a different PI.
-                            </p>
-                        </div>
-                    </div>
-                )}
+                            </Typography>
+                        </Alert>
+                    )}
 
-                {/* CLIENT INFORMATION */}
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                    <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-3">
-                        <FaUserTie className="text-slate-400" />
-                        Client / Customer Contact details
-                    </h3>
-                    
-                    {loading ? (
-                        <div className="py-12 flex flex-col items-center justify-center text-slate-400">
-                            <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-blue-600 mb-2"></div>
-                            <span className="text-xs font-semibold">Loading data from PI...</span>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div>
-                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-0.5">
-                                    Client Name *
-                                </label>
-                                <div className="relative">
-                                    <input
-                                        type="text"
+                    {/* CLIENT INFORMATION */}
+                    <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: "1px solid", borderColor: "grey.200" }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, borderBottom: "1px solid", borderColor: "grey.100", pb: 1.5, mb: 2 }}>
+                            <PersonIcon sx={{ color: "grey.400", fontSize: 18 }} />
+                            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "grey.700", textTransform: "uppercase", letterSpacing: 1 }}>
+                                Client / Customer Contact details
+                            </Typography>
+                        </Box>
+
+                        {loading ? (
+                            <Box sx={{ py: 6, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                                <CircularProgress size={28} sx={{ mb: 1 }} />
+                                <Typography variant="caption" sx={{ fontWeight: 600, color: "grey.400" }}>Loading data from PI...</Typography>
+                            </Box>
+                        ) : (
+                            <Grid container spacing={2}>
+                                <Grid item xs={12} md={6} lg={3}>
+                                    <Typography variant="caption" sx={{ fontWeight: 700, color: "grey.400", textTransform: "uppercase", letterSpacing: 1, mb: 0.75, display: "block", fontSize: 10 }}>
+                                        Client Name *
+                                    </Typography>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
                                         name="client_name"
                                         value={formData.client_name}
                                         onChange={handleInputChange}
                                         placeholder="e.g. ABC Trading LLC"
-                                        className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                                         required
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <PersonIcon sx={{ color: "grey.400", fontSize: 16 }} />
+                                                </InputAdornment>
+                                            ),
+                                            sx: { borderRadius: 3, bgcolor: "grey.50", fontWeight: 600, fontSize: 14 }
+                                        }}
                                     />
-                                    <FaUserTie className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
-                                </div>
-                            </div>
+                                </Grid>
 
-                            <div>
-                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-0.5">
-                                    Contact Person
-                                </label>
-                                <div className="relative">
-                                    <input
-                                        type="text"
+                                <Grid item xs={12} md={6} lg={3}>
+                                    <Typography variant="caption" sx={{ fontWeight: 700, color: "grey.400", textTransform: "uppercase", letterSpacing: 1, mb: 0.75, display: "block", fontSize: 10 }}>
+                                        Contact Person
+                                    </Typography>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
                                         name="contact_person"
                                         value={formData.contact_person}
                                         onChange={handleInputChange}
                                         placeholder="e.g. John"
-                                        className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <PersonIcon sx={{ color: "grey.400", fontSize: 16 }} />
+                                                </InputAdornment>
+                                            ),
+                                            sx: { borderRadius: 3, bgcolor: "grey.50", fontWeight: 600, fontSize: 14 }
+                                        }}
                                     />
-                                    <FaUserTie className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
-                                </div>
-                            </div>
+                                </Grid>
 
-                            <div>
-                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-0.5">
-                                    Phone Number
-                                </label>
-                                <div className="relative">
-                                    <input
-                                        type="text"
+                                <Grid item xs={12} md={6} lg={3}>
+                                    <Typography variant="caption" sx={{ fontWeight: 700, color: "grey.400", textTransform: "uppercase", letterSpacing: 1, mb: 0.75, display: "block", fontSize: 10 }}>
+                                        Phone Number
+                                    </Typography>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
                                         name="phone"
                                         value={formData.phone}
                                         onChange={handleInputChange}
                                         placeholder="e.g. +971-555-1234"
-                                        className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <PhoneIcon sx={{ color: "grey.400", fontSize: 16 }} />
+                                                </InputAdornment>
+                                            ),
+                                            sx: { borderRadius: 3, bgcolor: "grey.50", fontWeight: 600, fontSize: 14 }
+                                        }}
                                     />
-                                    <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
-                                </div>
-                            </div>
+                                </Grid>
 
-                            <div>
-                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-0.5">
-                                    Email Address
-                                </label>
-                                <div className="relative">
-                                    <input
+                                <Grid item xs={12} md={6} lg={3}>
+                                    <Typography variant="caption" sx={{ fontWeight: 700, color: "grey.400", textTransform: "uppercase", letterSpacing: 1, mb: 0.75, display: "block", fontSize: 10 }}>
+                                        Email Address
+                                    </Typography>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
                                         type="email"
                                         name="email"
                                         value={formData.email}
                                         onChange={handleInputChange}
                                         placeholder="e.g. john@abc.com"
-                                        className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <EmailIcon sx={{ color: "grey.400", fontSize: 16 }} />
+                                                </InputAdornment>
+                                            ),
+                                            sx: { borderRadius: 3, bgcolor: "grey.50", fontWeight: 600, fontSize: 14 }
+                                        }}
                                     />
-                                    <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
-                                </div>
-                            </div>
+                                </Grid>
 
-                            <div className="md:col-span-2 lg:col-span-4">
-                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-0.5">
-                                    Billing Address
-                                </label>
-                                <div className="relative">
-                                    <input
-                                        type="text"
+                                <Grid item xs={12}>
+                                    <Typography variant="caption" sx={{ fontWeight: 700, color: "grey.400", textTransform: "uppercase", letterSpacing: 1, mb: 0.75, display: "block", fontSize: 10 }}>
+                                        Billing Address
+                                    </Typography>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
                                         name="address"
                                         value={formData.address}
                                         onChange={handleInputChange}
                                         placeholder="e.g.  New York, USA"
-                                        className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <LocationOnIcon sx={{ color: "grey.400", fontSize: 16 }} />
+                                                </InputAdornment>
+                                            ),
+                                            sx: { borderRadius: 3, bgcolor: "grey.50", fontWeight: 600, fontSize: 14 }
+                                        }}
                                     />
-                                    <FaMapMarkerAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                                </Grid>
+                            </Grid>
+                        )}
+                    </Paper>
 
-                {/* ITEMS SECTION */}
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                    <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                        <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                            <FaBoxes className="text-slate-400" />
-                            Bill Items
-                        </h3>
-                    </div>
+                    {/* ITEMS SECTION */}
+                    <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: "1px solid", borderColor: "grey.200" }}>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid", borderColor: "grey.100", pb: 1.5, mb: 2 }}>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                <Inventory2Icon sx={{ color: "grey.400", fontSize: 18 }} />
+                                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "grey.700", textTransform: "uppercase", letterSpacing: 1 }}>
+                                    Bill Items
+                                </Typography>
+                            </Box>
+                        </Box>
 
-                    {loading ? (
-                        <div className="py-20 flex flex-col items-center justify-center text-slate-400">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-3"></div>
-                            <span className="font-semibold text-sm">Building item list from proforma invoice...</span>
-                        </div>
-                    ) : (
-                        <div className="border border-slate-100 rounded-xl overflow-hidden shadow-sm bg-white">
-                            <table className="w-full text-left text-xs border-collapse">
-                                <thead className="bg-slate-50 text-slate-500 font-bold uppercase border-b border-slate-200">
-                                    <tr>
-                                        <th className="px-4 py-3 w-12 text-center">#</th>
-                                        <th className="px-4 py-3">Item Name / Product Details *</th>
-                                        <th className="px-4 py-3 w-32 text-center">HSN Code</th>
-                                        <th className="px-4 py-3 w-28 text-center">Unit</th>
-                                        <th className="px-4 py-3 w-28 text-right">Quantity *</th>
-                                        <th className="px-4 py-3 w-36 text-right">Rate *</th>
-                                        <th className="px-4 py-3 w-36 text-right">Total Amount</th>
-                                        <th className="px-4 py-3 w-12 text-center"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {formData.items.length === 0 ? (
-                                        <tr>
-                                            <td colSpan="8" className="px-4 py-12 text-center text-slate-400 italic">
-                                                No items listed. Choose a Proforma Invoice to load items automatically.
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        formData.items.map((item, index) => (
-                                            <tr key={index} className="hover:bg-slate-50 transition-colors align-middle">
-                                                <td className="px-4 py-3 text-center font-semibold text-slate-400">{index + 1}</td>
-                                                <td className="px-4 py-3">
-                                                    <input
-                                                        type="text"
-                                                        value={item.item_name}
-                                                        onChange={(e) => handleItemChange(index, "item_name", e.target.value)}
-                                                        placeholder="Item description"
-                                                        className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-blue-500 outline-none"
-                                                        required
-                                                    />
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <input
-                                                        type="text"
-                                                        value={item.hsn_code}
-                                                        onChange={(e) => handleItemChange(index, "hsn_code", e.target.value)}
-                                                        placeholder="HSN Code"
-                                                        className="w-full text-center px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold focus:ring-1 focus:ring-blue-500 outline-none"
-                                                    />
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <input
-                                                        type="text"
-                                                        value={item.unit}
-                                                        onChange={(e) => handleItemChange(index, "unit", e.target.value)}
-                                                        placeholder="e.g. KG, MTR"
-                                                        className="w-full text-center px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-blue-500 outline-none"
-                                                    />
-                                                </td>
-                                                <td className="px-4 py-3 text-right">
-                                                    <input
-                                                        type="number"
-                                                        value={item.quantity}
-                                                        onChange={(e) => handleItemChange(index, "quantity", e.target.value)}
-                                                        className="w-24 text-right px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:ring-1 focus:ring-blue-500 outline-none"
-                                                        min="0.01"
-                                                        step="any"
-                                                        required
-                                                    />
-                                                </td>
-                                                <td className="px-4 py-3 text-right">
-                                                    <input
-                                                        type="number"
-                                                        value={item.rate}
-                                                        onChange={(e) => handleItemChange(index, "rate", e.target.value)}
-                                                        className="w-28 text-right px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:ring-1 focus:ring-blue-500 outline-none"
-                                                        min="0.01"
-                                                        step="any"
-                                                        required
-                                                    />
-                                                </td>
-                                                <td className="px-4 py-3 text-right font-bold text-slate-800 font-mono">
-                                                    {Number(item.quantity * item.rate).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                </td>
-                                                <td className="px-4 py-3 text-center">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveItem(index)}
-                                                        className="text-red-400 hover:text-red-600 transition-colors p-1.5"
-                                                    >
-                                                        <FaTrash size={12} />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
+                        {loading ? (
+                            <Box sx={{ py: 10, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                                <CircularProgress size={32} sx={{ mb: 1.5 }} />
+                                <Typography variant="body2" sx={{ fontWeight: 600, color: "grey.400" }}>Building item list from proforma invoice...</Typography>
+                            </Box>
+                        ) : (
+                            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3, overflow: "hidden" }}>
+                                <Table size="small">
+                                    <TableHead>
+                                        <TableRow sx={{ bgcolor: "grey.50" }}>
+                                            <TableCell sx={{ fontWeight: 700, fontSize: 11, color: "grey.500", textTransform: "uppercase", textAlign: "center", width: 48 }}>#</TableCell>
+                                            <TableCell sx={{ fontWeight: 700, fontSize: 11, color: "grey.500", textTransform: "uppercase" }}>Item Name / Product Details *</TableCell>
+                                            <TableCell sx={{ fontWeight: 700, fontSize: 11, color: "grey.500", textTransform: "uppercase", textAlign: "center", width: 128 }}>HSN Code</TableCell>
+                                            <TableCell sx={{ fontWeight: 700, fontSize: 11, color: "grey.500", textTransform: "uppercase", textAlign: "center", width: 112 }}>Unit</TableCell>
+                                            <TableCell sx={{ fontWeight: 700, fontSize: 11, color: "grey.500", textTransform: "uppercase", textAlign: "right", width: 112 }}>Quantity *</TableCell>
+                                            <TableCell sx={{ fontWeight: 700, fontSize: 11, color: "grey.500", textTransform: "uppercase", textAlign: "right", width: 144 }}>Rate *</TableCell>
+                                            <TableCell sx={{ fontWeight: 700, fontSize: 11, color: "grey.500", textTransform: "uppercase", textAlign: "right", width: 144 }}>Total Amount</TableCell>
+                                            <TableCell sx={{ width: 48 }} />
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {formData.items.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={8} sx={{ textAlign: "center", py: 6, color: "grey.400", fontStyle: "italic", fontSize: 13 }}>
+                                                    No items listed. Choose a Proforma Invoice to load items automatically.
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            formData.items.map((item, index) => (
+                                                <TableRow key={index} hover sx={{ verticalAlign: "middle" }}>
+                                                    <TableCell sx={{ textAlign: "center", fontWeight: 600, color: "grey.400" }}>{index + 1}</TableCell>
+                                                    <TableCell>
+                                                        <TextField
+                                                            fullWidth
+                                                            size="small"
+                                                            value={item.item_name}
+                                                            onChange={(e) => handleItemChange(index, "item_name", e.target.value)}
+                                                            placeholder="Item description"
+                                                            required
+                                                            InputProps={{ sx: { borderRadius: 2, bgcolor: "grey.50", fontSize: 12, fontWeight: 600 } }}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <TextField
+                                                            fullWidth
+                                                            size="small"
+                                                            value={item.hsn_code}
+                                                            onChange={(e) => handleItemChange(index, "hsn_code", e.target.value)}
+                                                            placeholder="HSN Code"
+                                                            InputProps={{ sx: { borderRadius: 2, bgcolor: "grey.50", fontSize: 12, fontWeight: 700, fontFamily: "monospace", textAlign: "center", "& input": { textAlign: "center" } } }}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <TextField
+                                                            fullWidth
+                                                            size="small"
+                                                            value={item.unit}
+                                                            onChange={(e) => handleItemChange(index, "unit", e.target.value)}
+                                                            placeholder="e.g. KG, MTR"
+                                                            InputProps={{ sx: { borderRadius: 2, bgcolor: "grey.50", fontSize: 12, fontWeight: 600, "& input": { textAlign: "center" } } }}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell sx={{ textAlign: "right" }}>
+                                                        <TextField
+                                                            size="small"
+                                                            type="number"
+                                                            value={item.quantity}
+                                                            onChange={(e) => handleItemChange(index, "quantity", e.target.value)}
+                                                            required
+                                                            inputProps={{ min: "0.01", step: "any" }}
+                                                            InputProps={{ sx: { borderRadius: 2, bgcolor: "grey.50", fontSize: 12, fontWeight: 700, width: 96, "& input": { textAlign: "right" } } }}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell sx={{ textAlign: "right" }}>
+                                                        <TextField
+                                                            size="small"
+                                                            type="number"
+                                                            value={item.rate}
+                                                            onChange={(e) => handleItemChange(index, "rate", e.target.value)}
+                                                            required
+                                                            inputProps={{ min: "0.01", step: "any" }}
+                                                            InputProps={{ sx: { borderRadius: 2, bgcolor: "grey.50", fontSize: 12, fontWeight: 700, width: 112, "& input": { textAlign: "right" } } }}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell sx={{ textAlign: "right", fontWeight: 700, color: "grey.800", fontFamily: "monospace", fontSize: 12 }}>
+                                                        {Number(item.quantity * item.rate).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </TableCell>
+                                                    <TableCell sx={{ textAlign: "center" }}>
+                                                        <Tooltip title="Remove item">
+                                                            <IconButton size="small" onClick={() => handleRemoveItem(index)} sx={{ color: "error.light", "&:hover": { color: "error.main" } }}>
+                                                                <DeleteIcon sx={{ fontSize: 16 }} />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        )}
+                    </Paper>
 
-                {/* BOTTOM BLOCK: REMARKS & TAXES SUMMARY */}
-                <div className="flex flex-col lg:flex-row gap-6">
-                    {/* REMARKS AND ADDITIONAL FIELDS */}
-                    <div className="flex-1 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                        <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-3">
-                            <FaRegCommentDots className="text-slate-400" />
-                            Remarks & Details
-                        </h3>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-0.5">
-                                Remarks
-                            </label>
-                            <textarea
-                                name="remarks"
-                                value={formData.remarks}
-                                onChange={handleInputChange}
-                                rows="4"
-                                placeholder="Write any specific annotations or reference points..."
-                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                            />
-                        </div>
+                    {/* BOTTOM BLOCK: REMARKS & TAXES SUMMARY */}
+                    <Box sx={{ display: "flex", flexDirection: { xs: "column", lg: "row" }, gap: 3 }}>
+                        {/* REMARKS AND ADDITIONAL FIELDS */}
+                        <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 4, border: "1px solid", borderColor: "grey.200" }}>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, borderBottom: "1px solid", borderColor: "grey.100", pb: 1.5, mb: 2 }}>
+                                <ChatBubbleIcon sx={{ color: "grey.400", fontSize: 18 }} />
+                                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "grey.700", textTransform: "uppercase", letterSpacing: 1 }}>
+                                    Remarks & Details
+                                </Typography>
+                            </Box>
+                            <Box sx={{ mb: 2 }}>
+                                <Typography variant="caption" sx={{ fontWeight: 700, color: "grey.500", textTransform: "uppercase", letterSpacing: 1, mb: 1, display: "block" }}>
+                                    Remarks
+                                </Typography>
+                                <TextField
+                                    fullWidth
+                                    multiline
+                                    rows={4}
+                                    name="remarks"
+                                    value={formData.remarks}
+                                    onChange={handleInputChange}
+                                    placeholder="Write any specific annotations or reference points..."
+                                    InputProps={{ sx: { borderRadius: 3, bgcolor: "grey.50", fontWeight: 600, fontSize: 14 } }}
+                                />
+                            </Box>
 
-                        <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 text-xs text-blue-700 flex items-start gap-2.5 leading-relaxed">
-                            <FaInfoCircle className="mt-0.5 shrink-0" size={14} />
-                            <div>
-                                <span className="font-bold">Pro-Tip:</span> Generating a bill records it permanently in the Finance Ledger. Please make sure that all items loaded from the Proforma Invoice correspond exactly to the delivery parameters.
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* FINANCIALS, TAXES AND GRAND TOTAL */}
-                    <div className="w-full lg:w-[420px] bg-slate-50 text-slate-800 p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-6">
-                        <div>
-                            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b border-slate-200 pb-3">
-                                <FaCoins className="text-blue-500" />
-                                Financial Summary
-                            </h3>
-
-                            <div className="space-y-3.5 mt-5">
-                                <div className="flex justify-between text-s text-slate-600 font-semibold">
-                                    <span>Items Subtotal</span>
-                                    <span className="font-mono text-slate-900 font-bold">{getCurrencySymbol(piCurrency)} {financials.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                </div>
-
-                                {/* TAX INPUT FIELDS */}
-                                <div className="border-t border-b border-slate-200 py-3.5 space-y-3">
-                                    <div className="flex items-center justify-between gap-4">
-                                        <span className="text-xs text-slate-600 font-semibold flex items-center gap-1">
-                                            CGST (%)
-                                        </span>
-                                        <div className="flex items-center gap-1.5">
-                                            <input
-                                                type="number"
-                                                name="cgst_percentage"
-                                                value={formData.cgst_percentage}
-                                                onChange={handleInputChange}
-                                                className="w-20 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-right text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                                                min="0"
-                                                max="100"
-                                            />
-                                            <span className="text-slate-500 font-bold text-xs">%</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center justify-between gap-4">
-                                        <span className="text-xs text-slate-600 font-semibold flex items-center gap-1">
-                                            SGST (%)
-                                        </span>
-                                        <div className="flex items-center gap-1.5">
-                                            <input
-                                                type="number"
-                                                name="sgst_percentage"
-                                                value={formData.sgst_percentage}
-                                                onChange={handleInputChange}
-                                                className="w-20 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-right text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                                                min="0"
-                                                max="100"
-                                            />
-                                            <span className="text-slate-500 font-bold text-xs">%</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center justify-between gap-4">
-                                        <span className="text-xs text-slate-600 font-semibold flex items-center gap-1">
-                                            IGST (%)
-                                        </span>
-                                        <div className="flex items-center gap-1.5">
-                                            <input
-                                                type="number"
-                                                name="igst_percentage"
-                                                value={formData.igst_percentage}
-                                                onChange={handleInputChange}
-                                                className="w-20 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-right text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                                                min="0"
-                                                max="100"
-                                            />
-                                            <span className="text-slate-500 font-bold text-xs">%</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* DISCOUNT AMOUNT INPUT */}
-                                <div className="flex items-center justify-between gap-4">
-                                    <span className="text-xs text-slate-600 font-semibold">Discount Amount</span>
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="text-slate-500 font-bold text-sm">{getCurrencySymbol(piCurrency)}</span>
-                                        <input
-                                            type="number"
-                                            name="discount_amount"
-                                            value={formData.discount_amount}
-                                            onChange={handleInputChange}
-                                            className="w-28 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-right text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                                            min="0"
-                                            step="any"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-between text-xs text-slate-500 font-semibold">
-                                    <span>Total Taxation Value</span>
-                                    <span className="font-mono text-slate-700">{getCurrencySymbol(piCurrency)} {financials.totalTax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* GRAND TOTAL & SUBMIT BUTTON */}
-                        <div className="space-y-4 pt-6 border-t border-slate-200">
-                            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-inner">
-                                <span className="text-sm font-bold text-slate-700">Grand Total Net Payable</span>
-                                <span className="font-mono font-black text-2xl text-blue-600">{getCurrencySymbol(piCurrency)} {financials.netPayable.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={submitting || loading || !!billAlreadyExists}
-                                className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                            <Alert
+                                severity="info"
+                                icon={<InfoIcon sx={{ fontSize: 18 }} />}
+                                sx={{ borderRadius: 3, bgcolor: "primary.50", "& .MuiAlert-message": { fontSize: 12, lineHeight: 1.6 } }}
                             >
-                                <FaCheck size={12} />
-                                {submitting ? "RECORDING BILL..." : "GENERATE PI BILL"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                                <Typography variant="caption" component="span" sx={{ fontWeight: 700 }}>Pro-Tip: </Typography>
+                                <Typography variant="caption" component="span">
+                                    Generating a bill records it permanently in the Finance Ledger. Please make sure that all items loaded from the Proforma Invoice correspond exactly to the delivery parameters.
+                                </Typography>
+                            </Alert>
+                        </Paper>
+
+                        {/* FINANCIALS, TAXES AND GRAND TOTAL */}
+                        <Paper elevation={0} sx={{ width: { xs: "100%", lg: 420 }, flexShrink: 0, bgcolor: "grey.50", p: 3, borderRadius: 4, border: "1px solid", borderColor: "grey.200", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 3 }}>
+                            <Box>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, borderBottom: "1px solid", borderColor: "grey.200", pb: 1.5 }}>
+                                    <MonetizationOnIcon sx={{ color: "primary.main", fontSize: 18 }} />
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "grey.700", textTransform: "uppercase", letterSpacing: 1 }}>
+                                        Financial Summary
+                                    </Typography>
+                                </Box>
+
+                                <Box sx={{ mt: 2.5, display: "flex", flexDirection: "column", gap: 1.75 }}>
+                                    {/* Items Subtotal */}
+                                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                        <Typography variant="body2" sx={{ fontWeight: 600, color: "grey.600" }}>Items Subtotal</Typography>
+                                        <Typography variant="body2" sx={{ fontFamily: "monospace", fontWeight: 700, color: "grey.900" }}>
+                                            {getCurrencySymbol(piCurrency)} {financials.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </Typography>
+                                    </Box>
+
+                                    {/* TAX INPUT FIELDS — domestic only; international/export has no GST */}
+                                    <Divider />
+                                    {mode === "DOMESTIC" ? (
+                                    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, py: 0.5 }}>
+                                        {/* CGST */}
+                                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+                                            <Typography variant="caption" sx={{ fontWeight: 600, color: "grey.600" }}>CGST (%)</Typography>
+                                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                                                <TextField
+                                                    size="small"
+                                                    type="number"
+                                                    name="cgst_percentage"
+                                                    value={formData.cgst_percentage}
+                                                    onChange={handleInputChange}
+                                                    inputProps={{ min: 0, max: 100 }}
+                                                    InputProps={{
+                                                        sx: { borderRadius: 2, bgcolor: "white", width: 80, fontSize: 12, fontWeight: 700, "& input": { textAlign: "right", py: 0.75, px: 1.5 } }
+                                                    }}
+                                                />
+                                                <Typography variant="caption" sx={{ fontWeight: 700, color: "grey.500" }}>%</Typography>
+                                            </Box>
+                                        </Box>
+
+                                        {/* SGST */}
+                                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+                                            <Typography variant="caption" sx={{ fontWeight: 600, color: "grey.600" }}>SGST (%)</Typography>
+                                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                                                <TextField
+                                                    size="small"
+                                                    type="number"
+                                                    name="sgst_percentage"
+                                                    value={formData.sgst_percentage}
+                                                    onChange={handleInputChange}
+                                                    inputProps={{ min: 0, max: 100 }}
+                                                    InputProps={{
+                                                        sx: { borderRadius: 2, bgcolor: "white", width: 80, fontSize: 12, fontWeight: 700, "& input": { textAlign: "right", py: 0.75, px: 1.5 } }
+                                                    }}
+                                                />
+                                                <Typography variant="caption" sx={{ fontWeight: 700, color: "grey.500" }}>%</Typography>
+                                            </Box>
+                                        </Box>
+
+                                        {/* IGST */}
+                                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+                                            <Typography variant="caption" sx={{ fontWeight: 600, color: "grey.600" }}>IGST (%)</Typography>
+                                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                                                <TextField
+                                                    size="small"
+                                                    type="number"
+                                                    name="igst_percentage"
+                                                    value={formData.igst_percentage}
+                                                    onChange={handleInputChange}
+                                                    inputProps={{ min: 0, max: 100 }}
+                                                    InputProps={{
+                                                        sx: { borderRadius: 2, bgcolor: "white", width: 80, fontSize: 12, fontWeight: 700, "& input": { textAlign: "right", py: 0.75, px: 1.5 } }
+                                                    }}
+                                                />
+                                                <Typography variant="caption" sx={{ fontWeight: 700, color: "grey.500" }}>%</Typography>
+                                            </Box>
+                                        </Box>
+                                    </Box>
+                                    ) : (
+                                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, py: 1.25, px: 1.5, borderRadius: 2, bgcolor: "#fff", border: "1px dashed", borderColor: "grey.300" }}>
+                                            <PublicIcon sx={{ fontSize: 18, color: "grey.500" }} />
+                                            <Typography variant="caption" sx={{ fontWeight: 700, color: "grey.600" }}>
+                                                No GST — Export / International invoice. Amounts come directly from the PI.
+                                            </Typography>
+                                        </Box>
+                                    )}
+                                    <Divider />
+
+                                    {/* DISCOUNT AMOUNT INPUT */}
+                                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+                                        <Typography variant="caption" sx={{ fontWeight: 600, color: "grey.600" }}>Discount Amount</Typography>
+                                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 700, color: "grey.500" }}>{getCurrencySymbol(piCurrency)}</Typography>
+                                            <TextField
+                                                size="small"
+                                                type="number"
+                                                name="discount_amount"
+                                                value={formData.discount_amount}
+                                                onChange={handleInputChange}
+                                                inputProps={{ min: 0, step: "any" }}
+                                                InputProps={{
+                                                    sx: { borderRadius: 2, bgcolor: "white", width: 112, fontSize: 12, fontWeight: 700, "& input": { textAlign: "right", py: 0.75, px: 1.5 } }
+                                                }}
+                                            />
+                                        </Box>
+                                    </Box>
+
+                                    {/* Total Taxation Value — domestic only */}
+                                    {mode === "DOMESTIC" && (
+                                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                            <Typography variant="caption" sx={{ fontWeight: 600, color: "grey.500" }}>Total Taxation Value</Typography>
+                                            <Typography variant="caption" sx={{ fontFamily: "monospace", fontWeight: 700, color: "grey.700" }}>
+                                                {getCurrencySymbol(piCurrency)} {financials.totalTax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </Typography>
+                                        </Box>
+                                    )}
+                                </Box>
+                            </Box>
+
+                            {/* GRAND TOTAL & SUBMIT BUTTON */}
+                            <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 3, borderTop: "1px solid", borderColor: "grey.200" }}>
+                                <Paper variant="outlined" sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", p: 2, borderRadius: 3, bgcolor: "white" }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 700, color: "grey.700" }}>Grand Total Net Payable</Typography>
+                                    <Typography variant="h5" sx={{ fontFamily: "monospace", fontWeight: 900, color: "primary.main" }}>
+                                        {getCurrencySymbol(piCurrency)} {financials.netPayable.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </Typography>
+                                </Paper>
+
+                                <Button
+                                    type="submit"
+                                    variant="contained"
+                                    fullWidth
+                                    disabled={submitting || loading || !!billAlreadyExists}
+                                    startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : <CheckIcon sx={{ fontSize: 16 }} />}
+                                    sx={{
+                                        py: 1.5,
+                                        borderRadius: 3,
+                                        fontWeight: 700,
+                                        fontSize: 14,
+                                        textTransform: "none",
+                                        boxShadow: "0 4px 12px rgba(25, 118, 210, 0.2)",
+                                        "&:active": { transform: "scale(0.98)" }
+                                    }}
+                                >
+                                    {submitting ? "RECORDING BILL..." : "GENERATE PI BILL"}
+                                </Button>
+                            </Box>
+                        </Paper>
+                    </Box>
+                </Box>
             </form>
 
             {/* ALERT TOAST */}
@@ -784,7 +1003,7 @@ const CreateBill = () => {
                 message={alert.message}
                 onClose={() => setAlert({ ...alert, open: false })}
             />
-        </div>
+        </Box>
     );
 };
 

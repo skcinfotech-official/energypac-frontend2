@@ -1,286 +1,146 @@
 import { useEffect, useState } from "react";
+import {
+    Box, Card, Typography, Button, TextField, Table, TableBody, TableCell,
+    TableContainer, TableHead, TableRow, IconButton, Tooltip, CircularProgress,
+    Chip, InputAdornment
+} from "@mui/material";
+import {
+    Add as AddIcon, Edit as EditIcon, Visibility as ViewIcon,
+    Search as SearchIcon, ChevronLeft as PrevIcon, ChevronRight as NextIcon,
+} from "@mui/icons-material";
 import { getVendorAssignments } from "../services/vendorAssignment";
 import VendorAssignmentModal from "../components/vendorAssignment/VendorAssignmentModal";
-import { FaPlus, FaEdit, FaEye } from "react-icons/fa";
 import AlertToast from "../components/ui/AlertToast";
 
 const VendorAssignment = () => {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
+    const [data, setData] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [count, setCount] = useState(0);
+    const [next, setNext] = useState(null);
+    const [previous, setPrevious] = useState(null);
+    const [page, setPage] = useState(1);
+    const [searchText, setSearchText] = useState("");
+    const [openModal, setOpenModal] = useState(false);
+    const [editData, setEditData] = useState(null);
+    const [viewOnly, setViewOnly] = useState(false);
+    const [toast, setToast] = useState({ open: false, type: "success", message: "" });
 
-  // Pagination State
-  const [count, setCount] = useState(0);
-  const [next, setNext] = useState(null);
-  const [previous, setPrevious] = useState(null);
-  const [page, setPage] = useState(1);
+    const loadData = async (pageNum = 1) => {
+        setLoading(true);
+        try {
+            const res = await getVendorAssignments(pageNum, searchText);
+            const resData = res.data;
+            if (resData.results) {
+                setData(resData.results); setCount(resData.count || resData.results.length);
+                setNext(resData.next); setPrevious(resData.previous);
+            } else {
+                setData(Array.isArray(resData) ? resData : []); setCount(Array.isArray(resData) ? resData.length : 0);
+            }
+            setPage(pageNum);
+        } catch (err) {
+            const data = err.response?.data;
+            const errorMsg = err.response?.status === 400
+                ? (data?.non_field_errors?.[0] || data?.message || data?.error || data?.detail || "Validation error")
+                : (data?.error || data?.detail || data?.message || "Failed to load vendor assignments");
+            setToast({ open: true, type: "error", message: errorMsg });
+        } finally { setLoading(false); }
+    };
 
-  // Filter State
-  const [searchText, setSearchText] = useState("");
+    useEffect(() => {
+        const timer = setTimeout(() => loadData(1), 500);
+        return () => clearTimeout(timer);
+    }, [searchText]);
 
-  /* =========================
-     MODAL STATE
-     ========================= */
-  const [openModal, setOpenModal] = useState(false);
-  const [editData, setEditData] = useState(null);
-  const [viewOnly, setViewOnly] = useState(false);
+    const handleEdit = (row) => { setEditData(row); setViewOnly(false); setOpenModal(true); };
+    const handleView = (row) => { setEditData(row); setViewOnly(true); setOpenModal(true); };
+    const handleAdd = () => { setEditData(null); setViewOnly(false); setOpenModal(true); };
+    const handleSuccess = () => {
+        setToast({ open: true, type: "success", message: editData ? "Assignment updated successfully" : "Assignment created successfully" });
+        loadData(page);
+    };
 
-  /* =========================
-     TOAST
-     ========================= */
-  const [toast, setToast] = useState({
-    open: false,
-    type: "success",
-    message: "",
-  });
+    const getStatusChip = (row) => {
+        if (row.status === "Completed") return <Chip label="Completed" size="small" sx={{ bgcolor: '#E8F5E9', color: '#2E7D32', fontWeight: 700, fontSize: '0.65rem' }} />;
+        if (row.quotations?.length > 0 || row.is_quoted) return <Chip label="Quoted" size="small" sx={{ bgcolor: '#FFF3E0', color: '#E65100', fontWeight: 700, fontSize: '0.65rem' }} />;
+        return <Chip label="Pending" size="small" sx={{ bgcolor: '#EBF5FF', color: '#1565C0', fontWeight: 700, fontSize: '0.65rem' }} />;
+    };
 
-  const loadData = async (pageNum = 1) => {
-    setLoading(true);
-    try {
-      // Pass empty string for search text as requested ("only one search (vendor search)")
-      const res = await getVendorAssignments(pageNum, searchText);
-      const resData = res.data;
+    return (
+        <Box>
+            <AlertToast open={toast.open} type={toast.type} message={toast.message} onClose={() => setToast({ ...toast, open: false })} />
+            <Card>
+                {/* Header */}
+                <Box sx={{ px: 2.5, py: 2, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+                    <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Vendor Assignments</Typography>
+                        <Typography variant="caption" color="text.secondary">Total: {count}</Typography>
+                    </Box>
+                    <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={handleAdd}>Assign Vendor</Button>
+                </Box>
 
-      if (resData.results) {
-        setData(resData.results);
-        setCount(resData.count || resData.results.length);
-        setNext(resData.next);
-        setPrevious(resData.previous);
-      } else {
-        setData(Array.isArray(resData) ? resData : []);
-        setCount(Array.isArray(resData) ? resData.length : 0);
-      }
-      setPage(pageNum);
-    } catch (err) {
-      console.error("Load Error:", err);
-      const data = err.response?.data;
-      const errorMsg = err.response?.status === 400
-        ? (data?.non_field_errors?.[0] || data?.message || data?.error || data?.detail || "Validation error")
-        : (data?.error || data?.detail || data?.message || "Failed to load vendor assignments");
-      setToast({
-        open: true,
-        type: "error",
-        message: errorMsg,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+                {/* Search */}
+                <Box sx={{ px: 2.5, py: 2, borderBottom: '1px solid', borderColor: 'divider', bgcolor: '#FAFBFC' }}>
+                    <TextField size="small" fullWidth placeholder="Search by req no, vendor..." value={searchText} onChange={e => setSearchText(e.target.value)}
+                        InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: '1.1rem', color: 'text.secondary' }} /></InputAdornment> }} />
+                </Box>
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      loadData(1);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [searchText]);
+                {/* Table */}
+                <TableContainer>
+                    <Table size="small">
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Requisition</TableCell>
+                                <TableCell>Vendor</TableCell>
+                                <TableCell>Assigned By</TableCell>
+                                <TableCell align="center">Items</TableCell>
+                                <TableCell>Date</TableCell>
+                                <TableCell align="center">Status</TableCell>
+                                <TableCell align="center">Actions</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {loading ? (
+                                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4 }}><CircularProgress size={28} /></TableCell></TableRow>
+                            ) : data.length > 0 ? data.map(row => (
+                                <TableRow key={row.id}>
+                                    <TableCell><Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600, color: 'primary.main' }}>{row.requisition_number}</Typography></TableCell>
+                                    <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{row.vendor_details?.vendor_name || "-"}</Typography></TableCell>
+                                    <TableCell><Typography variant="body2" color="text.secondary">{row.assigned_by_name || "-"}</Typography></TableCell>
+                                    <TableCell align="center"><Chip label={row.total_items} size="small" variant="outlined" sx={{ fontWeight: 600 }} /></TableCell>
+                                    <TableCell><Typography variant="caption" color="text.secondary">{row.assignment_date ? new Date(row.assignment_date).toLocaleDateString() : "-"}</Typography></TableCell>
+                                    <TableCell align="center">{getStatusChip(row)}</TableCell>
+                                    <TableCell align="center">
+                                        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
+                                            <Tooltip title="View"><IconButton size="small" onClick={() => handleView(row)}><ViewIcon fontSize="small" /></IconButton></Tooltip>
+                                            <Tooltip title={(row.quotations?.length > 0 || row.is_quoted || row.status === "Completed") ? "View only" : "Edit"}>
+                                                <IconButton size="small" color={(row.quotations?.length > 0 || row.is_quoted || row.status === "Completed") ? "default" : "primary"}
+                                                    onClick={() => (row.quotations?.length > 0 || row.is_quoted || row.status === "Completed") ? handleView(row) : handleEdit(row)}>
+                                                    <EditIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </Box>
+                                    </TableCell>
+                                </TableRow>
+                            )) : (
+                                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                                    <Typography variant="body2" color="text.secondary">No assignments found</Typography>
+                                </TableCell></TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
 
-  const handleEdit = (row) => {
-    setEditData(row);
-    setViewOnly(false);
-    setOpenModal(true);
-  };
+                {/* Pagination */}
+                <Box sx={{ px: 2.5, py: 1.5, borderTop: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Button size="small" startIcon={<PrevIcon />} disabled={!previous} onClick={() => loadData(page - 1)} sx={{ fontWeight: 600 }}>Previous</Button>
+                    <Typography variant="caption" color="text.secondary">Page {page}</Typography>
+                    <Button size="small" endIcon={<NextIcon />} disabled={!next} onClick={() => loadData(page + 1)} sx={{ fontWeight: 600 }}>Next</Button>
+                </Box>
+            </Card>
 
-  const handleView = (row) => {
-    setEditData(row);
-    setViewOnly(true);
-    setOpenModal(true);
-  };
-
-  const handleAdd = () => {
-    setEditData(null);
-    setViewOnly(false);
-    setOpenModal(true);
-  };
-
-  const handleSuccess = () => {
-    setToast({
-      open: true,
-      type: "success",
-      message: editData
-        ? "Assignment updated successfully"
-        : "Assignment created successfully",
-    });
-    loadData(page);
-  };
-
-  return (
-    <div>
-      {/* ALERT TOAST */}
-      <AlertToast
-        isOpen={toast.open}
-        type={toast.type}
-        message={toast.message}
-        onClose={() => setToast({ ...toast, open: false })}
-      />
-
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        {/* HEADER */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <div>
-            <h3 className="font-bold text-slate-800">Vendor Assignments</h3>
-            <span className="text-sm text-slate-500 font-semibold">
-              Total: {count}
-            </span>
-          </div>
-
-          <button
-            onClick={handleAdd}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-500"
-          >
-            <FaPlus className="text-xs" />
-            Assign Vendor
-          </button>
-        </div>
-
-        {/* SEARCH & FILTER */}
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-          <div className="flex flex-wrap gap-4 items-end">
-            {/* Search Input */}
-            <div className="flex-1 min-w-55">
-              <label className="block text-xs font-semibold text-slate-600 mb-1">
-                Search Assignment
-              </label>
-              <input
-                type="text"
-                placeholder="Search by req no, customized vendor search..."
-                className="input"
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-              />
-            </div>
-
-            {/* Placeholder for alignment if needed */}
-            <div className="w-1"></div>
-
-
-          </div>
-        </div>
-
-        {/* TABLE */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-blue-50/50 text-slate-800 uppercase text-[10px] font-bold tracking-widest">
-                <th className="px-6 py-4 text-[13px]">Requisition</th>
-                <th className="px-6 py-4 text-[13px]">Vendor</th>
-                <th className="px-6 py-4 text-[13px]">Assigned By</th>
-                <th className="px-6 py-4 text-[13px] text-center">Items</th>
-                <th className="px-6 py-4 text-[13px]">Date</th>
-                <th className="px-6 py-4 text-[13px] text-center">Status</th>
-                <th className="px-6 py-4 text-[13px] text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? (
-                <tr>
-                  <td
-                    colSpan="7"
-                    className="px-6 py-6 text-center text-slate-500"
-                  >
-                    Loading assignments...
-                  </td>
-                </tr>
-              ) : data.length > 0 ? (
-                data.map((row) => (
-                  <tr key={row.id} className="odd:bg-slate-100 even:bg-white hover:bg-slate-200   transition">
-                    <td className="px-6 py-4">
-                      <span className="font-mono text-blue-600 font-semibold">
-                        {row.requisition_number}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-semibold text-slate-800">
-                      {row.vendor_details?.vendor_name || "-"}
-                    </td>
-                    <td className="px-6 py-4 text-slate-700">
-                      {row.assigned_by_name || "-"}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="px-2 py-1 bg-slate-100 rounded-md text-slate-700 font-medium text-xs">
-                        {row.total_items}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">
-                      {row.assignment_date
-                        ? new Date(row.assignment_date).toLocaleDateString()
-                        : "-"}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      {row.status === "Completed" ? (
-                        <span className="px-2 py-1 bg-green-100 text-green-700 rounded-md text-[10px] font-bold uppercase tracking-wider border border-green-200">
-                          Completed
-                        </span>
-                      ) : (row.quotations?.length > 0 || row.is_quoted) ? (
-                        <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-md text-[10px] font-bold uppercase tracking-wider border border-amber-200">
-                          Quoted
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 bg-blue-50 text-blue-600 rounded-md text-[10px] font-bold uppercase tracking-wider border border-blue-100">
-                          Pending
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex justify-center gap-3">
-                        <button
-                          className="text-slate-500 hover:text-blue-600"
-                          title="View"
-                          onClick={() => handleView(row)}
-                        >
-                          <FaEye />
-                        </button>
-                        <button
-                          className={(row.quotations?.length > 0 || row.is_quoted || row.status === "Completed") ? "text-slate-300 cursor-not-allowed" : "text-blue-600 hover:text-blue-800"}
-                          title={row.status === "Completed" ? "Cannot edit - Assignment Completed" : (row.quotations?.length > 0 || row.is_quoted) ? "Cannot edit - Quotation exists" : "Edit"}
-                          onClick={() => (row.quotations?.length > 0 || row.is_quoted || row.status === "Completed") ? handleView(row) : handleEdit(row)}
-                        >
-                          <FaEdit />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan="7"
-                    className="px-6 py-6 text-center text-slate-500"
-                  >
-                    No assignments found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* PAGINATION */}
-        <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
-          <button
-            onClick={() => previous && loadData(page - 1)}
-            disabled={!previous}
-            className="text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40"
-          >
-            ← Previous
-          </button>
-
-          <button
-            onClick={() => next && loadData(page + 1)}
-            disabled={!next}
-            className="text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40"
-          >
-            Next →
-          </button>
-        </div>
-      </div>
-
-      <VendorAssignmentModal
-        open={openModal}
-        editData={editData}
-        viewOnly={viewOnly}
-        onClose={() => setOpenModal(false)}
-        onSuccess={handleSuccess}
-      />
-    </div>
-  );
+            <VendorAssignmentModal open={openModal} editData={editData} viewOnly={viewOnly} onClose={() => setOpenModal(false)} onSuccess={handleSuccess} />
+        </Box>
+    );
 };
 
 export default VendorAssignment;

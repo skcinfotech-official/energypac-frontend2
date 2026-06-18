@@ -1,12 +1,62 @@
 import React, { useState } from "react";
-import { FaTimes, FaUser, FaDatabase, FaClock, FaExchangeAlt, FaPlusCircle, FaEdit, FaTrashAlt, FaChevronDown, FaChevronUp, FaInfoCircle } from "react-icons/fa";
+import {
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Box,
+    Card,
+    CardContent,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableRow,
+    Typography,
+    Button,
+    Chip,
+    Accordion,
+    AccordionSummary,
+    AccordionDetails,
+    Grid,
+    Paper,
+} from "@mui/material";
+import {
+    Close as CloseIcon,
+    Person as PersonIcon,
+    StorageOutlined as DatabaseIcon,
+    AccessTimeOutlined as ClockIcon,
+    SwapHoriz as ExchangeAltIcon,
+    AddCircle as AddCircleIcon,
+    EditOutlined as EditIcon,
+    Delete as TrashAltIcon,
+    ExpandMore as ChevronDownIcon,
+    Info as InfoCircleIcon,
+} from "@mui/icons-material";
+import { styled } from "@mui/material/styles";
+
+const StyledDialog = styled(Dialog)(({ theme }) => ({
+    "& .MuiDialog-paper": {
+        borderRadius: "16px",
+        maxWidth: "90vw",
+        width: "100%",
+    },
+}));
+
+const MetadataCard = styled(Card)(({ theme, color }) => ({
+    backgroundColor: "#ffffff",
+    borderColor: `${color}20`,
+    "&:hover": {
+        borderColor: `${color}40`,
+    },
+    transition: "border-color 0.2s",
+}));
 
 export default function AuditLogDetailModal({ open, onClose, log }) {
     const [showUnchanged, setShowUnchanged] = useState(false);
 
-    if (!open || !log) return null;
+    if (!log) return null;
 
-    // Helper to format timestamps
     const formatTimestamp = (isoString) => {
         if (!isoString) return "-";
         const date = new Date(isoString);
@@ -20,34 +70,32 @@ export default function AuditLogDetailModal({ open, onClose, log }) {
         });
     };
 
-    // Color code actions
-    const getActionBadgeClass = (action) => {
+    const getActionColor = (action) => {
         switch (action?.toUpperCase()) {
             case "CREATE":
-                return "bg-emerald-50 text-emerald-700 border-emerald-250";
+                return "success";
             case "UPDATE":
-                return "bg-amber-50 text-amber-700 border-amber-250";
+                return "warning";
             case "DELETE":
-                return "bg-rose-50 text-rose-700 border-rose-250";
+                return "error";
             default:
-                return "bg-slate-50 text-slate-700 border-slate-200";
+                return "default";
         }
     };
 
     const getActionIcon = (action) => {
         switch (action?.toUpperCase()) {
             case "CREATE":
-                return <FaPlusCircle className="text-emerald-550" />;
+                return <AddCircleIcon sx={{ color: "#10b981" }} />;
             case "UPDATE":
-                return <FaEdit className="text-amber-550" />;
+                return <EditIcon sx={{ color: "#f59e0b" }} />;
             case "DELETE":
-                return <FaTrashAlt className="text-rose-550" />;
+                return <TrashAltIcon sx={{ color: "#ef4444" }} />;
             default:
-                return <FaDatabase className="text-slate-550" />;
+                return <DatabaseIcon sx={{ color: "#6b7280" }} />;
         }
     };
 
-    // Helper to convert object values to string safely
     const formatValue = (val) => {
         if (val === null || val === undefined) return "(empty)";
         if (typeof val === "boolean") return val ? "true" : "false";
@@ -56,7 +104,6 @@ export default function AuditLogDetailModal({ open, onClose, log }) {
         return str === "" ? "(empty)" : str;
     };
 
-    // Parse changes and segment them
     const renderChanges = () => {
         const action = log.action?.toUpperCase();
         const changes = log.changes || {};
@@ -65,10 +112,8 @@ export default function AuditLogDetailModal({ open, onClose, log }) {
             const oldData = changes.old || {};
             const newData = changes.new || {};
 
-            // Get all unique keys
             const allKeys = Array.from(new Set([...Object.keys(oldData), ...Object.keys(newData)])).sort();
 
-            // Segment into changed and unchanged
             const changedKeys = [];
             const unchangedKeys = [];
 
@@ -84,126 +129,218 @@ export default function AuditLogDetailModal({ open, onClose, log }) {
 
             if (allKeys.length === 0) {
                 return (
-                    <div className="text-center py-8 text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                        No detailed changes were registered for this update.
-                    </div>
+                    <Paper
+                        sx={{
+                            p: 4,
+                            textAlign: "center",
+                            color: "#9ca3af",
+                            backgroundColor: "#f9fafb",
+                            border: "2px dashed #e5e7eb",
+                            borderRadius: 2,
+                        }}
+                    >
+                        <Typography variant="body2">
+                            No detailed changes were registered for this update.
+                        </Typography>
+                    </Paper>
                 );
             }
 
             return (
-                <div className="space-y-6">
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
                     {/* CHANGED FIELDS */}
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                            <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-                                <FaExchangeAlt className="text-blue-550" /> Modified Attributes ({changedKeys.length})
-                            </h4>
-                            <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
-                                <FaInfoCircle /> Showing only changes
-                            </span>
-                        </div>
+                    <Box>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                <ExchangeAltIcon sx={{ color: "#3b82f6", fontSize: 18 }} />
+                                <Typography variant="caption" sx={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                                    Modified Attributes ({changedKeys.length})
+                                </Typography>
+                            </Box>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                                <InfoCircleIcon sx={{ fontSize: 14, color: "#9ca3af" }} />
+                                <Typography variant="caption" sx={{ color: "#9ca3af", fontWeight: 600 }}>
+                                    Showing only changes
+                                </Typography>
+                            </Box>
+                        </Box>
 
                         {changedKeys.length === 0 ? (
-                            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-500 text-center">
-                                All attribute values remained identical during this revision.
-                            </div>
+                            <Paper
+                                sx={{
+                                    p: 2,
+                                    textAlign: "center",
+                                    color: "#9ca3af",
+                                    backgroundColor: "#f9fafb",
+                                    border: "1px solid #e5e7eb",
+                                    borderRadius: 1.5,
+                                }}
+                            >
+                                <Typography variant="caption">
+                                    All attribute values remained identical during this revision.
+                                </Typography>
+                            </Paper>
                         ) : (
-                            <div className="space-y-3">
+                            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
                                 {changedKeys.map((key) => {
                                     const oldVal = oldData[key];
                                     const newVal = newData[key];
 
                                     return (
-                                        <div 
-                                            key={key} 
-                                            className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:border-slate-300 transition duration-200"
+                                        <Card
+                                            key={key}
+                                            sx={{
+                                                border: "1px solid #e5e7eb",
+                                                "&:hover": { borderColor: "#d1d5db" },
+                                                transition: "border-color 0.2s",
+                                            }}
                                         >
-                                            {/* Header of attribute card */}
-                                            <div className="px-4 py-2.5 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
-                                                <span className="text-xs font-bold text-slate-700 tracking-wide font-sans">
+                                            <Box
+                                                sx={{
+                                                    px: 2,
+                                                    py: 1.5,
+                                                    backgroundColor: "#f9fafb",
+                                                    borderBottom: "1px solid #f3f4f6",
+                                                    display: "flex",
+                                                    justifyContent: "space-between",
+                                                }}
+                                            >
+                                                <Typography variant="caption" sx={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
                                                     {key.replace(/_/g, " ").toUpperCase()}
-                                                </span>
-                                                <span className="text-[10px] font-mono text-slate-400">{key}</span>
-                                            </div>
+                                                </Typography>
+                                                <Typography variant="caption" sx={{ fontFamily: "monospace", color: "#9ca3af" }}>
+                                                    {key}
+                                                </Typography>
+                                            </Box>
 
-                                            {/* Comparison content */}
-                                            <div className="grid grid-cols-1 md:grid-cols-11 items-stretch divide-y md:divide-y-0 md:divide-x divide-slate-100">
+                                            <Grid container sx={{ divider: "1px solid #f3f4f6" }}>
                                                 {/* Old Value */}
-                                                <div className="p-4 md:col-span-5 bg-rose-50/10">
-                                                    <span className="block text-[10px] font-bold text-rose-500 uppercase tracking-widest mb-1.5">Before Changes</span>
-                                                    <div className="font-mono text-xs bg-rose-50/40 text-rose-800 p-3 rounded-xl border border-rose-100/50 break-all min-h-[50px] line-through decoration-rose-350/50">
+                                                <Grid item xs={12} md={5} sx={{ p: 2, backgroundColor: "#fef2f2" }}>
+                                                    <Typography variant="caption" sx={{ fontWeight: 700, color: "#ef4444", textTransform: "uppercase", letterSpacing: 0.5, display: "block", mb: 1 }}>
+                                                        Before Changes
+                                                    </Typography>
+                                                    <Paper
+                                                        sx={{
+                                                            p: 1.5,
+                                                            backgroundColor: "#fee2e2",
+                                                            border: "1px solid #fecaca",
+                                                            borderRadius: 1,
+                                                            fontFamily: "monospace",
+                                                            fontSize: "0.75rem",
+                                                            color: "#991b1b",
+                                                            wordBreak: "break-all",
+                                                            minHeight: "50px",
+                                                            display: "flex",
+                                                            alignItems: "center",
+                                                            textDecoration: "line-through",
+                                                            decorationColor: "#fca5a5",
+                                                        }}
+                                                    >
                                                         {formatValue(oldVal)}
-                                                    </div>
-                                                </div>
+                                                    </Paper>
+                                                </Grid>
 
-                                                {/* Arrow Indicator */}
-                                                <div className="py-2 md:py-0 md:col-span-1 flex items-center justify-center bg-slate-50/20">
-                                                    <div className="h-8 w-8 rounded-full bg-white border border-slate-150 shadow-sm flex items-center justify-center text-slate-400 rotate-90 md:rotate-0">
-                                                        <FaExchangeAlt className="text-xs text-blue-500" />
-                                                    </div>
-                                                </div>
+                                                {/* Arrow */}
+                                                <Grid item xs={12} md={2} sx={{ display: "flex", alignItems: "center", justifyContent: "center", py: 2 }}>
+                                                    <Box
+                                                        sx={{
+                                                            width: 32,
+                                                            height: 32,
+                                                            borderRadius: "50%",
+                                                            backgroundColor: "#ffffff",
+                                                            border: "1px solid #e5e7eb",
+                                                            display: "flex",
+                                                            alignItems: "center",
+                                                            justifyContent: "center",
+                                                        }}
+                                                    >
+                                                        <ExchangeAltIcon sx={{ fontSize: 14, color: "#3b82f6" }} />
+                                                    </Box>
+                                                </Grid>
 
                                                 {/* New Value */}
-                                                <div className="p-4 md:col-span-5 bg-emerald-50/10">
-                                                    <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5">After Changes</span>
-                                                    <div className="font-mono text-xs bg-emerald-55 text-emerald-800 p-3 rounded-xl border border-emerald-200/50 break-all font-bold min-h-[50px]">
+                                                <Grid item xs={12} md={5} sx={{ p: 2, backgroundColor: "#f0fdf4" }}>
+                                                    <Typography variant="caption" sx={{ fontWeight: 700, color: "#059669", textTransform: "uppercase", letterSpacing: 0.5, display: "block", mb: 1 }}>
+                                                        After Changes
+                                                    </Typography>
+                                                    <Paper
+                                                        sx={{
+                                                            p: 1.5,
+                                                            backgroundColor: "#dcfce7",
+                                                            border: "1px solid #bbf7d0",
+                                                            borderRadius: 1,
+                                                            fontFamily: "monospace",
+                                                            fontSize: "0.75rem",
+                                                            color: "#166534",
+                                                            wordBreak: "break-all",
+                                                            minHeight: "50px",
+                                                            display: "flex",
+                                                            alignItems: "center",
+                                                            fontWeight: 700,
+                                                        }}
+                                                    >
                                                         {formatValue(newVal)}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                                    </Paper>
+                                                </Grid>
+                                            </Grid>
+                                        </Card>
                                     );
                                 })}
-                            </div>
+                            </Box>
                         )}
-                    </div>
+                    </Box>
 
                     {/* UNCHANGED FIELDS ACCORDION */}
                     {unchangedKeys.length > 0 && (
-                        <div className="border border-slate-200 rounded-2xl overflow-hidden">
-                            <button
-                                onClick={() => setShowUnchanged(!showUnchanged)}
-                                className="w-full px-5 py-3.5 bg-slate-50 flex items-center justify-between text-left hover:bg-slate-100 transition duration-200"
+                        <Accordion
+                            sx={{
+                                border: "1px solid #e5e7eb",
+                                "&:before": { display: "none" },
+                            }}
+                        >
+                            <AccordionSummary
+                                expandIcon={<ChevronDownIcon />}
+                                sx={{ backgroundColor: "#f9fafb" }}
                             >
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-extrabold text-slate-650 uppercase tracking-wider">
-                                        Unmodified Attributes ({unchangedKeys.length})
-                                    </span>
-                                </div>
-                                <div className="text-slate-400">
-                                    {showUnchanged ? <FaChevronUp /> : <FaChevronDown />}
-                                </div>
-                            </button>
-
-                            {showUnchanged && (
-                                <div className="p-4 bg-white border-t border-slate-150 overflow-x-auto">
-                                    <table className="w-full text-left text-xs border-collapse">
-                                        <thead>
-                                            <tr className="border-b border-slate-100 text-slate-400 uppercase text-[9px] font-bold tracking-widest">
-                                                <th className="py-2 font-semibold">Attribute Name</th>
-                                                <th className="py-2 font-semibold font-mono">Key</th>
-                                                <th className="py-2 font-semibold">Value</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-50 font-mono text-slate-600">
-                                            {unchangedKeys.map((key) => (
-                                                <tr key={key} className="hover:bg-slate-50/50">
-                                                    <td className="py-2.5 font-sans font-medium text-slate-700">
-                                                        {key.replace(/_/g, " ").toUpperCase()}
-                                                    </td>
-                                                    <td className="py-2.5 text-slate-400 text-[11px]">{key}</td>
-                                                    <td className="py-2.5 break-all max-w-md font-semibold text-slate-500">
-                                                        {formatValue(oldData[key])}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </div>
+                                <Typography variant="caption" sx={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                                    Unmodified Attributes ({unchangedKeys.length})
+                                </Typography>
+                            </AccordionSummary>
+                            <AccordionDetails sx={{ p: 0 }}>
+                                <Table size="small">
+                                    <TableHead>
+                                        <TableRow sx={{ backgroundColor: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+                                            <TableCell sx={{ fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                                                Attribute Name
+                                            </TableCell>
+                                            <TableCell sx={{ fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: 0.5, fontFamily: "monospace" }}>
+                                                Key
+                                            </TableCell>
+                                            <TableCell sx={{ fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                                                Value
+                                            </TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {unchangedKeys.map((key) => (
+                                            <TableRow key={key} sx={{ "&:hover": { backgroundColor: "#f9fafb" } }}>
+                                                <TableCell sx={{ fontSize: "0.875rem", fontWeight: 600, color: "#374151" }}>
+                                                    {key.replace(/_/g, " ").toUpperCase()}
+                                                </TableCell>
+                                                <TableCell sx={{ fontSize: "0.75rem", color: "#9ca3af", fontFamily: "monospace" }}>
+                                                    {key}
+                                                </TableCell>
+                                                <TableCell sx={{ fontSize: "0.875rem", color: "#6b7280", wordBreak: "break-all" }}>
+                                                    {formatValue(oldData[key])}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </AccordionDetails>
+                        </Accordion>
                     )}
-                </div>
+                </Box>
             );
         } else {
             // Flat object changes (CREATE, DELETE, etc.)
@@ -211,146 +348,286 @@ export default function AuditLogDetailModal({ open, onClose, log }) {
 
             if (keys.length === 0) {
                 return (
-                    <div className="text-center py-8 text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                        No property details were recorded.
-                    </div>
+                    <Paper
+                        sx={{
+                            p: 4,
+                            textAlign: "center",
+                            color: "#9ca3af",
+                            backgroundColor: "#f9fafb",
+                            border: "2px dashed #e5e7eb",
+                            borderRadius: 2,
+                        }}
+                    >
+                        <Typography variant="body2">No property details were recorded.</Typography>
+                    </Paper>
                 );
             }
 
             return (
-                <div className="space-y-4">
-                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-505 flex items-center gap-2">
-                        <FaDatabase className="text-blue-500" /> Object Properties ({keys.length})
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Box>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+                        <DatabaseIcon sx={{ color: "#3b82f6", fontSize: 18 }} />
+                        <Typography variant="caption" sx={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                            Object Properties ({keys.length})
+                        </Typography>
+                    </Box>
+                    <Grid container spacing={2}>
                         {keys.map((key) => (
-                            <div 
-                                key={key} 
-                                className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:border-slate-350 transition duration-200 shadow-sm flex flex-col justify-between"
-                            >
-                                <div className="px-4 py-2 bg-slate-50/60 border-b border-slate-100 flex items-center justify-between">
-                                    <span className="text-[11px] font-bold text-slate-700 font-sans tracking-wide">
-                                        {key.replace(/_/g, " ").toUpperCase()}
-                                    </span>
-                                    <span className="text-[10px] font-mono text-slate-400">{key}</span>
-                                </div>
-                                <div className="p-3.5">
-                                    <div className={`font-mono text-xs p-3 rounded-xl border border-slate-100 break-all font-bold ${action === "CREATE" ? "bg-emerald-55 text-emerald-800 border-emerald-100" : "bg-rose-50/30 text-rose-800 border-rose-100/50"}`}>
-                                        {formatValue(changes[key])}
-                                    </div>
-                                </div>
-                            </div>
+                            <Grid item xs={12} md={6} key={key}>
+                                <Card
+                                    sx={{
+                                        border: "1px solid #e5e7eb",
+                                        "&:hover": { borderColor: "#d1d5db" },
+                                        transition: "border-color 0.2s",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                    }}
+                                >
+                                    <Box
+                                        sx={{
+                                            px: 2,
+                                            py: 1,
+                                            backgroundColor: "#f9fafb",
+                                            borderBottom: "1px solid #f3f4f6",
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                        }}
+                                    >
+                                        <Typography variant="caption" sx={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                                            {key.replace(/_/g, " ").toUpperCase()}
+                                        </Typography>
+                                        <Typography variant="caption" sx={{ fontFamily: "monospace", color: "#9ca3af" }}>
+                                            {key}
+                                        </Typography>
+                                    </Box>
+                                    <CardContent sx={{ flex: 1 }}>
+                                        <Paper
+                                            sx={{
+                                                p: 1.5,
+                                                backgroundColor: action === "CREATE" ? "#dcfce7" : "#fee2e2",
+                                                border: `1px solid ${action === "CREATE" ? "#bbf7d0" : "#fecaca"}`,
+                                                borderRadius: 1,
+                                                fontFamily: "monospace",
+                                                fontSize: "0.75rem",
+                                                color: action === "CREATE" ? "#166534" : "#991b1b",
+                                                wordBreak: "break-all",
+                                                fontWeight: 700,
+                                            }}
+                                        >
+                                            {formatValue(changes[key])}
+                                        </Paper>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
                         ))}
-                    </div>
-                </div>
+                    </Grid>
+                </Box>
             );
         }
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-            <div className="relative w-full max-w-4xl bg-white rounded-[26px] border border-slate-200 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col max-h-[90vh] transition-all duration-300">
-                
-                {/* MODAL HEADER */}
-                <div className="px-6 py-5 border-b border-slate-150 flex items-center justify-between bg-white shadow-sm shrink-0">
-                    <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-2xl bg-slate-50 border border-slate-150 shadow-sm flex items-center justify-center text-lg">
-                            {getActionIcon(log.action)}
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-2.5">
-                                <h3 className="font-extrabold text-slate-800 text-[18px]">
-                                    Audit Log Detail
-                                </h3>
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border uppercase ${getActionBadgeClass(log.action)}`}>
-                                    {log.action}
-                                </span>
-                            </div>
-                            <span className="text-[11px] font-mono text-slate-400">ID: {log.id}</span>
-                        </div>
-                    </div>
-                    
-                    <button
-                        onClick={onClose}
-                        className="h-8 w-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition duration-200"
+        <StyledDialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+            {/* DIALOG HEADER */}
+            <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                    <Box
+                        sx={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: 2,
+                            backgroundColor: "#f3f4f6",
+                            border: "1px solid #e5e7eb",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                        }}
                     >
-                        <FaTimes className="text-base" />
-                    </button>
-                </div>
+                        {getActionIcon(log.action)}
+                    </Box>
+                    <Box>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                Audit Log Detail
+                            </Typography>
+                            <Chip
+                                label={log.action}
+                                color={getActionColor(log.action)}
+                                size="small"
+                                variant="outlined"
+                            />
+                        </Box>
+                        <Typography variant="caption" sx={{ color: "#9ca3af", fontFamily: "monospace" }}>
+                            ID: {log.id}
+                        </Typography>
+                    </Box>
+                </Box>
+                <Button size="small" onClick={onClose} sx={{ minWidth: "auto" }}>
+                    <CloseIcon />
+                </Button>
+            </DialogTitle>
 
-                {/* MODAL BODY */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/30">
-                    
-                    {/* METADATA CARDS */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
-                        {/* User Card */}
-                        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-blue-200 transition duration-200 flex items-start gap-3">
-                            <div className="h-8 w-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0">
-                                <FaUser className="text-xs" />
-                            </div>
-                            <div className="truncate">
-                                <span className="block text-[9px] font-extrabold text-blue-500 uppercase tracking-widest mb-0.5">Performer</span>
-                                <span className="font-bold text-slate-850 text-[13px] block truncate" title={log.user_name}>
-                                    {log.user_name || "Unknown User"}
-                                </span>
-                                <span className="text-[10px] font-mono text-slate-400 block truncate">{log.user || "No UUID"}</span>
-                            </div>
-                        </div>
+            {/* DIALOG CONTENT */}
+            <DialogContent dividers sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                {/* METADATA CARDS */}
+                <Grid container spacing={2}>
+                    {/* User Card */}
+                    <Grid item xs={12} md={6} lg={3}>
+                        <Card
+                            sx={{
+                                p: 2,
+                                border: "1px solid #e5e7eb",
+                                backgroundColor: "#eff6ff",
+                                "&:hover": { borderColor: "#93c5fd" },
+                            }}
+                        >
+                            <Box sx={{ display: "flex", gap: 2 }}>
+                                <Box
+                                    sx={{
+                                        width: 32,
+                                        height: 32,
+                                        borderRadius: 1,
+                                        backgroundColor: "#dbeafe",
+                                        border: "1px solid #bfdbfe",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        color: "#2563eb",
+                                        flexShrink: 0,
+                                    }}
+                                >
+                                    <PersonIcon sx={{ fontSize: 16 }} />
+                                </Box>
+                                <Box>
+                                    <Typography variant="caption" sx={{ fontWeight: 700, color: "#3b82f6", textTransform: "uppercase", letterSpacing: 0.5, display: "block" }}>
+                                        Performer
+                                    </Typography>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#1f2937" }}>
+                                        {log.user_name || "Unknown User"}
+                                    </Typography>
+                                    <Typography variant="caption" sx={{ color: "#9ca3af", fontFamily: "monospace" }}>
+                                        {log.user || "No UUID"}
+                                    </Typography>
+                                </Box>
+                            </Box>
+                        </Card>
+                    </Grid>
 
-                        {/* Model / Module Card */}
-                        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-indigo-200 transition duration-200 flex items-start gap-3">
-                            <div className="h-8 w-8 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
-                                <FaDatabase className="text-xs" />
-                            </div>
-                            <div className="truncate">
-                                <span className="block text-[9px] font-extrabold text-indigo-500 uppercase tracking-widest mb-0.5">Data Component</span>
-                                <span className="font-bold text-slate-850 text-[13px] block truncate" title={log.model_name}>
-                                    {log.model_name}
-                                </span>
-                                <span className="text-[10px] font-mono text-indigo-400 block truncate">Model Entity</span>
-                            </div>
-                        </div>
+                    {/* Model Card */}
+                    <Grid item xs={12} md={6} lg={3}>
+                        <Card
+                            sx={{
+                                p: 2,
+                                border: "1px solid #e5e7eb",
+                                backgroundColor: "#eef2ff",
+                                "&:hover": { borderColor: "#c7d2fe" },
+                            }}
+                        >
+                            <Box sx={{ display: "flex", gap: 2 }}>
+                                <Box
+                                    sx={{
+                                        width: 32,
+                                        height: 32,
+                                        borderRadius: 1,
+                                        backgroundColor: "#e0e7ff",
+                                        border: "1px solid #c7d2fe",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        color: "#4f46e5",
+                                        flexShrink: 0,
+                                    }}
+                                >
+                                    <DatabaseIcon sx={{ fontSize: 16 }} />
+                                </Box>
+                                <Box>
+                                    <Typography variant="caption" sx={{ fontWeight: 700, color: "#4f46e5", textTransform: "uppercase", letterSpacing: 0.5, display: "block" }}>
+                                        Data Component
+                                    </Typography>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#1f2937" }}>
+                                        {log.model_name}
+                                    </Typography>
+                                    <Typography variant="caption" sx={{ color: "#6366f1" }}>
+                                        Model Entity
+                                    </Typography>
+                                </Box>
+                            </Box>
+                        </Card>
+                    </Grid>
 
-                        {/* Target Object Representation */}
-                        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-purple-200 transition duration-200 flex items-start gap-3 md:col-span-2">
-                            <div className="h-8 w-8 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 shrink-0">
-                                <FaDatabase className="text-xs" />
-                            </div>
-                            <div className="truncate w-full">
-                                <span className="block text-[9px] font-extrabold text-purple-500 uppercase tracking-widest mb-0.5">Affected Target</span>
-                                <span className="font-bold text-slate-850 text-[13px] block truncate" title={log.object_repr}>
-                                    {log.object_repr || "-"}
-                                </span>
-                                <span className="text-[10px] font-mono text-slate-400 block truncate">Obj ID: {log.object_id}</span>
-                            </div>
-                        </div>
-                    </div>
+                    {/* Target Object */}
+                    <Grid item xs={12} lg={6}>
+                        <Card
+                            sx={{
+                                p: 2,
+                                border: "1px solid #e5e7eb",
+                                backgroundColor: "#faf5ff",
+                                "&:hover": { borderColor: "#e9d5ff" },
+                            }}
+                        >
+                            <Box sx={{ display: "flex", gap: 2 }}>
+                                <Box
+                                    sx={{
+                                        width: 32,
+                                        height: 32,
+                                        borderRadius: 1,
+                                        backgroundColor: "#f3e8ff",
+                                        border: "1px solid #e9d5ff",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        color: "#a855f7",
+                                        flexShrink: 0,
+                                    }}
+                                >
+                                    <DatabaseIcon sx={{ fontSize: 16 }} />
+                                </Box>
+                                <Box sx={{ flex: 1 }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 700, color: "#a855f7", textTransform: "uppercase", letterSpacing: 0.5, display: "block" }}>
+                                        Affected Target
+                                    </Typography>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#1f2937" }}>
+                                        {log.object_repr || "-"}
+                                    </Typography>
+                                    <Typography variant="caption" sx={{ color: "#9ca3af", fontFamily: "monospace" }}>
+                                        Obj ID: {log.object_id}
+                                    </Typography>
+                                </Box>
+                            </Box>
+                        </Card>
+                    </Grid>
+                </Grid>
 
-                    {/* TIMESTAMP AND SUBTITLE */}
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-slate-500 px-1 border-b border-slate-150 pb-3 shrink-0 gap-2">
-                        <span className="font-semibold flex items-center gap-1.5">
-                            <FaClock className="text-slate-400" />
-                            Registered at {formatTimestamp(log.timestamp)}
-                        </span>
-                        <span className="font-mono text-slate-400">UTC Timestamp: {log.timestamp}</span>
-                    </div>
+                {/* TIMESTAMP */}
+                <Box
+                    sx={{
+                        display: "flex",
+                        flexDirection: { xs: "column", sm: "row" },
+                        justifyContent: "space-between",
+                        pb: 2,
+                        borderBottom: "1px solid #e5e7eb",
+                        gap: 1,
+                    }}
+                >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, fontSize: "0.875rem", color: "#6b7280" }}>
+                        <ClockIcon sx={{ fontSize: 16 }} />
+                        <span>Registered at {formatTimestamp(log.timestamp)}</span>
+                    </Box>
+                    <Typography variant="caption" sx={{ color: "#9ca3af", fontFamily: "monospace" }}>
+                        UTC Timestamp: {log.timestamp}
+                    </Typography>
+                </Box>
 
-                    {/* DYNAMIC CHANGES VIEW */}
-                    <div>
-                        {renderChanges()}
-                    </div>
-                </div>
+                {/* CHANGES */}
+                <Box>{renderChanges()}</Box>
+            </DialogContent>
 
-                {/* MODAL FOOTER */}
-                <div className="px-6 py-4 border-t border-slate-150 bg-slate-50 flex items-center justify-end shrink-0">
-                    <button
-                        onClick={onClose}
-                        className="px-5 py-2.5 bg-slate-850 text-white font-bold rounded-2xl hover:bg-slate-700 transition duration-200 text-xs shadow-md"
-                    >
-                        Close Details
-                    </button>
-                </div>
-            </div>
-        </div>
+            {/* DIALOG ACTIONS */}
+            <DialogActions sx={{ p: 2, backgroundColor: "#f9fafb" }}>
+                <Button onClick={onClose} variant="contained" sx={{ backgroundColor: "#1f2937" }}>
+                    Close Details
+                </Button>
+            </DialogActions>
+        </StyledDialog>
     );
 }

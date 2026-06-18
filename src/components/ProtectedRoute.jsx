@@ -1,4 +1,5 @@
 import { Navigate, Outlet } from "react-router-dom";
+import { Box, CircularProgress, Typography } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
 
 export default function ProtectedRoute({ requiredRole }) {
@@ -6,13 +7,10 @@ export default function ProtectedRoute({ requiredRole }) {
 
   if (!authChecked) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 gap-4">
-        <div className="relative h-12 w-12">
-          <div className="absolute inset-0 rounded-full border-4 border-slate-200"></div>
-          <div className="absolute inset-0 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
-        </div>
-        <p className="text-sm text-slate-400 font-medium">Loading...</p>
-      </div>
+      <Box sx={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', bgcolor: '#F5F7FA', gap: 2 }}>
+        <CircularProgress />
+        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>Loading...</Typography>
+      </Box>
     );
   }
 
@@ -21,7 +19,6 @@ export default function ProtectedRoute({ requiredRole }) {
   }
 
   if (requiredRole && user?.role !== requiredRole) {
-    // If user doesn't have the required role, redirect to their default home
     return <Navigate to="/" replace />;
   }
 

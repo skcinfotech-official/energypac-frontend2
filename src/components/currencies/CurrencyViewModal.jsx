@@ -1,10 +1,11 @@
-import { useRef, useEffect } from "react";
-import { FaTimes, FaGlobe, FaTag, FaClock, FaCheckCircle } from "react-icons/fa";
+import { useEffect } from "react";
+import {
+    Dialog, DialogTitle, DialogContent, DialogActions, Button, Box,
+    Grid, Typography, CircularProgress, Chip, Paper
+} from "@mui/material";
+import { Close as CloseIcon, Language as GlobeIcon } from "@mui/icons-material";
 
 const CurrencyViewModal = ({ open, onClose, data, loading }) => {
-    const modalRef = useRef(null);
-
-    // Close on escape key
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.key === "Escape") onClose();
@@ -16,117 +17,87 @@ const CurrencyViewModal = ({ open, onClose, data, loading }) => {
         return () => document.removeEventListener("keydown", handleKeyDown);
     }, [open, onClose]);
 
-    // Close on click outside
-    const handleBackdropClick = (e) => {
-        if (modalRef.current && !modalRef.current.contains(e.target)) {
-            onClose();
-        }
-    };
-
-    if (!open) return null;
-
     return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity"
-            onClick={handleBackdropClick}
-        >
-            <div
-                ref={modalRef}
-                className="bg-white w-full max-w-lg max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
-            >
-                {/* HEADER */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-blue-100 text-blue-600 p-2 rounded-lg">
-                            <FaGlobe className="text-xl" />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-slate-800">Currency Details</h3>
-                            {data && <p className="text-sm text-slate-500 font-mono">{data.code}</p>}
-                        </div>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
-                    >
-                        <FaTimes />
-                    </button>
-                </div>
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700 }}>
+                Currency Details
+                <Button
+                    variant="text"
+                    size="small"
+                    onClick={onClose}
+                    sx={{ minWidth: 'auto', color: 'text.secondary' }}
+                >
+                    <CloseIcon />
+                </Button>
+            </DialogTitle>
 
-                {/* CONTENT */}
-                <div className="flex-1 overflow-y-auto p-6">
-                    {loading ? (
-                        <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                            <p className="text-slate-500 font-medium">Loading details...</p>
-                        </div>
-                    ) : data ? (
-                        <div className="space-y-6">
+            <DialogContent>
+                {loading ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 6, gap: 2 }}>
+                        <CircularProgress />
+                        <Typography variant="body2" color="text.secondary">
+                            Loading details...
+                        </Typography>
+                    </Box>
+                ) : data ? (
+                    <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
 
-                            {/* BASIC INFO */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <DetailItem
-                                    label="Currency Code"
-                                    value={data.code}
-                                    icon={<FaTag className="text-slate-400" />}
-                                />
-                                <DetailItem
-                                    label="Symbol"
-                                    value={data.symbol}
-                                    icon={<span className="text-slate-400 font-bold font-mono">{data.symbol}</span>}
-                                />
-                                <DetailItem
-                                    label="Currency Name"
-                                    value={data.name}
-                                    fullWidth
-                                />
-                            </div>
+                        {/* BASIC INFO */}
+                        <Grid container spacing={2}>
+                            <Grid item xs={6}>
+                                <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase' }}>
+                                    Currency Code
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', mt: 0.5, fontFamily: 'monospace' }}>
+                                    {data.code || '-'}
+                                </Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                                <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase' }}>
+                                    Symbol
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', mt: 0.5 }}>
+                                    {data.symbol || '-'}
+                                </Typography>
+                            </Grid>
+                            <Grid item xs={12}>
+                                <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase' }}>
+                                    Currency Name
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', mt: 0.5 }}>
+                                    {data.name || '-'}
+                                </Typography>
+                            </Grid>
+                        </Grid>
 
-                            {/* META DATA */}
-                            <div className="flex flex-wrap gap-4 pt-4 border-t border-slate-100">
-                                <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-full border border-slate-200">
-                                    <span className={`w-2 h-2 rounded-full ${data.is_active ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                                    <span className="text-xs font-semibold text-slate-600">
-                                        {data.is_active ? 'Active' : 'Inactive'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-xs text-slate-400">
-                                    <FaClock />
-                                    <span>Created: {new Date(data.created_at || data.created_time).toLocaleDateString()}</span>
-                                </div>
-                            </div>
+                        {/* META DATA */}
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', pt: 1 }}>
+                            <Chip
+                                label={data.is_active ? 'Active' : 'Inactive'}
+                                variant="outlined"
+                                color={data.is_active ? 'success' : 'error'}
+                                size="small"
+                            />
+                            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
+                                Created: {new Date(data.created_at || data.created_time).toLocaleDateString()}
+                            </Typography>
+                        </Box>
 
-                        </div>
-                    ) : (
-                        <div className="py-12 text-center text-slate-500">
+                    </Box>
+                ) : (
+                    <Box sx={{ textAlign: 'center', py: 4 }}>
+                        <Typography color="text.secondary">
                             Failed to load currency details.
-                        </div>
-                    )}
-                </div>
+                        </Typography>
+                    </Box>
+                )}
+            </DialogContent>
 
-                {/* FOOTER */}
-                <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-colors"
-                    >
-                        Close
-                    </button>
-                </div>
-            </div>
-        </div>
+            <DialogActions sx={{ p: 2 }}>
+                <Button onClick={onClose} variant="contained">Close</Button>
+            </DialogActions>
+        </Dialog>
     );
 };
-
-const DetailItem = ({ label, value, icon, fullWidth }) => (
-    <div className={`flex flex-col ${fullWidth ? 'col-span-2' : ''}`}>
-        <span className="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1">
-            {icon} {label}
-        </span>
-        <span className="text-sm font-medium text-slate-800 break-words">
-            {value || "-"}
-        </span>
-    </div>
-);
 
 export default CurrencyViewModal;

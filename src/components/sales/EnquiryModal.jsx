@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { FaTimes, FaCloudUploadAlt } from "react-icons/fa";
+import {
+    Dialog, DialogTitle, DialogContent, DialogActions,
+    Box, Typography, Button, TextField, Grid,
+    Alert, CircularProgress, IconButton,
+} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { createClientQuery } from "../../services/salesService";
 
 const EnquiryModal = ({ isOpen, onClose, onSuccess }) => {
@@ -28,7 +34,6 @@ const EnquiryModal = ({ isOpen, onClose, onSuccess }) => {
         }
         if (!formData.query_date) newErrors.query_date = "Query Date is required";
 
-        // Require at least one: PDF or Remarks
         if (!formData.pdf_upload && !formData.remarks?.trim()) {
             newErrors.pdf_upload = "Please upload a PDF or provide remarks";
             newErrors.remarks = "Please provide remarks or upload a PDF";
@@ -52,11 +57,9 @@ const EnquiryModal = ({ isOpen, onClose, onSuccess }) => {
             setFormData(prev => ({ ...prev, [name]: value }));
         }
 
-        // Clear error logic
         setErrors(prevErrors => {
             const newErrors = { ...prevErrors };
 
-            // If changing pdf_upload or remarks, check if we can clear both errors
             if (name === "pdf_upload" || name === "remarks") {
                 const hasPdf = name === "pdf_upload" ? updatedValue : formData.pdf_upload;
                 const hasRemarks = name === "remarks" ? updatedValue : formData.remarks;
@@ -66,7 +69,6 @@ const EnquiryModal = ({ isOpen, onClose, onSuccess }) => {
                     delete newErrors.remarks;
                 }
             } else {
-                // Standard field error clearing
                 if (newErrors[name]) delete newErrors[name];
             }
 
@@ -88,7 +90,6 @@ const EnquiryModal = ({ isOpen, onClose, onSuccess }) => {
             await createClientQuery(data);
             onSuccess();
             onClose();
-            // Reset form
             setFormData({
                 client_name: "",
                 contact_person: "",
@@ -110,190 +111,242 @@ const EnquiryModal = ({ isOpen, onClose, onSuccess }) => {
 
     if (!isOpen) return null;
 
+    const labelSx = { fontSize: 11, fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.5 };
+    const inputSx = { '& .MuiOutlinedInput-root': { borderRadius: 2 }, '& .MuiInputBase-input': { fontWeight: 600, fontSize: 13 } };
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                    <h3 className="text-xl font-bold text-slate-800">New Client Query</h3>
-                    <button
-                        onClick={onClose}
-                        className="text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                        <FaTimes />
-                    </button>
-                </div>
+        <Dialog
+            open={isOpen}
+            onClose={onClose}
+            maxWidth="sm"
+            fullWidth
+            PaperProps={{ sx: { borderRadius: 4, maxHeight: '90vh', bgcolor: '#FAFBFC' } }}
+        >
+            <DialogTitle sx={{ px: 3, py: 2, borderBottom: '1px solid', borderColor: 'divider', bgcolor: '#F8FAFC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                        New Client Query
+                    </Typography>
+                </Box>
+                <IconButton onClick={onClose} size="small">
+                    <CloseIcon />
+                </IconButton>
+            </DialogTitle>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            <DialogContent sx={{ p: 3, bgcolor: '#FAFBFC' }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
                     {errors.submit && (
-                        <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-bold animate-in slide-in-from-top-2">
+                        <Alert severity="error" sx={{ borderRadius: 2, fontWeight: 600, fontSize: 13 }}>
                             {errors.submit}
-                        </div>
+                        </Alert>
                     )}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Client Name */}
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                Client Name <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                name="client_name"
-                                value={formData.client_name}
-                                onChange={handleChange}
-                                className={`w-full px-4 py-2.5 rounded-lg border ${errors.client_name ? "border-red-300 focus:ring-red-200" : "border-slate-300 focus:ring-blue-200"
-                                    } focus:border-blue-500 focus:ring-4 transition-all outline-none`}
-                                placeholder="Enter client name"
-                            />
-                            {errors.client_name && <p className="text-xs text-red-500 mt-1">{errors.client_name}</p>}
-                        </div>
 
-                        {/* Contact Person */}
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                Contact Person <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                name="contact_person"
-                                value={formData.contact_person}
-                                onChange={handleChange}
-                                className={`w-full px-4 py-2.5 rounded-lg border ${errors.contact_person ? "border-red-300 focus:ring-red-200" : "border-slate-300 focus:ring-blue-200"
-                                    } focus:border-blue-500 focus:ring-4 transition-all outline-none`}
-                                placeholder="Enter contact person"
-                            />
-                            {errors.contact_person && <p className="text-xs text-red-500 mt-1">{errors.contact_person}</p>}
-                        </div>
+                    <form id="enquiry-form" onSubmit={handleSubmit}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                            <Grid container spacing={2}>
+                                <Grid item xs={12} sm={6}>
+                                    <Typography sx={labelSx}>
+                                        Client Name <span style={{ color: '#EF4444' }}>*</span>
+                                    </Typography>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
+                                        name="client_name"
+                                        value={formData.client_name}
+                                        onChange={handleChange}
+                                        placeholder="Enter client name"
+                                        error={!!errors.client_name}
+                                        helperText={errors.client_name}
+                                        sx={inputSx}
+                                    />
+                                </Grid>
 
-                        {/* Phone */}
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                Phone <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                name="phone"
-                                value={formData.phone}
-                                onChange={handleChange}
-                                className={`w-full px-4 py-2.5 rounded-lg border ${errors.phone ? "border-red-300 focus:ring-red-200" : "border-slate-300 focus:ring-blue-200"
-                                    } focus:border-blue-500 focus:ring-4 transition-all outline-none`}
-                                placeholder="Enter phone number"
-                            />
-                            {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
-                        </div>
+                                <Grid item xs={12} sm={6}>
+                                    <Typography sx={labelSx}>
+                                        Contact Person <span style={{ color: '#EF4444' }}>*</span>
+                                    </Typography>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
+                                        name="contact_person"
+                                        value={formData.contact_person}
+                                        onChange={handleChange}
+                                        placeholder="Enter contact person"
+                                        error={!!errors.contact_person}
+                                        helperText={errors.contact_person}
+                                        sx={inputSx}
+                                    />
+                                </Grid>
 
-                        {/* Email */}
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                Email <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                name="email"
-                                type="email"
-                                value={formData.email}
-                                onChange={handleChange}
-                                className={`w-full px-4 py-2.5 rounded-lg border ${errors.email ? "border-red-300 focus:ring-red-200" : "border-slate-300 focus:ring-blue-200"
-                                    } focus:border-blue-500 focus:ring-4 transition-all outline-none`}
-                                placeholder="Enter email address"
-                            />
-                            {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
-                        </div>
+                                <Grid item xs={12} sm={6}>
+                                    <Typography sx={labelSx}>
+                                        Phone <span style={{ color: '#EF4444' }}>*</span>
+                                    </Typography>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
+                                        name="phone"
+                                        value={formData.phone}
+                                        onChange={handleChange}
+                                        placeholder="Enter phone number"
+                                        error={!!errors.phone}
+                                        helperText={errors.phone}
+                                        inputProps={{ maxLength: 10 }}
+                                        sx={inputSx}
+                                    />
+                                </Grid>
 
-                        {/* Query Date */}
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                Query Date <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                name="query_date"
-                                type="date"
-                                value={formData.query_date}
-                                onChange={handleChange}
-                                className={`w-full px-4 py-2.5 rounded-lg border ${errors.query_date ? "border-red-300 focus:ring-red-200" : "border-slate-300 focus:ring-blue-200"
-                                    } focus:border-blue-500 focus:ring-4 transition-all outline-none`}
-                            />
-                            {errors.query_date && <p className="text-xs text-red-500 mt-1">{errors.query_date}</p>}
-                        </div>
+                                <Grid item xs={12} sm={6}>
+                                    <Typography sx={labelSx}>
+                                        Email <span style={{ color: '#EF4444' }}>*</span>
+                                    </Typography>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
+                                        name="email"
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                        placeholder="Enter email address"
+                                        error={!!errors.email}
+                                        helperText={errors.email}
+                                        sx={inputSx}
+                                    />
+                                </Grid>
 
-                        {/* PDF Upload */}
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                Upload PDF <span className="text-red-500">*</span>
-                            </label>
-                            <div className="relative">
-                                <input
-                                    name="pdf_upload"
-                                    type="file"
-                                    accept=".pdf"
-                                    onChange={handleChange}
-                                    className="hidden"
-                                    id="pdf-upload"
-                                    required
-                                />
-                                <label
-                                    htmlFor="pdf-upload"
-                                    className={`flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg border border-dashed cursor-pointer ${errors.pdf_upload ? "border-red-300 bg-red-50" : "border-slate-300 bg-slate-50 hover:bg-slate-100"
-                                        } transition-all`}
-                                >
-                                    <FaCloudUploadAlt className="text-slate-500 text-lg" />
-                                    <span className="text-sm text-slate-600">
-                                        {formData.pdf_upload ? formData.pdf_upload.name : "Choose PDF file"}
-                                    </span>
-                                </label>
-                            </div>
-                            {errors.pdf_upload && <p className="text-xs text-red-500 mt-1">{errors.pdf_upload}</p>}
-                        </div>
+                                <Grid item xs={12} sm={6}>
+                                    <Typography sx={labelSx}>
+                                        Query Date <span style={{ color: '#EF4444' }}>*</span>
+                                    </Typography>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
+                                        name="query_date"
+                                        type="date"
+                                        value={formData.query_date}
+                                        onChange={handleChange}
+                                        error={!!errors.query_date}
+                                        helperText={errors.query_date}
+                                        InputLabelProps={{ shrink: true }}
+                                        sx={inputSx}
+                                    />
+                                </Grid>
 
-                        {/* Address */}
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                Address <span className="text-red-500">*</span>
-                            </label>
-                            <textarea
-                                name="address"
-                                value={formData.address}
-                                onChange={handleChange}
-                                rows="2"
-                                className={`w-full px-4 py-2.5 rounded-lg border ${errors.address ? "border-red-300 focus:ring-red-200" : "border-slate-300 focus:ring-blue-200"
-                                    } focus:border-blue-500 focus:ring-4 transition-all outline-none`}
-                                placeholder="Enter full address"
-                            />
-                            {errors.address && <p className="text-xs text-red-500 mt-1">{errors.address}</p>}
-                        </div>
+                                <Grid item xs={12} sm={6}>
+                                    <Typography sx={labelSx}>
+                                        Upload PDF <span style={{ color: '#EF4444' }}>*</span>
+                                    </Typography>
+                                    <Box sx={{ position: 'relative' }}>
+                                        <input
+                                            name="pdf_upload"
+                                            type="file"
+                                            accept=".pdf"
+                                            onChange={handleChange}
+                                            style={{ display: 'none' }}
+                                            id="pdf-upload-input"
+                                        />
+                                        <label htmlFor="pdf-upload-input" style={{ display: 'block' }}>
+                                            <Box
+                                                sx={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: 1.5,
+                                                    px: 2,
+                                                    py: 1.75,
+                                                    borderRadius: 2,
+                                                    border: '2px dashed',
+                                                    borderColor: errors.pdf_upload ? '#FCA5A5' : '#CBD5E1',
+                                                    bgcolor: errors.pdf_upload ? 'rgba(248, 113, 113, 0.04)' : 'rgba(203, 213, 225, 0.04)',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.15s',
+                                                    '&:hover': {
+                                                        borderColor: errors.pdf_upload ? '#FCA5A5' : '#94A3B8',
+                                                        bgcolor: errors.pdf_upload ? 'rgba(248, 113, 113, 0.08)' : 'rgba(203, 213, 225, 0.08)',
+                                                    }
+                                                }}
+                                            >
+                                                <CloudUploadIcon sx={{ fontSize: 20, color: errors.pdf_upload ? '#EF4444' : '#64748B' }} />
+                                                <Typography sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary' }}>
+                                                    {formData.pdf_upload ? formData.pdf_upload.name : "Choose PDF file"}
+                                                </Typography>
+                                            </Box>
+                                        </label>
+                                    </Box>
+                                    {errors.pdf_upload && (
+                                        <Typography sx={{ fontSize: 12, color: '#EF4444', mt: 0.5, fontWeight: 500 }}>
+                                            {errors.pdf_upload}
+                                        </Typography>
+                                    )}
+                                </Grid>
 
-                        {/* Remarks */}
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                Remarks
-                            </label>
-                            <textarea
-                                name="remarks"
-                                value={formData.remarks}
-                                onChange={handleChange}
-                                rows="3"
-                                className={`w-full px-4 py-2.5 rounded-lg border ${errors.remarks ? "border-red-300 focus:ring-red-200" : "border-slate-300 focus:ring-blue-200"
-                                    } focus:border-blue-500 focus:ring-4 transition-all outline-none`}
-                                placeholder="Enter remarks"
-                            />
-                            {errors.remarks && <p className="text-xs text-red-500 mt-1">{errors.remarks}</p>}
-                        </div>
-                    </div>
+                                <Grid item xs={12}>
+                                    <Typography sx={labelSx}>
+                                        Address <span style={{ color: '#EF4444' }}>*</span>
+                                    </Typography>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
+                                        name="address"
+                                        value={formData.address}
+                                        onChange={handleChange}
+                                        placeholder="Enter full address"
+                                        multiline
+                                        rows={2}
+                                        error={!!errors.address}
+                                        helperText={errors.address}
+                                        sx={inputSx}
+                                    />
+                                </Grid>
 
-                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-6 py-2.5 text-sm font-semibold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="px-6 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                            {loading ? "Submitting..." : "Submit Query"}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+                                <Grid item xs={12}>
+                                    <Typography sx={labelSx}>Remarks</Typography>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
+                                        name="remarks"
+                                        value={formData.remarks}
+                                        onChange={handleChange}
+                                        placeholder="Enter remarks"
+                                        multiline
+                                        rows={3}
+                                        error={!!errors.remarks}
+                                        helperText={errors.remarks}
+                                        sx={inputSx}
+                                    />
+                                </Grid>
+                            </Grid>
+                        </Box>
+                    </form>
+                </Box>
+            </DialogContent>
+
+            <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid', borderColor: 'divider', bgcolor: '#F8FAFC' }}>
+                <Button
+                    onClick={onClose}
+                    sx={{ fontWeight: 700, color: 'text.secondary', borderRadius: 2, textTransform: 'none', '&:hover': { bgcolor: '#E2E8F0' } }}
+                >
+                    Cancel
+                </Button>
+                <Button
+                    type="submit"
+                    form="enquiry-form"
+                    variant="contained"
+                    disabled={loading}
+                    sx={{
+                        fontWeight: 700,
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        bgcolor: '#1565C0',
+                        px: 3,
+                        '&:hover': { bgcolor: '#0D47A1' },
+                        '&:disabled': { opacity: 0.5, cursor: 'not-allowed' }
+                    }}
+                >
+                    {loading ? "Submitting..." : "Submit Query"}
+                </Button>
+            </DialogActions>
+        </Dialog>
     );
 };
 

@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
-import { FaPlus, FaEdit, FaTrash, FaEye, FaGlobe } from "react-icons/fa";
+import {
+    Box, Card, Typography, Button, TextField, Select, MenuItem, FormControl,
+    InputLabel, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+    IconButton, Tooltip, CircularProgress, Chip, InputAdornment
+} from "@mui/material";
+import {
+    Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
+    Visibility as ViewIcon, Public as GlobeIcon, Search as SearchIcon,
+    ChevronLeft as PrevIcon, ChevronRight as NextIcon,
+} from "@mui/icons-material";
 
 import CurrencyModal from "../components/currencies/CurrencyModal";
 import CurrencyViewModal from "../components/currencies/CurrencyViewModal";
@@ -185,171 +194,183 @@ export default function Currency() {
     };
 
     return (
-        <div>
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-
+        <Box>
+            <Card>
                 {/* HEADER */}
-                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                    <div>
-                        <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                            <FaGlobe className="text-blue-600" /> Currencies
-                        </h3>
-                        <span className="text-sm text-slate-500 font-semibold">
+                <Box sx={{
+                    px: 2.5, py: 2,
+                    borderBottom: '1px solid', borderColor: 'divider',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    flexWrap: 'wrap', gap: 1
+                }}>
+                    <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <GlobeIcon sx={{ color: '#1565C0', fontSize: '1.3rem' }} /> Currencies
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
                             Total: {count}
-                        </span>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <button
+                        </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                            size="small"
+                            variant="contained"
+                            startIcon={<AddIcon />}
                             onClick={handleAddCurrency}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-500"
+                            sx={{ bgcolor: '#1565C0', '&:hover': { bgcolor: '#0D47A1' } }}
                         >
-                            <FaPlus className="text-xs" />
                             Add Currency
-                        </button>
-                    </div>
-                </div>
+                        </Button>
+                    </Box>
+                </Box>
 
                 {/* SEARCH & FILTER */}
-                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-                    <div className="flex flex-wrap gap-4 items-end">
-
-                        {/* Search Currency */}
-                        <div className="flex-1 min-w-55">
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                Search Currency
-                            </label>
-                            <input
-                                value={searchText}
-                                onChange={(e) => setSearchText(e.target.value)}
-                                placeholder="Search by code, name, symbol"
-                                className="input"
-                            />
-                        </div>
-
-                        {/* Status Filter */}
-                        <div className="w-40">
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                Status
-                            </label>
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
-                                className="input"
-                            >
-                                <option value="">All</option>
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
+                <Box sx={{
+                    px: 2.5, py: 2,
+                    borderBottom: '1px solid', borderColor: 'divider',
+                    bgcolor: '#FAFBFC',
+                    display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-end'
+                }}>
+                    <TextField
+                        size="small"
+                        placeholder="Search by code, name, symbol"
+                        label="Search Currency"
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        sx={{ flex: 1, minWidth: 220 }}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon sx={{ fontSize: '1.1rem', color: 'text.secondary' }} />
+                                </InputAdornment>
+                            )
+                        }}
+                    />
+                    <FormControl size="small" sx={{ minWidth: 160 }}>
+                        <InputLabel>Status</InputLabel>
+                        <Select
+                            value={statusFilter}
+                            label="Status"
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                        >
+                            <MenuItem value="">All</MenuItem>
+                            <MenuItem value="active">Active</MenuItem>
+                            <MenuItem value="inactive">Inactive</MenuItem>
+                        </Select>
+                    </FormControl>
+                </Box>
 
                 {/* TABLE */}
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-blue-50/50 text-slate-800 uppercase text-[10px] font-bold tracking-widest">
-                                <th className="px-6 py-4 text-[13px]">Code</th>
-                                <th className="px-6 py-4 text-[13px]">Currency Name</th>
-                                <th className="px-6 py-4 text-[13px]">Symbol</th>
-                                <th className="px-6 py-4 text-[13px]">Status</th>
-                                <th className="px-6 py-4 text-[13px] text-center">Action</th>
-                            </tr>
-                        </thead>
-
-                        <tbody className="divide-y divide-slate-100">
+                <TableContainer>
+                    <Table size="small">
+                        <TableHead>
+                            <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+                                <TableCell sx={{ fontWeight: 700, color: '#1565C0' }}>Code</TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: '#1565C0' }}>Currency Name</TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: '#1565C0' }}>Symbol</TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: '#1565C0' }}>Status</TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: '#1565C0' }} align="center">Action</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
                             {loading && (
-                                <tr>
-                                    <td colSpan="5" className="px-6 py-6 text-center text-slate-500">
-                                        Loading currencies...
-                                    </td>
-                                </tr>
+                                <TableRow>
+                                    <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                                        <CircularProgress size={28} />
+                                    </TableCell>
+                                </TableRow>
                             )}
 
                             {!loading && currencies.length === 0 && (
-                                <tr>
-                                    <td colSpan="5" className="px-6 py-6 text-center text-slate-500">
-                                        No currencies found
-                                    </td>
-                                </tr>
+                                <TableRow>
+                                    <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                                        <Typography variant="body2" color="text.secondary">
+                                            No currencies found
+                                        </Typography>
+                                    </TableCell>
+                                </TableRow>
                             )}
 
-                            {currencies.map((c) => (
-                                <tr key={c.id} className="odd:bg-slate-100 even:bg-white hover:bg-slate-200 transition">
-                                    <td className="px-6 py-4 font-mono text-blue-600 font-bold text-[14px]">
-                                        {c.code}
-                                    </td>
-                                    <td className="px-6 py-4 font-semibold text-slate-800 text-[14px]">
-                                        {c.name}
-                                    </td>
-                                    <td className="px-6 py-4 font-bold text-slate-700 text-[16px] font-mono">
-                                        {c.symbol || "-"}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold
-                                            ${c.is_active
-                                                ? 'bg-green-55 text-green-700'
-                                                : 'bg-red-50 text-red-600'
-                                            }`}
-                                        >
-                                            <span className={`w-1.5 h-1.5 rounded-full ${c.is_active ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                                            {c.is_active ? 'Active' : 'Inactive'}
-                                        </span>
-                                    </td>
-
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center justify-center gap-3">
-                                            <button
-                                                onClick={() => handleView(c)}
-                                                className="text-slate-500 hover:text-blue-600"
-                                                title="View"
-                                            >
-                                                <FaEye />
-                                            </button>
-                                            <button
-                                                onClick={() => handleEdit(c)}
-                                                className="text-blue-600 hover:text-blue-800"
-                                                title="Edit"
-                                            >
-                                                <FaEdit />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(c)}
-                                                className="text-red-500 hover:text-red-700"
-                                                title="Delete"
-                                            >
-                                                <FaTrash />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
+                            {!loading && currencies.map((c) => (
+                                <TableRow key={c.id} hover>
+                                    <TableCell>
+                                        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 700, color: '#1565C0' }}>
+                                            {c.code}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                            {c.name}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '1rem' }}>
+                                            {c.symbol || "-"}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Chip
+                                            size="small"
+                                            label={c.is_active ? "Active" : "Inactive"}
+                                            color={c.is_active ? "success" : "error"}
+                                            variant="outlined"
+                                            sx={{ fontWeight: 600, fontSize: '0.75rem' }}
+                                        />
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
+                                            <Tooltip title="View">
+                                                <IconButton size="small" onClick={() => handleView(c)} color="default">
+                                                    <ViewIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Edit">
+                                                <IconButton size="small" onClick={() => handleEdit(c)} color="primary">
+                                                    <EditIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Delete">
+                                                <IconButton size="small" onClick={() => handleDelete(c)} color="error">
+                                                    <DeleteIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </Box>
+                                    </TableCell>
+                                </TableRow>
                             ))}
-                        </tbody>
-                    </table>
-                </div>
+                        </TableBody>
+                    </Table>
+                </TableContainer>
 
                 {/* PAGINATION */}
-                <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
-                    <button
-                        onClick={() => previous && handlePageChange(page - 1)}
+                <Box sx={{
+                    px: 2.5, py: 1.5,
+                    borderTop: '1px solid', borderColor: 'divider',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                }}>
+                    <Button
+                        size="small"
+                        startIcon={<PrevIcon />}
                         disabled={!previous}
-                        className="text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40"
+                        onClick={() => handlePageChange(page - 1)}
+                        sx={{ fontWeight: 600 }}
                     >
-                        ← Previous
-                    </button>
-
-                    <span className="text-xs text-slate-400">Page {page}</span>
-
-                    <button
-                        onClick={() => next && handlePageChange(page + 1)}
+                        Previous
+                    </Button>
+                    <Typography variant="caption" color="text.secondary">
+                        Page {page}
+                    </Typography>
+                    <Button
+                        size="small"
+                        endIcon={<NextIcon />}
                         disabled={!next}
-                        className="text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40"
+                        onClick={() => handlePageChange(page + 1)}
+                        sx={{ fontWeight: 600 }}
                     >
-                        Next →
-                    </button>
-                </div>
-            </div>
+                        Next
+                    </Button>
+                </Box>
+            </Card>
 
             {/* MODALS */}
             <CurrencyModal
@@ -395,6 +416,6 @@ export default function Currency() {
                 onConfirm={passwordModal.onConfirm}
                 onCancel={() => setPasswordModal({ open: false })}
             />
-        </div>
+        </Box>
     );
 }

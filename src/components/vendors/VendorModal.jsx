@@ -1,7 +1,20 @@
 import { useEffect, useState } from "react";
 import { createVendor, updateVendor } from "../../services/vendorService";
 import AlertToast from "../ui/AlertToast";
-import { FaTimes } from "react-icons/fa";
+import {
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    TextField,
+    Button,
+    Box,
+    Typography,
+    Paper,
+    Grid,
+} from "@mui/material";
+import { Close as CloseIcon } from "@mui/icons-material";
+import IconButton from "@mui/material/IconButton";
 
 const initialState = {
     vendor_name: "",
@@ -54,8 +67,6 @@ export default function VendorModal({
         setErrors({});
     }, [mode, vendor, open]);
 
-    if (!open) return null;
-
     const handleChange = (e) => {
         let { name, value } = e.target;
 
@@ -79,8 +90,6 @@ export default function VendorModal({
     const validateForm = () => {
         let newErrors = {};
         let isValid = true;
-
-
 
         if (!form.vendor_name.trim()) {
             newErrors.vendor_name = "Vendor Name is required";
@@ -135,7 +144,6 @@ export default function VendorModal({
                 await createVendor(payload);
             }
 
-
             onSuccess(mode);
             onClose();
         } catch (err) {
@@ -147,199 +155,324 @@ export default function VendorModal({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
-            <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
-                {/* Header */}
-                <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl">
-                    <h2 className="text-xl font-bold text-slate-800">
-                        {mode === "edit" ? "Edit Vendor" : "Add Vendor"}
-                    </h2>
-                    <button type="button" onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-full transition-all">
-                        <FaTimes />
-                    </button>
-                </div>
+        <Dialog
+            open={open}
+            onClose={onClose}
+            maxWidth="lg"
+            fullWidth
+            PaperProps={{
+                sx: {
+                    maxHeight: "90vh",
+                    borderRadius: "12px",
+                    boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
+                },
+            }}
+        >
+            <DialogTitle
+                sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    paddingBottom: 2,
+                    backgroundColor: "#f8fafc",
+                    borderBottom: "1px solid #e2e8f0",
+                    fontSize: "1.25rem",
+                    fontWeight: "bold",
+                    color: "#1e293b",
+                }}
+            >
+                {mode === "edit" ? "Edit Vendor" : "Add Vendor"}
+                <IconButton
+                    onClick={onClose}
+                    sx={{
+                        color: "#94a3b8",
+                        "&:hover": {
+                            color: "#475569",
+                            backgroundColor: "white",
+                        },
+                    }}
+                >
+                    <CloseIcon />
+                </IconButton>
+            </DialogTitle>
 
-                {/* Body */}
-                <div className="flex-1 overflow-y-auto p-6">
-                    <form id="vendor-form" onSubmit={handleSubmit} className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                            <div>
-                                <label className="label">Vendor Name <span className="text-red-500">*</span></label>
-                                <input
-                                    className={`input ${errors.vendor_name ? "border-red-500 focus:ring-red-200" : ""}`}
-                                    name="vendor_name"
-                                    value={form.vendor_name}
-                                    onChange={handleChange}
-                                />
-                                {errors.vendor_name && <p className="text-xs text-red-500 mt-1">{errors.vendor_name}</p>}
-                            </div>
+            <DialogContent
+                sx={{
+                    padding: 3,
+                    overflowY: "auto",
+                    backgroundColor: "white",
+                }}
+            >
+                <Box component="form" id="vendor-form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
+                    {/* Basic Information */}
+                    <Grid container spacing={2} sx={{ mb: 3 }}>
+                        <Grid item xs={12} sm={6} md={4}>
+                            <TextField
+                                fullWidth
+                                label="Vendor Name"
+                                name="vendor_name"
+                                value={form.vendor_name}
+                                onChange={handleChange}
+                                error={!!errors.vendor_name}
+                                helperText={errors.vendor_name}
+                                required
+                                variant="outlined"
+                                size="small"
+                            />
+                        </Grid>
 
-                            <div>
-                                <label className="label">Contact Person</label>
-                                <input className="input" name="contact_person" value={form.contact_person} onChange={handleChange} />
-                            </div>
+                        <Grid item xs={12} sm={6} md={4}>
+                            <TextField
+                                fullWidth
+                                label="Contact Person"
+                                name="contact_person"
+                                value={form.contact_person}
+                                onChange={handleChange}
+                                variant="outlined"
+                                size="small"
+                            />
+                        </Grid>
 
-                            <div>
-                                <label className="label">Phone</label>
-                                <input
-                                    className={`input ${errors.phone ? "border-red-500 focus:ring-red-200" : ""}`}
-                                    name="phone"
-                                    value={form.phone}
-                                    onChange={handleChange}
-                                    placeholder="Enter phone number"
-                                    type="number"
-                                />
-                                {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
-                            </div>
+                        <Grid item xs={12} sm={6} md={4}>
+                            <TextField
+                                fullWidth
+                                label="Phone"
+                                name="phone"
+                                value={form.phone}
+                                onChange={handleChange}
+                                placeholder="Enter phone number"
+                                type="tel"
+                                error={!!errors.phone}
+                                helperText={errors.phone}
+                                variant="outlined"
+                                size="small"
+                            />
+                        </Grid>
 
-                            <div>
-                                <label className="label">Email</label>
-                                <input
-                                    className={`input ${errors.email ? "border-red-500 focus:ring-red-200" : ""}`}
-                                    name="email"
-                                    value={form.email}
-                                    onChange={handleChange}
-                                    placeholder="example@domain.com"
-                                />
-                                {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
-                            </div>
+                        <Grid item xs={12} sm={6} md={4}>
+                            <TextField
+                                fullWidth
+                                label="Email"
+                                name="email"
+                                value={form.email}
+                                onChange={handleChange}
+                                placeholder="example@domain.com"
+                                type="email"
+                                error={!!errors.email}
+                                helperText={errors.email}
+                                variant="outlined"
+                                size="small"
+                            />
+                        </Grid>
 
-                            <div>
-                                <label className="label">GST Number</label>
-                                <input
-                                    className={`input ${errors.gst_number ? "border-red-500 focus:ring-red-200" : ""}`}
-                                    name="gst_number"
-                                    value={form.gst_number}
-                                    onChange={handleChange}
-                                    placeholder="15 alphanumeric characters"
-                                />
-                                {errors.gst_number && <p className="text-xs text-red-500 mt-1">{errors.gst_number}</p>}
-                            </div>
+                        <Grid item xs={12} sm={6} md={4}>
+                            <TextField
+                                fullWidth
+                                label="GST Number"
+                                name="gst_number"
+                                value={form.gst_number}
+                                onChange={handleChange}
+                                placeholder="15 alphanumeric characters"
+                                error={!!errors.gst_number}
+                                helperText={errors.gst_number}
+                                variant="outlined"
+                                size="small"
+                            />
+                        </Grid>
 
-                            <div>
-                                <label className="label">PAN Number</label>
-                                <input
-                                    className={`input ${errors.pan_number ? "border-red-500 focus:ring-red-200" : ""}`}
-                                    name="pan_number"
-                                    value={form.pan_number}
-                                    onChange={handleChange}
-                                    placeholder="10 alphanumeric characters"
-                                />
-                                {errors.pan_number && <p className="text-xs text-red-500 mt-1">{errors.pan_number}</p>}
-                            </div>
-                        </div>
+                        <Grid item xs={12} sm={6} md={4}>
+                            <TextField
+                                fullWidth
+                                label="PAN Number"
+                                name="pan_number"
+                                value={form.pan_number}
+                                onChange={handleChange}
+                                placeholder="10 alphanumeric characters"
+                                error={!!errors.pan_number}
+                                helperText={errors.pan_number}
+                                variant="outlined"
+                                size="small"
+                            />
+                        </Grid>
+                    </Grid>
 
-                        <div>
-                            <label className="label">Address</label>
-                            <textarea
-                                className="input w-full"
+                    {/* Address */}
+                    <Grid container spacing={2} sx={{ mb: 3 }}>
+                        <Grid item xs={12}>
+                            <TextField
+                                fullWidth
+                                label="Address"
                                 name="address"
                                 value={form.address}
                                 onChange={handleChange}
+                                multiline
                                 rows={3}
+                                variant="outlined"
+                                size="small"
                             />
-                        </div>
+                        </Grid>
+                    </Grid>
 
-                        <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
-                            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">Bank Details</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                                <div>
-                                    <label className="label">Bank Name <span className="text-red-500">*</span></label>
-                                    <input
-                                        className={`input ${errors.bank_name ? "border-red-500 focus:ring-red-200" : ""}`}
-                                        name="bank_name"
-                                        value={form.bank_name}
-                                        onChange={handleChange}
-                                    />
-                                    {errors.bank_name && <p className="text-xs text-red-500 mt-1">{errors.bank_name}</p>}
-                                </div>
-
-                                <div>
-                                    <label className="label">Account Holder Name <span className="text-red-500">*</span></label>
-                                    <input
-                                        className={`input ${errors.account_name ? "border-red-500 focus:ring-red-200" : ""}`}
-                                        name="account_name"
-                                        value={form.account_name}
-                                        onChange={handleChange}
-                                    />
-                                    {errors.account_name && <p className="text-xs text-red-500 mt-1">{errors.account_name}</p>}
-                                </div>
-
-                                <div>
-                                    <label className="label">IFSC Code <span className="text-red-500">*</span></label>
-                                    <input
-                                        className={`input ${errors.ifsc_code ? "border-red-500 focus:ring-red-200" : ""}`}
-                                        name="ifsc_code"
-                                        value={form.ifsc_code}
-                                        onChange={handleChange}
-                                    />
-                                    {errors.ifsc_code && <p className="text-xs text-red-500 mt-1">{errors.ifsc_code}</p>}
-                                </div>
-
-                                <div>
-                                    <label className="label">Bank Account Number <span className="text-red-500">*</span></label>
-                                    <input
-                                        className={`input ${errors.bank_account_number ? "border-red-500 focus:ring-red-200" : ""}`}
-                                        name="bank_account_number"
-                                        value={form.bank_account_number}
-                                        onChange={handleChange}
-                                        type="number"
-                                    />
-                                    {errors.bank_account_number && <p className="text-xs text-red-500 mt-1">{errors.bank_account_number}</p>}
-                                </div>
-
-                                <div>
-                                    <label className="label">Confirm Account Number <span className="text-red-500">*</span></label>
-                                    <input
-                                        className={`input ${errors.confirm_account_number ? "border-red-500 focus:ring-red-200" : ""}`}
-                                        name="confirm_account_number"
-                                        value={form.confirm_account_number}
-                                        onChange={handleChange}
-                                        type="number"
-                                    />
-                                    {errors.confirm_account_number && <p className="text-xs text-red-500 mt-1">{errors.confirm_account_number}</p>}
-                                </div>
-
-                                <div>
-                                    <label className="label">Swift Code</label>
-                                    <input
-                                        className="input"
-                                        name="swift_code"
-                                        value={form.swift_code}
-                                        onChange={handleChange}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-
-                {/* Footer */}
-                <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 rounded-b-2xl">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="px-5 py-2 text-sm font-semibold rounded-lg border border-slate-300 text-slate-700 hover:bg-white transition-colors"
+                    {/* Bank Details Section */}
+                    <Paper
+                        sx={{
+                            padding: 2.5,
+                            backgroundColor: "#f8fafc",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            mb: 2,
+                        }}
                     >
-                        Cancel
-                    </button>
-                    <button
-                        type="submit"
-                        form="vendor-form"
-                        disabled={loading}
-                        className="px-6 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 shadow-md hover:shadow-lg transition-all"
-                    >
-                        {loading ? "Saving..." : "Save Vendor"}
-                    </button>
-                </div>
+                        <Typography
+                            variant="subtitle2"
+                            sx={{
+                                fontWeight: "bold",
+                                color: "#475569",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.05em",
+                                mb: 2,
+                            }}
+                        >
+                            Bank Details
+                        </Typography>
 
-                <AlertToast
-                    open={toast.open}
-                    type={toast.type}
-                    message={toast.message}
-                    onClose={() => setToast({ ...toast, open: false })}
-                />
-            </div>
-        </div>
+                        <Grid container spacing={2}>
+                            <Grid item xs={12} sm={6} md={4}>
+                                <TextField
+                                    fullWidth
+                                    label="Bank Name"
+                                    name="bank_name"
+                                    value={form.bank_name}
+                                    onChange={handleChange}
+                                    error={!!errors.bank_name}
+                                    helperText={errors.bank_name}
+                                    variant="outlined"
+                                    size="small"
+                                />
+                            </Grid>
+
+                            <Grid item xs={12} sm={6} md={4}>
+                                <TextField
+                                    fullWidth
+                                    label="Account Holder Name"
+                                    name="account_name"
+                                    value={form.account_name}
+                                    onChange={handleChange}
+                                    error={!!errors.account_name}
+                                    helperText={errors.account_name}
+                                    variant="outlined"
+                                    size="small"
+                                />
+                            </Grid>
+
+                            <Grid item xs={12} sm={6} md={4}>
+                                <TextField
+                                    fullWidth
+                                    label="IFSC Code"
+                                    name="ifsc_code"
+                                    value={form.ifsc_code}
+                                    onChange={handleChange}
+                                    error={!!errors.ifsc_code}
+                                    helperText={errors.ifsc_code}
+                                    variant="outlined"
+                                    size="small"
+                                />
+                            </Grid>
+
+                            <Grid item xs={12} sm={6} md={4}>
+                                <TextField
+                                    fullWidth
+                                    label="Bank Account Number"
+                                    name="bank_account_number"
+                                    value={form.bank_account_number}
+                                    onChange={handleChange}
+                                    type="tel"
+                                    error={!!errors.bank_account_number}
+                                    helperText={errors.bank_account_number}
+                                    variant="outlined"
+                                    size="small"
+                                />
+                            </Grid>
+
+                            <Grid item xs={12} sm={6} md={4}>
+                                <TextField
+                                    fullWidth
+                                    label="Confirm Account Number"
+                                    name="confirm_account_number"
+                                    value={form.confirm_account_number}
+                                    onChange={handleChange}
+                                    type="tel"
+                                    error={!!errors.confirm_account_number}
+                                    helperText={errors.confirm_account_number}
+                                    variant="outlined"
+                                    size="small"
+                                />
+                            </Grid>
+
+                            <Grid item xs={12} sm={6} md={4}>
+                                <TextField
+                                    fullWidth
+                                    label="Swift Code"
+                                    name="swift_code"
+                                    value={form.swift_code}
+                                    onChange={handleChange}
+                                    variant="outlined"
+                                    size="small"
+                                />
+                            </Grid>
+                        </Grid>
+                    </Paper>
+                </Box>
+            </DialogContent>
+
+            <DialogActions
+                sx={{
+                    padding: 2,
+                    backgroundColor: "#f8fafc",
+                    borderTop: "1px solid #e2e8f0",
+                    gap: 1,
+                }}
+            >
+                <Button
+                    onClick={onClose}
+                    variant="outlined"
+                    color="inherit"
+                    sx={{
+                        borderColor: "#cbd5e1",
+                        color: "#475569",
+                        "&:hover": {
+                            backgroundColor: "white",
+                            borderColor: "#94a3b8",
+                        },
+                    }}
+                >
+                    Cancel
+                </Button>
+                <Button
+                    type="submit"
+                    form="vendor-form"
+                    disabled={loading}
+                    variant="contained"
+                    sx={{
+                        backgroundColor: "#2563eb",
+                        "&:hover": {
+                            backgroundColor: "#1d4ed8",
+                        },
+                        "&:disabled": {
+                            opacity: 0.5,
+                        },
+                    }}
+                >
+                    {loading ? "Saving..." : "Save Vendor"}
+                </Button>
+            </DialogActions>
+
+            <AlertToast
+                open={toast.open}
+                type={toast.type}
+                message={toast.message}
+                onClose={() => setToast({ ...toast, open: false })}
+            />
+        </Dialog>
     );
 }

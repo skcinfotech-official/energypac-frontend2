@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { fetchRequisitions } from "../../services/requisition";
-import { HiSearch, HiX } from "react-icons/hi";
+import {
+    Box, Paper, TextField, InputAdornment, CircularProgress, List,
+    ListItemButton, Typography
+} from "@mui/material";
+import { Search as SearchIcon, Close as CloseIcon } from "@mui/icons-material";
 
 const RequisitionSelector = ({
   value,
@@ -74,81 +78,113 @@ const RequisitionSelector = ({
     (defaultItem && defaultItem.id === value ? defaultItem : null);
 
   const dropdown = (
-    <div
-      className="requisition-selector-portal fixed z-9999 bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto"
-      style={{
+    <Paper
+      className="requisition-selector-portal"
+      sx={{
+        position: 'fixed',
+        zIndex: 9999,
+        width: coords.width,
         top: coords.top + 4,
         left: coords.left,
-        width: coords.width,
+        maxHeight: '240px',
+        display: 'flex',
+        flexDirection: 'column',
       }}
+      elevation={3}
     >
-      <div className="sticky top-0 bg-white p-2 border-b">
-        <div className="relative">
-          <HiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            autoFocus
-            className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 rounded-md focus:ring-1 focus:ring-blue-500"
-            placeholder="Search requisition..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-      </div>
+      <Box sx={{ p: 1, borderBottom: '1px solid', borderColor: 'divider', flexShrink: 0 }}>
+        <TextField
+          autoFocus
+          fullWidth
+          size="small"
+          placeholder="Search requisition..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon sx={{ fontSize: '1.2rem', color: 'text.secondary' }} />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'background.default' } }}
+        />
+      </Box>
 
-      {loading ? (
-        <div className="p-4 text-sm text-center text-slate-500">Loading...</div>
-      ) : requisitions.length ? (
-        requisitions.map((r) => (
-          <div
-            key={r.id}
-            className="px-4 py-2 text-sm hover:bg-blue-50 cursor-pointer"
-            onClick={() => {
-              onChange(r.id, r);
-              setOpen(false);
-              setSearch("");
-            }}
-          >
-            <div className="font-medium text-slate-900">
-              {r.requisition_number}
-            </div>
-            <div className="text-xs text-slate-500">
-              {r.requisition_date} • {r.total_items} items
-            </div>
-          </div>
-        ))
-      ) : (
-        <div className="p-4 text-sm text-center text-slate-500">
-          No requisitions found
-        </div>
-      )}
-    </div>
+      <Box sx={{ overflowY: 'auto', maxHeight: '200px' }}>
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2 }}>
+            <CircularProgress size={24} />
+          </Box>
+        ) : requisitions.length > 0 ? (
+          <List disablePadding>
+            {requisitions.map((r) => (
+              <ListItemButton
+                key={r.id}
+                onClick={() => {
+                  onChange(r.id, r);
+                  setOpen(false);
+                  setSearch("");
+                }}
+                sx={{ py: 1, px: 2, borderBottom: '1px solid', borderColor: 'divider', '&:last-child': { borderBottom: 'none' } }}
+              >
+                <Box sx={{ width: '100%' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                    {r.requisition_number}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    {r.requisition_date} • {r.total_items} items
+                  </Typography>
+                </Box>
+              </ListItemButton>
+            ))}
+          </List>
+        ) : (
+          <Typography variant="body2" sx={{ textAlign: 'center', color: 'text.secondary', py: 2 }}>
+            No requisitions found
+          </Typography>
+        )}
+      </Box>
+    </Paper>
   );
 
   return (
-    <div ref={inputRef} className="relative w-full">
-      <div
-        className={`input flex items-center justify-between ${disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
-          }`}
+    <Box ref={inputRef} sx={{ position: 'relative', width: '100%' }}>
+      <Box
         onClick={() => !disabled && setOpen(true)}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          px: 1.5,
+          py: 1,
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 1,
+          bgcolor: disabled ? 'action.disabledBackground' : 'background.paper',
+          opacity: disabled ? 0.6 : 1,
+          '&:hover': { borderColor: disabled ? 'divider' : 'primary.main' },
+        }}
       >
-        <span className={selected ? "text-slate-800" : "text-slate-400"}>
+        <Typography sx={{ color: selected ? 'text.primary' : 'text.secondary' }}>
           {selected ? selected.requisition_number : placeholder}
-        </span>
+        </Typography>
 
         {value && !disabled && (
-          <HiX
-            className="text-slate-400 hover:text-slate-600"
+          <CloseIcon
             onClick={(e) => {
               e.stopPropagation();
               onChange("");
               setSearch("");
             }}
+            sx={{ cursor: 'pointer', color: 'text.secondary', ml: 1, '&:hover': { color: 'text.primary' } }}
           />
         )}
-      </div>
+      </Box>
 
       {open && !disabled && coords.width > 0 && createPortal(dropdown, document.body)}
-    </div>
+    </Box>
   );
 };
 

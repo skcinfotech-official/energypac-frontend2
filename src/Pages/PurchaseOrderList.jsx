@@ -1,7 +1,18 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { fetchPurchaseOrders, getPurchaseOrderReport, cancelPurchaseOrder, lockPurchaseOrder, getPurchaseOrder } from "../services/purchaseOrderService";
-import { FaEye, FaFileExcel, FaTimes, FaSearch, FaEdit } from "react-icons/fa";
+import { verificationService } from "../services/verificationService";
+import {
+    Box, Card, Typography, Button, TextField, Table, TableBody, TableCell,
+    TableContainer, TableHead, TableRow, IconButton, Tooltip, Dialog,
+    DialogTitle, DialogContent, DialogActions, Select, MenuItem, FormControl,
+    InputLabel, CircularProgress, Chip, InputAdornment, RadioGroup, Radio,
+    FormControlLabel, Menu, ListItemIcon, ListItemText
+} from "@mui/material";
+import {
+    Visibility, FileDownload, Close, Search, Edit, Cancel, CheckCircle, Schedule, Error,
+    MoreVert as MoreVertIcon
+} from "@mui/icons-material";
 import AlertToast from "../components/ui/AlertToast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import PurchaseOrderModal from "../components/purchaseOrder/PurchaseOrderModal";
@@ -31,6 +42,7 @@ const PurchaseOrderList = () => {
     const [list, setList] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchParams] = useSearchParams();
+    const [verificationStatuses, setVerificationStatuses] = useState({});
 
     // Pagination State
     const [count, setCount] = useState(0);
@@ -42,9 +54,15 @@ const PurchaseOrderList = () => {
     const [editPOData, setEditPOData] = useState(null);
     const [page, setPage] = useState(1);
     const [confirm, setConfirm] = useState({ open: false, action: null });
+
+    // Row action menu (kebab)
+    const [actionMenu, setActionMenu] = useState({ anchorEl: null, row: null });
+    const openActionMenu = (e, row) => { e.stopPropagation(); setActionMenu({ anchorEl: e.currentTarget, row }); };
+    const closeActionMenu = () => setActionMenu({ anchorEl: null, row: null });
+    const runAction = (fn) => () => { const row = actionMenu.row; closeActionMenu(); fn(row); };
     const [passwordModal, setPasswordModal] = useState({ open: false, onConfirm: null, loading: false });
 
-    // ✅ Search & Filter state
+    // Search & Filter state
     const [searchText, setSearchText] = useState("");
     const [vendorFilter, setVendorFilter] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
@@ -53,7 +71,7 @@ const PurchaseOrderList = () => {
        REPORT STATE
        ========================= */
     const [showReportModal, setShowReportModal] = useState(false);
-    const [reportType, setReportType] = useState("date_range"); // date_range, pending, vendor
+    const [reportType, setReportType] = useState("date_range");
     const [reportParams, setReportParams] = useState({
         start_date: "",
         end_date: "",
@@ -70,7 +88,7 @@ const PurchaseOrderList = () => {
     });
 
     /* =========================
-       FETCH — accepts explicit pageNum
+       FETCH - accepts explicit pageNum
        ========================= */
     const loadData = async (pageNum = 1) => {
         setLoading(true);
@@ -83,11 +101,17 @@ const PurchaseOrderList = () => {
                 setCount(data.count || data.results.length);
                 setNext(data.next);
                 setPrevious(data.previous);
+
+                // Fetch verification status for each PO
+                fetchVerificationStatusesForPOs(data.results);
             } else if (Array.isArray(data)) {
                 setList(data);
                 setCount(data.length);
                 setNext(null);
                 setPrevious(null);
+
+                // Fetch verification status for each PO
+                fetchVerificationStatusesForPOs(data);
             } else {
                 setList([]);
                 setCount(0);
@@ -108,12 +132,11 @@ const PurchaseOrderList = () => {
     };
 
     /* =========================
-       EFFECT: search change → debounce + RESET to page 1
-       (page is intentionally NOT in the dependency array)
+       EFFECT: search change -> debounce + RESET to page 1
        ========================= */
     useEffect(() => {
         const timer = setTimeout(() => {
-            loadData(1); // ✅ always page 1 when search or filters change
+            loadData(1);
         }, 500);
         return () => clearTimeout(timer);
     }, [searchText, vendorFilter, statusFilter]);
@@ -226,9 +249,7 @@ const PurchaseOrderList = () => {
     const handleEditClick = async (row) => {
         setLoading(true);
         try {
-            // Attempt to obtain the concurrent edit lock
             await lockPurchaseOrder(row.id);
-            // Lock succeeded! Fetch latest full data
             const fullPO = await getPurchaseOrder(row.id);
             setEditPOData(fullPO);
             setEditModalOpen(true);
@@ -279,216 +300,315 @@ const PurchaseOrderList = () => {
         });
     };
 
-    return (
-        <div>
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                {/* HEADER */}
-                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                    <div>
-                        <h3 className="font-bold text-slate-800">Purchase Orders</h3>
-                        <span className="text-sm text-slate-500 font-semibold">
-                            Total: {count}
-                        </span>
-                    </div>
+    const fetchVerificationStatusesForPOs = async (pos) => {
+        const statuses = {};
+        for (const po of pos) {
+            const status = await verificationService.getPOVerificationStatus(po.id);
+            statuses[po.id] = status;
+        }
+        setVerificationStatuses(statuses);
+    };
 
-                    <button
+    const getVerificationStatusChip = (poId) => {
+        let status = verificationStatuses[poId]?.status || 'NOT_SENT';
+        // Normalize NOT_STARTED to NOT_SENT
+        if (status === 'NOT_STARTED') status = 'NOT_SENT';
+
+        let label, color, icon;
+
+        switch (status) {
+            case 'VERIFIED':
+                label = 'Verified';
+                color = 'success';
+                icon = <CheckCircle sx={{ mr: 0.5, fontSize: 16 }} />;
+                break;
+            case 'PENDING':
+                label = 'Pending';
+                color = 'warning';
+                icon = <Schedule sx={{ mr: 0.5, fontSize: 16 }} />;
+                break;
+            case 'REJECTED':
+                label = 'Rejected';
+                color = 'error';
+                icon = <Error sx={{ mr: 0.5, fontSize: 16 }} />;
+                break;
+            default:
+                label = 'Not Sent';
+                color = 'default';
+                icon = null;
+        }
+
+        return <Chip icon={icon} label={label} color={color} size="small" variant="outlined" />;
+    };
+
+    const getStatusChip = (row) => {
+        const allReceived = row.items && row.items.length > 0 && row.items.every(i => i.is_received);
+        const someReceived = row.items && row.items.length > 0 && row.items.some(i => i.is_received);
+
+        let displayStatus = row.status;
+        if (allReceived) displayStatus = 'COMPLETED';
+        else if (someReceived) displayStatus = 'PARTIALLY_RECEIVED';
+
+        let statusText = displayStatus;
+        let chipColor = 'default';
+
+        if (displayStatus === 'PENDING') {
+            statusText = 'Pending';
+            chipColor = 'warning';
+        } else if (displayStatus === 'PARTIALLY_RECEIVED') {
+            statusText = 'Partially Received';
+            chipColor = 'info';
+        } else if (displayStatus === 'COMPLETED') {
+            statusText = 'Completed';
+            chipColor = 'success';
+        } else if (displayStatus === 'CANCELLED') {
+            statusText = 'Cancelled';
+            chipColor = 'error';
+        }
+
+        return <Chip label={statusText} color={chipColor} size="small" />;
+    };
+
+    return (
+        <Box>
+            <Card sx={{ borderRadius: 4, border: '1px solid', borderColor: 'grey.200', boxShadow: 1, overflow: 'hidden' }}>
+                {/* HEADER */}
+                <Box sx={{ px: 3, py: 2, borderBottom: '1px solid', borderColor: 'grey.100', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'grey.800' }}>
+                            Purchase Orders
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: 'grey.500', fontWeight: 600 }}>
+                            Total: {count}
+                        </Typography>
+                    </Box>
+
+                    <Button
+                        variant="contained"
+                        startIcon={<FileDownload />}
                         onClick={() => {
                             const today = new Date().toISOString().split('T')[0];
                             const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
                             setReportParams(prev => ({ ...prev, start_date: firstDay, end_date: today }));
                             setShowReportModal(true);
                         }}
-                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-500"
+                        sx={{
+                            bgcolor: 'success.dark',
+                            '&:hover': { bgcolor: 'success.main' },
+                            fontWeight: 600,
+                            textTransform: 'none',
+                            borderRadius: 2
+                        }}
                     >
-                        <FaFileExcel className="text-sm" />
                         Download Report
-                    </button>
-                </div>
+                    </Button>
+                </Box>
 
-                {/* ✅ SEARCH & FILTERS */}
-                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-                    <div className="flex flex-wrap gap-4 items-end">
+                {/* SEARCH & FILTERS */}
+                <Box sx={{ px: 3, py: 2, borderBottom: '1px solid', borderColor: 'grey.100', bgcolor: 'grey.50' }}>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-end' }}>
                         {/* Search */}
-                        <div className="flex-1 min-w-55">
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                Search PO 
-                            </label>
-                            <div className="relative">
-                                <input
-                                    value={searchText}
-                                    onChange={(e) => setSearchText(e.target.value)}
-                                    placeholder="Search by PO ..."
-                                    className="w-full pl-10 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                />
-                                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                            </div>
-                        </div>
+                        <Box sx={{ flex: 1, minWidth: 220 }}>
+                            <TextField
+                                value={searchText}
+                                onChange={(e) => setSearchText(e.target.value)}
+                                placeholder="Search by PO ..."
+                                label="Search PO"
+                                size="small"
+                                fullWidth
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <Search sx={{ color: 'grey.400' }} />
+                                        </InputAdornment>
+                                    ),
+                                }}
+                            />
+                        </Box>
 
                         {/* Vendor Filter */}
-                        <div className="w-64">
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">
+                        <Box sx={{ width: 256 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 600, color: 'grey.600', mb: 0.5, display: 'block' }}>
                                 Filter by Vendor
-                            </label>
+                            </Typography>
                             <VendorSelector
                                 value={vendorFilter}
                                 onChange={(val) => setVendorFilter(val)}
                                 placeholder="Select Vendor"
                             />
-                        </div>
-
+                        </Box>
 
                         {/* Status Filter */}
-                        <div className="w-40">
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                Status
-                            </label>
-                            <select
+                        <FormControl size="small" sx={{ minWidth: 160 }}>
+                            <InputLabel>Status</InputLabel>
+                            <Select
                                 value={statusFilter}
                                 onChange={(e) => setStatusFilter(e.target.value)}
-                                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                label="Status"
                             >
-                                <option value="">All Status</option>
-                                <option value="PENDING">Pending</option>
-                                <option value="PARTIALLY_RECEIVED">Partial</option>
-                                <option value="COMPLETED">Completed</option>
-                                <option value="CANCELLED">Cancelled</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
+                                <MenuItem value="">All Status</MenuItem>
+                                <MenuItem value="PENDING">Pending</MenuItem>
+                                <MenuItem value="PARTIALLY_RECEIVED">Partial</MenuItem>
+                                <MenuItem value="COMPLETED">Completed</MenuItem>
+                                <MenuItem value="CANCELLED">Cancelled</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </Box>
+                </Box>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-blue-50/50 text-slate-800 uppercase text-[10px] font-bold tracking-widest">
-                                <th className="px-6 py-4 text-[13px]">PO No</th>
-                                <th className="px-6 py-4 text-[13px]">Req No</th>
-                                <th className="px-6 py-4 text-[13px]">Vendor</th>
-                                <th className="px-6 py-4 text-[13px]">PO Date</th>
-                                <th className="px-6 py-4 text-[13px] text-right">Total Amount</th>
-                                <th className="px-6 py-4 text-[13px]">Status</th>
-                                <th className="px-6 py-4 text-[13px] text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
+                {/* TABLE */}
+                <TableContainer>
+                    <Table sx={{
+                        '& .MuiTableCell-root': { fontSize: '0.78rem' },
+                        '& .MuiTypography-body2': { fontSize: '0.78rem' },
+                        '& .MuiTypography-caption': { fontSize: '0.66rem' },
+                    }}>
+                        <TableHead>
+                            <TableRow sx={{ bgcolor: 'primary.50' }}>
+                                <TableCell sx={{ fontWeight: 'bold', fontSize: 13, color: 'grey.800', textTransform: 'uppercase', letterSpacing: 1 }}>PO No</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', fontSize: 13, color: 'grey.800', textTransform: 'uppercase', letterSpacing: 1 }}>Req No</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', fontSize: 13, color: 'grey.800', textTransform: 'uppercase', letterSpacing: 1 }}>Vendor</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', fontSize: 13, color: 'grey.800', textTransform: 'uppercase', letterSpacing: 1 }}>PO Date</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', fontSize: 13, color: 'grey.800', textTransform: 'uppercase', letterSpacing: 1, textAlign: 'right' }}>Total Amount</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', fontSize: 13, color: 'grey.800', textTransform: 'uppercase', letterSpacing: 1 }}>PO Status</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', fontSize: 13, color: 'grey.800', textTransform: 'uppercase', letterSpacing: 1 }}>Verification</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', fontSize: 13, color: 'grey.800', textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' }}>Actions</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
                             {loading ? (
-                                <tr>
-                                    <td colSpan="7" className="px-6 py-6 text-center text-slate-500">
+                                <TableRow>
+                                    <TableCell colSpan={8} sx={{ textAlign: 'center', py: 4, color: 'grey.500' }}>
+                                        <CircularProgress size={24} sx={{ mr: 1 }} />
                                         Loading purchase orders...
-                                    </td>
-                                </tr>
+                                    </TableCell>
+                                </TableRow>
                             ) : list.length > 0 ? (
-                                list.map((row) => (
-                                    <tr key={row.id} className="odd:bg-slate-100 even:bg-white hover:bg-slate-200 transition">
-                                        <td className="px-6 py-4">
-                                            <span className="font-mono text-blue-600 font-semibold cursor-pointer hover:underline" onClick={() => handleView(row)}>
+                                list.map((row, index) => (
+                                    <TableRow
+                                        key={row.id}
+                                        sx={{
+                                            bgcolor: index % 2 === 0 ? 'grey.100' : 'white',
+                                            '&:hover': { bgcolor: 'grey.200' },
+                                            transition: 'background-color 0.2s'
+                                        }}
+                                    >
+                                        <TableCell sx={{ px: 3, py: 2 }}>
+                                            <Typography
+                                                component="span"
+                                                sx={{
+                                                    fontFamily: 'monospace',
+                                                    color: 'primary.main',
+                                                    fontWeight: 600,
+                                                    cursor: 'pointer',
+                                                    '&:hover': { textDecoration: 'underline' }
+                                                }}
+                                                onClick={() => handleView(row)}
+                                            >
                                                 {row.po_number}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-slate-700">
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ px: 3, py: 2, color: 'grey.700' }}>
                                             {row.requisition_number}
-                                        </td>
-                                        <td className="px-6 py-4 text-slate-700">
-                                            <div className="font-medium">{row.vendor_name}</div>
-                                        </td>
-                                        <td className="px-6 py-4 text-slate-600 font-semibold">
+                                        </TableCell>
+                                        <TableCell sx={{ px: 3, py: 2, color: 'grey.700' }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 500 }}>{row.vendor_name}</Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ px: 3, py: 2, color: 'grey.600', fontWeight: 600 }}>
                                             {new Date(row.po_date).toLocaleDateString()}
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="font-bold text-slate-800">{formatCurrency(row.total_amount, row.currency)}</div>
+                                        </TableCell>
+                                        <TableCell sx={{ px: 3, py: 2, textAlign: 'right' }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'grey.800' }}>
+                                                {formatCurrency(row.total_amount, row.currency)}
+                                            </Typography>
                                             {row.conversion_rate && row.currency !== 'INR' && (
-                                                <div className="text-[10px] text-emerald-600 font-mono font-semibold">1 {row.currency} = ₹{parseFloat(row.conversion_rate)}</div>
+                                                <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'success.dark', fontWeight: 600, fontSize: 10 }}>
+                                                    1 {row.currency} = &#8377;{parseFloat(row.conversion_rate)}
+                                                </Typography>
                                             )}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            {(() => {
-                                                const allReceived = row.items && row.items.length > 0 && row.items.every(i => i.is_received);
-                                                const someReceived = row.items && row.items.length > 0 && row.items.some(i => i.is_received);
-
-                                                let displayStatus = row.status;
-                                                if (allReceived) displayStatus = 'COMPLETED';
-                                                else if (someReceived) displayStatus = 'PARTIALLY_RECEIVED';
-
-                                                let statusText = displayStatus;
-                                                if (displayStatus === 'PENDING') statusText = 'Pending';
-                                                else if (displayStatus === 'PARTIALLY_RECEIVED') statusText = 'Partially Received';
-                                                else if (displayStatus === 'COMPLETED') statusText = 'Completed';
-                                                else if (displayStatus === 'CANCELLED') statusText = 'Cancelled';
-
-                                                return (
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                                                        ${displayStatus === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                                                            displayStatus === 'PARTIALLY_RECEIVED' ? 'bg-blue-100 text-blue-800' :
-                                                                displayStatus === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' :
-                                                                    displayStatus === 'CANCELLED' ? 'bg-red-100 text-red-800' :
-                                                                        'bg-slate-100 text-slate-800'}`}>
-                                                        {statusText}
-                                                    </span>
-                                                );
-                                            })()}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex justify-center gap-3">
-                                                <button
-                                                    className="text-slate-500 hover:text-blue-600"
-                                                    title="View"
-                                                    onClick={() => handleView(row)}
-                                                >
-                                                    <FaEye />
-                                                </button>
-                                                {row.status !== 'CANCELLED' && (
-                                                    <button
-                                                        className="text-blue-600 hover:text-blue-800 hover:scale-105 transition-transform"
-                                                        title="Edit PO"
-                                                        onClick={() => handleEditClick(row)}
-                                                    >
-                                                        <FaEdit />
-                                                    </button>
-                                                )}
-                                                <button
-                                                    onClick={() => handleCancelPO(row.id)}
-                                                    disabled={row.status === 'COMPLETED' || row.status === 'CANCELLED'}
-                                                    title={row.status === 'COMPLETED' ? "Completed PO cannot be cancelled" : row.status === 'CANCELLED' ? "Already Cancelled" : "Cancel PO"}
-                                                    className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
-                                                >
-                                                    <FaTimes size={12} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                        </TableCell>
+                                        <TableCell sx={{ px: 3, py: 2 }}>
+                                            {getStatusChip(row)}
+                                        </TableCell>
+                                        <TableCell sx={{ px: 3, py: 2 }}>
+                                            {getVerificationStatusChip(row.id)}
+                                        </TableCell>
+                                        <TableCell sx={{ px: 3, py: 2 }}>
+                                            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                                                <Tooltip title="Actions">
+                                                    <IconButton size="small" onClick={(e) => openActionMenu(e, row)} sx={{ color: 'grey.600', '&:hover': { bgcolor: 'grey.100' } }}>
+                                                        <MoreVertIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </Box>
+                                        </TableCell>
+                                    </TableRow>
                                 ))
                             ) : (
-                                <tr>
-                                    <td colSpan="7" className="px-6 py-6 text-center text-slate-500">
+                                <TableRow>
+                                    <TableCell colSpan={8} sx={{ textAlign: 'center', py: 4, color: 'grey.500' }}>
                                         No purchase orders found
-                                    </td>
-                                </tr>
+                                    </TableCell>
+                                </TableRow>
                             )}
-                        </tbody>
-                    </table>
-                </div>
+                        </TableBody>
+                    </Table>
+                </TableContainer>
 
                 {/* PAGINATION */}
-                <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
-                    <button
+                <Box sx={{ px: 3, py: 2, borderTop: '1px solid', borderColor: 'grey.100', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Button
                         onClick={() => previous && loadData(page - 1)}
                         disabled={!previous}
-                        className="text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40"
+                        size="small"
+                        sx={{ fontWeight: 600, textTransform: 'none' }}
                     >
-                        ← Previous
-                    </button>
+                        &larr; Previous
+                    </Button>
 
-                    <span className="text-xs text-slate-400">Page {page}</span>
+                    <Typography variant="caption" sx={{ color: 'grey.400' }}>
+                        Page {page}
+                    </Typography>
 
-                    <button
+                    <Button
                         onClick={() => next && loadData(page + 1)}
                         disabled={!next}
-                        className="text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40"
+                        size="small"
+                        sx={{ fontWeight: 600, textTransform: 'none' }}
                     >
-                        Next →
-                    </button>
-                </div>
-            </div>
+                        Next &rarr;
+                    </Button>
+                </Box>
+            </Card>
+
+            {/* Row action menu */}
+            <Menu
+                anchorEl={actionMenu.anchorEl}
+                open={Boolean(actionMenu.anchorEl)}
+                onClose={closeActionMenu}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                PaperProps={{ sx: { borderRadius: 2, minWidth: 180, boxShadow: '0 8px 24px rgba(0,0,0,0.12)' } }}
+            >
+                <MenuItem onClick={runAction((row) => handleView(row))}>
+                    <ListItemIcon><Visibility fontSize="small" sx={{ color: 'primary.main' }} /></ListItemIcon>
+                    <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}>View</ListItemText>
+                </MenuItem>
+                <MenuItem
+                    disabled={actionMenu.row?.status === 'CANCELLED'}
+                    onClick={runAction((row) => handleEditClick(row))}
+                >
+                    <ListItemIcon><Edit fontSize="small" sx={{ color: 'primary.main' }} /></ListItemIcon>
+                    <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}>Edit PO</ListItemText>
+                </MenuItem>
+                <MenuItem
+                    disabled={actionMenu.row?.status === 'COMPLETED' || actionMenu.row?.status === 'CANCELLED'}
+                    onClick={runAction((row) => handleCancelPO(row.id))}
+                >
+                    <ListItemIcon><Cancel sx={{ fontSize: 16, color: 'error.main' }} /></ListItemIcon>
+                    <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600, color: 'error.main' }}>Cancel PO</ListItemText>
+                </MenuItem>
+            </Menu>
 
             <AlertToast
                 open={toast.open}
@@ -534,102 +654,109 @@ const PurchaseOrderList = () => {
             />
 
             {/* REPORT MODAL */}
-            {showReportModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                                <FaFileExcel className="text-emerald-600" /> Export PO Report
-                            </h3>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <p className="text-sm text-slate-600 font-medium">Select Report Type:</p>
+            <Dialog
+                open={showReportModal}
+                onClose={() => setShowReportModal(false)}
+                maxWidth="sm"
+                fullWidth
+            >
+                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: 'grey.50', borderBottom: '1px solid', borderColor: 'grey.100' }}>
+                    <FileDownload sx={{ color: 'success.dark' }} />
+                    <Typography variant="h6" component="span" sx={{ fontWeight: 'bold', color: 'grey.800' }}>
+                        Export PO Report
+                    </Typography>
+                </DialogTitle>
+                <DialogContent sx={{ pt: 3, pb: 2 }}>
+                    <Typography variant="body2" sx={{ color: 'grey.600', fontWeight: 500, mb: 2, mt: 1 }}>
+                        Select Report Type:
+                    </Typography>
 
-                            <div className="space-y-3">
-                                {/* Date Range Option */}
-                                <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition">
-                                    <input
-                                        type="radio"
-                                        name="reportType"
-                                        value="date_range"
-                                        checked={reportType === "date_range"}
-                                        onChange={(e) => setReportType(e.target.value)}
-                                        className="text-blue-600 focus:ring-blue-500"
+                    <RadioGroup
+                        value={reportType}
+                        onChange={(e) => setReportType(e.target.value)}
+                    >
+                        {/* Date Range Option */}
+                        <Box sx={{ border: '1px solid', borderColor: 'grey.200', borderRadius: 2, p: 1.5, mb: 1.5, '&:hover': { bgcolor: 'grey.50' }, cursor: 'pointer' }}>
+                            <FormControlLabel
+                                value="date_range"
+                                control={<Radio />}
+                                label={<Typography variant="body2" sx={{ fontWeight: 600, color: 'grey.700' }}>Date Range</Typography>}
+                            />
+                            {reportType === "date_range" && (
+                                <Box sx={{ pl: 4, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mt: 1 }}>
+                                    <TextField
+                                        type="date"
+                                        size="small"
+                                        value={reportParams.start_date}
+                                        onChange={(e) => setReportParams({ ...reportParams, start_date: e.target.value })}
+                                        InputLabelProps={{ shrink: true }}
+                                        label="Start Date"
                                     />
-                                    <span className="text-sm font-semibold text-slate-700">Date Range</span>
-                                </label>
-                                {reportType === "date_range" && (
-                                    <div className="pl-8 grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-top-2">
-                                        <input
-                                            type="date"
-                                            className="input text-xs"
-                                            value={reportParams.start_date}
-                                            onChange={(e) => setReportParams({ ...reportParams, start_date: e.target.value })}
-                                        />
-                                        <input
-                                            type="date"
-                                            className="input text-xs"
-                                            value={reportParams.end_date}
-                                            onChange={(e) => setReportParams({ ...reportParams, end_date: e.target.value })}
-                                        />
-                                    </div>
-                                )}
+                                    <TextField
+                                        type="date"
+                                        size="small"
+                                        value={reportParams.end_date}
+                                        onChange={(e) => setReportParams({ ...reportParams, end_date: e.target.value })}
+                                        InputLabelProps={{ shrink: true }}
+                                        label="End Date"
+                                    />
+                                </Box>
+                            )}
+                        </Box>
 
-                                {/* Pending PO Option */}
-                                <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition">
-                                    <input
-                                        type="radio"
-                                        name="reportType"
-                                        value="pending"
-                                        checked={reportType === "pending"}
-                                        onChange={(e) => setReportType(e.target.value)}
-                                        className="text-amber-500 focus:ring-amber-500"
-                                    />
-                                    <span className="text-sm font-semibold text-slate-700">Pending Purchase Orders</span>
-                                </label>
+                        {/* Pending PO Option */}
+                        <Box sx={{ border: '1px solid', borderColor: 'grey.200', borderRadius: 2, p: 1.5, mb: 1.5, '&:hover': { bgcolor: 'grey.50' }, cursor: 'pointer' }}>
+                            <FormControlLabel
+                                value="pending"
+                                control={<Radio />}
+                                label={<Typography variant="body2" sx={{ fontWeight: 600, color: 'grey.700' }}>Pending Purchase Orders</Typography>}
+                            />
+                        </Box>
 
-                                {/* Vendor Option */}
-                                <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition">
-                                    <input
-                                        type="radio"
-                                        name="reportType"
-                                        value="vendor"
-                                        checked={reportType === "vendor"}
-                                        onChange={(e) => setReportType(e.target.value)}
-                                        className="text-purple-600 focus:ring-purple-500"
+                        {/* Vendor Option */}
+                        <Box sx={{ border: '1px solid', borderColor: 'grey.200', borderRadius: 2, p: 1.5, mb: 1.5, '&:hover': { bgcolor: 'grey.50' }, cursor: 'pointer' }}>
+                            <FormControlLabel
+                                value="vendor"
+                                control={<Radio />}
+                                label={<Typography variant="body2" sx={{ fontWeight: 600, color: 'grey.700' }}>Specific Vendor</Typography>}
+                            />
+                            {reportType === "vendor" && (
+                                <Box sx={{ pl: 4, mt: 1 }}>
+                                    <VendorSelector
+                                        value={reportParams.vendor_id}
+                                        onChange={(id) => setReportParams({ ...reportParams, vendor_id: id })}
+                                        placeholder="Search and Select Vendor"
                                     />
-                                    <span className="text-sm font-semibold text-slate-700">Specific Vendor</span>
-                                </label>
-                                {reportType === "vendor" && (
-                                    <div className="pl-8 animate-in fade-in slide-in-from-top-2">
-                                        <VendorSelector
-                                            value={reportParams.vendor_id}
-                                            onChange={(id) => setReportParams({ ...reportParams, vendor_id: id })}
-                                            placeholder="Search and Select Vendor"
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50">
-                            <button
-                                onClick={() => setShowReportModal(false)}
-                                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleDownloadReport}
-                                disabled={downloading}
-                                className="px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-500 disabled:opacity-50 flex items-center gap-2"
-                            >
-                                {downloading ? "Downloading..." : "Download Excel"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
+                                </Box>
+                            )}
+                        </Box>
+                    </RadioGroup>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid', borderColor: 'grey.100', bgcolor: 'grey.50' }}>
+                    <Button
+                        onClick={() => setShowReportModal(false)}
+                        sx={{ fontWeight: 600, textTransform: 'none', color: 'grey.600' }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="contained"
+                        onClick={handleDownloadReport}
+                        disabled={downloading}
+                        startIcon={downloading ? <CircularProgress size={16} color="inherit" /> : <FileDownload />}
+                        sx={{
+                            bgcolor: 'success.dark',
+                            '&:hover': { bgcolor: 'success.main' },
+                            fontWeight: 600,
+                            textTransform: 'none',
+                            borderRadius: 2
+                        }}
+                    >
+                        {downloading ? "Downloading..." : "Download Excel"}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </Box>
     );
 };
 

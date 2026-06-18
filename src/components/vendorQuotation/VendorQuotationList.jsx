@@ -1,6 +1,18 @@
 import { useEffect, useState } from "react";
+import {
+    Box, Card, Typography, Button, Table, TableBody, TableCell,
+    TableContainer, TableHead, TableRow, IconButton, Tooltip,
+    CircularProgress, Chip
+} from "@mui/material";
+import {
+    Visibility as ViewIcon,
+    ReceiptLong as InvoiceIcon,
+    Add as AddIcon,
+    ChevronLeft as PrevIcon,
+    ChevronRight as NextIcon,
+} from "@mui/icons-material";
+
 import { getVendorQuotationsList } from "../../services/vendorQuotationService";
-import { FaEye, FaSearch, FaFileInvoiceDollar, FaEdit, FaPlus } from "react-icons/fa";
 import VendorQuotationViewModal from "./VendorQuotationViewModal";
 import VendorQuotationEditModal from "./VendorQuotationEditModal";
 import AlertToast from "../ui/AlertToast";
@@ -90,159 +102,254 @@ const VendorQuotationList = ({ initialViewId, onNewQuotation }) => {
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-
-            <div className="bg-white border border-slate-300 rounded-xl shadow-sm overflow-hidden">
+        <Box>
+            <Card>
                 {/* HEADER / TOOLBAR */}
-                <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <div>
-                        <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                            <FaFileInvoiceDollar className="text-blue-600" />
+                <Box sx={{
+                    px: 2.5, py: 2,
+                    borderBottom: '1px solid', borderColor: 'divider',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    flexWrap: 'wrap', gap: 1,
+                    bgcolor: '#FAFBFC'
+                }}>
+                    <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <InvoiceIcon sx={{ color: '#1565C0', fontSize: '1.3rem' }} />
                             Vendor Quotations
-                        </h3>
-                        <span className="text-xs text-slate-400 font-bold uppercase">
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>
                             Total: {count}
-                        </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <button
+                        </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Button
+                            size="small"
+                            variant="outlined"
                             onClick={() => loadData()}
-                            className="text-xs bg-white text-slate-700 hover:text-blue-600 font-bold px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm transition"
+                            sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'none' }}
                         >
                             Refresh
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                            size="small"
+                            variant="contained"
+                            startIcon={<AddIcon />}
                             onClick={onNewQuotation}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg shadow-sm transition-all active:scale-95"
+                            sx={{
+                                bgcolor: '#1565C0',
+                                '&:hover': { bgcolor: '#0D47A1' },
+                                fontWeight: 700,
+                                fontSize: '0.75rem',
+                                textTransform: 'none'
+                            }}
                         >
-                            <FaPlus className="text-xs" />
                             New Quotation
-                        </button>
-                    </div>
-                </div>
+                        </Button>
+                    </Box>
+                </Box>
 
                 {/* SEARCH & FILTER */}
-                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="relative z-30">
-                            <label className="block text-xs font-semibold text-slate-600 mb-1 ml-1">
+                <Box sx={{
+                    px: 2.5, py: 2,
+                    borderBottom: '1px solid', borderColor: 'divider',
+                    bgcolor: '#FAFBFC'
+                }}>
+                    <Box sx={{
+                        display: 'grid',
+                        gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+                        gap: 2
+                    }}>
+                        <Box sx={{ position: 'relative', zIndex: 30 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 0.5, ml: 0.5, display: 'block' }}>
                                 Filter by Requisition
-                            </label>
+                            </Typography>
                             <RequisitionSelector
                                 value={selectedRequisition}
                                 onChange={(id) => setSelectedRequisition(id)}
                                 placeholder="All Requisitions"
                             />
-                        </div>
-                        <div className="relative z-20">
-                            <label className="block text-xs font-semibold text-slate-600 mb-1 ml-1">
+                        </Box>
+                        <Box sx={{ position: 'relative', zIndex: 20 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 0.5, ml: 0.5, display: 'block' }}>
                                 Filter by Vendor
-                            </label>
+                            </Typography>
                             <VendorSelector
                                 value={selectedVendor}
                                 onChange={(id) => setSelectedVendor(id)}
                                 placeholder="All Vendors"
                             />
-                        </div>
-                    </div>
-                </div>
+                        </Box>
+                    </Box>
+                </Box>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-300 uppercase text-xs tracking-wider">
-                            <tr>
-                                <th className="px-6 py-4">Quotation No</th>
-                                <th className="px-6 py-4">Requisition</th>
-                                <th className="px-6 py-4">Vendor</th>
-                                <th className="px-6 py-4">Date</th>
-                                <th className="px-6 py-4 text-right">Total Amount</th>
-                                <th className="px-6 py-4 text-center">Items</th>
-                                <th className="px-6 py-4 text-center">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-300 text-slate-700">
+                {/* TABLE */}
+                <TableContainer>
+                    <Table size="small">
+                        <TableHead>
+                            <TableRow sx={{ bgcolor: '#F1F5F9' }}>
+                                <TableCell sx={{ fontWeight: 700, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', py: 1.5 }}>
+                                    Quotation No
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', py: 1.5 }}>
+                                    Requisition
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', py: 1.5 }}>
+                                    Vendor
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', py: 1.5 }}>
+                                    Date
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', py: 1.5, textAlign: 'right' }}>
+                                    Total Amount
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', py: 1.5, textAlign: 'center' }}>
+                                    Items
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em', py: 1.5, textAlign: 'center' }}>
+                                    Action
+                                </TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
                             {loading ? (
-                                <tr>
-                                    <td colSpan="7" className="p-8 text-center text-slate-500 animate-pulse">
-                                        Loading records...
-                                    </td>
-                                </tr>
+                                <TableRow>
+                                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                                        <CircularProgress size={28} />
+                                    </TableCell>
+                                </TableRow>
                             ) : data.length === 0 ? (
-                                <tr>
-                                    <td colSpan="7" className="p-8 text-center text-slate-500">
-                                        No quotations found.
-                                    </td>
-                                </tr>
+                                <TableRow>
+                                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                                        <Typography variant="body2" color="text.secondary">
+                                            No quotations found.
+                                        </Typography>
+                                    </TableCell>
+                                </TableRow>
                             ) : (
-                                data.map((row) => (
-                                    <tr key={row.id} className="odd:bg-slate-100 even:bg-white hover:bg-slate-200  transition-colors group ">
-                                        <td className="px-4 py-2 font-bold text-slate-900 text-base">
-                                            {row.quotation_number || <span className="text-slate-500 italic">Draft</span>}
-                                        </td>
-                                        <td className="px-4 py-2 text-slate-700 font-mono text-sm">
-                                            {row.requisition_number}
-                                        </td>
-                                        <td className="px-4 py-2">
-                                            <div className="font-bold text-slate-900">{row.vendor_name}</div>
-                                            <div className="text-xs text-slate-500 font-mono flex gap-2">
-                                                <span>{row.vendor_code}</span>
-                                                {row.gst_number && <span className="text-blue-600 font-bold">GST: {row.gst_number}</span>}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-2 text-slate-700 text-sm">
-                                            {row.quotation_date}
-                                        </td>
-                                        <td className="px-4 py-2 text-right font-bold text-slate-900">
-                                            {getCurrencySymbol(row.currency)} {formatAmount(row.total_amount, row.currency)}
-                                        </td>
-                                        <td className="px-4 py-2 text-center">
-                                            <span className="bg-slate-100 text-slate-700 px-2 py-1 rounded text-sm font-bold border border-slate-200">
-                                                {row.total_items}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-2 text-center">
-                                            <div className="flex justify-center gap-2">
-                                                <button
-                                                    onClick={() => handleView(row.id)}
-                                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all"
-                                                    title="View Details"
-                                                >
-                                                    <FaEye />
-                                                </button>
-                                                {/* <button
-                                                    onClick={() => handleEdit(row.id)}
-                                                    className="p-2 text-blue-500 hover:text-blue-600 hover:bg-green-50 rounded-full transition-all"
-                                                    title="Edit Quotation"
-                                                >
-                                                    <FaEdit />
-                                                </button> */}
-                                            </div>
-                                        </td>
-                                    </tr>
+                                data.map((row, index) => (
+                                    <TableRow
+                                        key={row.id}
+                                        hover
+                                        sx={{
+                                            bgcolor: index % 2 === 0 ? '#F8FAFC' : '#FFFFFF',
+                                            '&:hover': { bgcolor: '#E2E8F0' }
+                                        }}
+                                    >
+                                        <TableCell sx={{ py: 1 }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 700, color: '#0F172A', fontSize: '0.95rem' }}>
+                                                {row.quotation_number || (
+                                                    <Typography component="span" variant="body2" sx={{ color: '#64748B', fontStyle: 'italic' }}>
+                                                        Draft
+                                                    </Typography>
+                                                )}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 1 }}>
+                                            <Typography variant="body2" sx={{ fontFamily: 'monospace', color: '#334155' }}>
+                                                {row.requisition_number}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 1 }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 700, color: '#0F172A' }}>
+                                                {row.vendor_name}
+                                            </Typography>
+                                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                                <Typography variant="caption" sx={{ fontFamily: 'monospace', color: '#64748B' }}>
+                                                    {row.vendor_code}
+                                                </Typography>
+                                                {row.gst_number && (
+                                                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#1565C0', fontFamily: 'monospace' }}>
+                                                        GST: {row.gst_number}
+                                                    </Typography>
+                                                )}
+                                            </Box>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 1 }}>
+                                            <Typography variant="body2" sx={{ color: '#334155' }}>
+                                                {row.quotation_date}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 1, textAlign: 'right' }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 700, color: '#0F172A' }}>
+                                                {getCurrencySymbol(row.currency)} {formatAmount(row.total_amount, row.currency)}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 1, textAlign: 'center' }}>
+                                            <Chip
+                                                size="small"
+                                                label={row.total_items}
+                                                variant="outlined"
+                                                sx={{
+                                                    fontWeight: 700,
+                                                    fontSize: '0.8rem',
+                                                    color: '#334155',
+                                                    borderColor: '#CBD5E1',
+                                                    bgcolor: '#F1F5F9'
+                                                }}
+                                            />
+                                        </TableCell>
+                                        <TableCell sx={{ py: 1, textAlign: 'center' }}>
+                                            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
+                                                <Tooltip title="View Details">
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => handleView(row.id)}
+                                                        sx={{
+                                                            color: '#94A3B8',
+                                                            '&:hover': { color: '#1565C0', bgcolor: '#EFF6FF' }
+                                                        }}
+                                                    >
+                                                        <ViewIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                                {/* <Tooltip title="Edit Quotation">
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => handleEdit(row.id)}
+                                                        sx={{
+                                                            color: '#3B82F6',
+                                                            '&:hover': { color: '#1565C0', bgcolor: '#F0FDF4' }
+                                                        }}
+                                                    >
+                                                        <EditIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip> */}
+                                            </Box>
+                                        </TableCell>
+                                    </TableRow>
                                 ))
                             )}
-                        </tbody>
-                    </table>
-                </div>
+                        </TableBody>
+                    </Table>
+                </TableContainer>
 
                 {/* PAGINATION */}
-                <div className="px-6 py-4 border-t border-slate-300 flex items-center justify-between bg-slate-50">
-                    <button
-                        onClick={() => previous && loadData(previous)}
+                <Box sx={{
+                    px: 2.5, py: 1.5,
+                    borderTop: '1px solid', borderColor: 'divider',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    bgcolor: '#FAFBFC'
+                }}>
+                    <Button
+                        size="small"
+                        startIcon={<PrevIcon />}
                         disabled={!previous}
-                        className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-2"
+                        onClick={() => previous && loadData(previous)}
+                        sx={{ fontWeight: 600 }}
                     >
-                        &larr; Previous
-                    </button>
-                    <button
-                        onClick={() => next && loadData(next)}
+                        Previous
+                    </Button>
+                    <Button
+                        size="small"
+                        endIcon={<NextIcon />}
                         disabled={!next}
-                        className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-2"
+                        onClick={() => next && loadData(next)}
+                        sx={{ fontWeight: 600 }}
                     >
-                        Next &rarr;
-                    </button>
-                </div>
-            </div>
+                        Next
+                    </Button>
+                </Box>
+            </Card>
 
             {/* VIEW MODAL */}
             <VendorQuotationViewModal
@@ -265,10 +372,8 @@ const VendorQuotationList = ({ initialViewId, onNewQuotation }) => {
                 message={toast.message}
                 onClose={() => setToast({ ...toast, open: false })}
             />
-        </div>
+        </Box>
     );
 };
 
 export default VendorQuotationList;
-
-

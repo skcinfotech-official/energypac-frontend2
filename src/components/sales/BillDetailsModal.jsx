@@ -1,13 +1,45 @@
-
-import React from "react";
-import { FaTimes, FaFileInvoiceDollar, FaBuilding, FaInfoCircle, FaCalendarAlt, FaHashtag, FaFileExcel, FaPrint } from "react-icons/fa";
+import React, { useState } from "react";
+import {
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Button,
+    Box,
+    Paper,
+    Grid,
+    Typography,
+    Table,
+    TableContainer,
+    TableHead,
+    TableBody,
+    TableFooter,
+    TableRow,
+    TableCell,
+    Card,
+    CardContent,
+    CircularProgress,
+    Alert,
+    ToggleButton,
+    ToggleButtonGroup,
+    Stack,
+    Divider,
+    Chip,
+} from "@mui/material";
+import {
+    Close as CloseIcon,
+    FileDownload as FileDownloadIcon,
+    Print as PrintIcon,
+    Description as DescriptionIcon,
+    Business as BusinessIcon,
+    Info as InfoIcon,
+} from "@mui/icons-material";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { getBillById } from "../../services/salesService";
 import { pdf } from "@react-pdf/renderer";
 import BillPDF from "./BillPDF";
 import { toast } from "react-hot-toast";
-import { useState } from "react";
 
 const getCurrencySymbol = (code) => {
     switch (code?.toUpperCase()) {
@@ -24,14 +56,14 @@ const getCurrencySymbol = (code) => {
 
 const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
     const [viewCurrency, setViewCurrency] = useState(null);
+    const [exporting, setExporting] = useState(false);
+    const [generatingPdf, setGeneratingPdf] = useState(false);
+
     if (!isOpen) return null;
 
     const billCurrency = details?.currency || 'INR';
     const convRate = parseFloat(details?.conversion_rate || 1);
     const activeCurrency = viewCurrency || billCurrency;
-
-    const [exporting, setExporting] = useState(false);
-    const [generatingPdf, setGeneratingPdf] = useState(false);
 
     const formatCurrency = (amount, currency) => {
         const curr = currency || activeCurrency;
@@ -174,353 +206,400 @@ const BillDetailsModal = ({ isOpen, onClose, loading, details }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
-            <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-slide-up overflow-hidden">
-                {/* Header */}
-                <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
-                            <FaFileInvoiceDollar className="text-xl" />
-                        </div>
-                        <div>
-                            <h2 className="text-xl font-bold text-slate-800">Bill Details</h2>
-                            {details && (
-                                <p className="text-xs text-slate-500 font-mono flex items-center gap-1">
-                                    <span className="opacity-75">ID:</span> {details.bill_number}
-                                </p>
-                            )}
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
+        <Dialog open={isOpen} onClose={onClose} maxWidth="lg" fullWidth PaperProps={{ sx: { maxHeight: "90vh" } }}>
+            <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", pb: 2 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                    <DescriptionIcon sx={{ color: "primary.main", fontSize: 28 }} />
+                    <Box>
+                        <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                            Bill Details
+                        </Typography>
                         {details && (
-                            <button
+                            <Typography variant="caption" sx={{ color: "text.secondary", fontFamily: "monospace" }}>
+                                {details.bill_number}
+                            </Typography>
+                        )}
+                    </Box>
+                </Box>
+                <Box sx={{ display: "flex", gap: 1 }}>
+                    {details && (
+                        <>
+                            <Button
+                                startIcon={<PrintIcon />}
                                 onClick={handlePrint}
                                 disabled={generatingPdf}
-                                className="flex items-center gap-2 px-2 py-1 text-slate-700 hover:bg-blue-100 hover:text-blue-700 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+                                variant="outlined"
+                                size="small"
                                 title="Print / Preview PDF"
                             >
-                                {generatingPdf ? <div className="animate-spin h-4 w-4 border-2 border-blue-600 rounded-full border-t-transparent"></div> : <FaPrint size={20} />}
-
-                            </button>
-                        )}
-                        {details && (
-                            <button
+                                {generatingPdf ? "PDF..." : "Print"}
+                            </Button>
+                            <Button
+                                startIcon={<FileDownloadIcon />}
                                 onClick={handleExport}
                                 disabled={exporting}
-                                className="flex items-center gap-2 px-2 py-1  hover:bg-emerald-100 text-emerald-700 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+                                variant="outlined"
+                                color="success"
+                                size="small"
                                 title="Export to Excel"
                             >
-                                <FaFileExcel size={20} />
+                                {exporting ? "Exporting..." : "Excel"}
+                            </Button>
+                        </>
+                    )}
+                    <Button
+                        onClick={onClose}
+                        variant="text"
+                        size="small"
+                        sx={{ minWidth: "auto", p: 1 }}
+                    >
+                        <CloseIcon />
+                    </Button>
+                </Box>
+            </DialogTitle>
 
-                            </button>
-                        )}
-                        <button
-                            onClick={onClose}
-                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                        >
-                            <FaTimes className="text-xl" />
-                        </button>
-                    </div>
-                </div>
+            {/* View Toggle */}
+            {!loading && details && billCurrency !== 'INR' && (
+                <Box sx={{ display: "flex", justifyContent: "center", py: 1.5, px: 2, backgroundColor: "#f5f5f5", borderBottom: "1px solid #e0e0e0" }}>
+                    <ToggleButtonGroup
+                        value={activeCurrency}
+                        exclusive
+                        onChange={(e, newCurrency) => {
+                            if (newCurrency !== null) setViewCurrency(newCurrency);
+                        }}
+                        size="small"
+                    >
+                        <ToggleButton value={billCurrency}>{billCurrency} View</ToggleButton>
+                        <ToggleButton value="INR">INR View</ToggleButton>
+                    </ToggleButtonGroup>
+                </Box>
+            )}
 
-                {/* View Toggle */}
-                {!loading && details && billCurrency !== 'INR' && (
-                    <div className="flex justify-center bg-slate-50 py-3 border-b border-slate-100">
-                        <div className="inline-flex p-1 bg-slate-200/50 rounded-xl border border-slate-200 shadow-inner">
-                            <button
-                                onClick={() => setViewCurrency(billCurrency)}
-                                className={`px-8 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
-                                    activeCurrency !== 'INR'
-                                        ? 'bg-white text-blue-600 shadow-md transform scale-105'
-                                        : 'text-slate-500 hover:text-slate-700'
-                                }`}
-                            >
-                                {billCurrency} View
-                            </button>
-                            <button
-                                onClick={() => setViewCurrency('INR')}
-                                className={`px-8 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
-                                    activeCurrency === 'INR'
-                                        ? 'bg-white text-blue-600 shadow-md transform scale-105'
-                                        : 'text-slate-500 hover:text-slate-700'
-                                }`}
-                            >
-                                INR View
-                            </button>
-                        </div>
-                    </div>
-                )}
+            {/* Exchange Rate Info */}
+            {!loading && details && billCurrency !== 'INR' && convRate > 0 && (
+                <Box sx={{ display: "flex", justifyContent: "center", py: 1, px: 2, backgroundColor: "#f5f5f5", borderBottom: "1px solid #e0e0e0" }}>
+                    <Typography variant="caption" sx={{ color: "primary.main", fontWeight: "bold" }}>
+                        1 {billCurrency} = ₹{convRate.toFixed(2)}
+                    </Typography>
+                </Box>
+            )}
 
-                {/* Exchange Rate Info */}
-                {!loading && details && billCurrency !== 'INR' && convRate > 0 && (
-                    <div className="flex justify-center py-2 bg-slate-50 border-b border-slate-100">
-                        <div className="bg-blue-50 text-blue-700 px-4 py-1 rounded-full border border-blue-100 text-[10px] font-bold flex items-center gap-2 shadow-sm">
-                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                            1 {billCurrency} = ₹{convRate.toFixed(2)}
-                        </div>
-                    </div>
-                )}
+            <DialogContent dividers sx={{ overflow: "auto", maxHeight: "calc(90vh - 200px)", backgroundColor: "#fafafa" }}>
+                {loading ? (
+                    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", py: 8 }}>
+                        <CircularProgress />
+                        <Typography sx={{ mt: 2, color: "text.secondary" }}>Loading Bill Details...</Typography>
+                    </Box>
+                ) : details ? (
+                    <Stack spacing={3}>
 
-                {/* Body */}
-                <div className="flex-1 overflow-y-auto bg-white">
-                    {loading ? (
-                        <div className="flex flex-col items-center justify-center h-64 text-slate-400">
-                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-3"></div>
-                            <span className="font-medium animate-pulse">Loading Bill Details...</span>
-                        </div>
-                    ) : details ? (
-                        <div className="p-6 space-y-8">
+                        {/* Status & Dates Banner */}
+                        <Paper sx={{ p: 2, backgroundColor: "#f0f4ff", border: "1px solid #e3f2fd" }}>
+                            <Grid container spacing={2} alignItems="center">
+                                <Grid item xs={12} sm="auto">
+                                    <Chip
+                                        label={details.status}
+                                        color={
+                                            details.status === 'GENERATED' ? 'primary' :
+                                            details.status === 'PAID' ? 'success' : 'default'
+                                        }
+                                        variant="filled"
+                                    />
+                                </Grid>
+                                <Grid item xs={12} sm={3}>
+                                    <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: "bold", display: "block" }}>
+                                        Bill Date
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                                        {details.bill_date}
+                                    </Typography>
+                                </Grid>
+                                <Grid item xs={12} sm={3}>
+                                    <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: "bold", display: "block" }}>
+                                        Proforma Invoice
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: "bold", fontFamily: "monospace" }}>
+                                        {details.pi_number}
+                                    </Typography>
+                                </Grid>
+                                <Grid item xs={12} sm={3}>
+                                    <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: "bold", display: "block" }}>
+                                        Bill Type
+                                    </Typography>
+                                    <Chip
+                                        label={details.bill_type || 'DOMESTIC'}
+                                        color={details.bill_type === 'INTERNATIONAL' ? 'warning' : 'default'}
+                                        size="small"
+                                    />
+                                </Grid>
+                                <Grid item xs={12} sm="auto" sx={{ textAlign: { sm: "right" } }}>
+                                    <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: "bold", display: "block" }}>
+                                        Created By
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                                        {details.created_by_name}
+                                    </Typography>
+                                </Grid>
+                            </Grid>
+                        </Paper>
 
-                            {/* Status & Dates Banner */}
-                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                <div className="flex items-center gap-4">
-                                    <div className={`px-4 py-1.5 rounded-full text-sm font-bold tracking-wide uppercase shadow-sm
-                                        ${details.status === 'GENERATED' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
-                                            details.status === 'PAID' ? 'bg-green-100 text-green-700 border border-green-200' :
-                                                'bg-slate-100 text-slate-700 border border-slate-200'}`}>
-                                        {details.status}
-                                    </div>
-                                    <div className="w-px h-8 bg-slate-300 hidden md:block"></div>
-                                    <div className="text-sm">
-                                        <span className="text-slate-500 block text-xs uppercase font-semibold">Bill Date</span>
-                                        <span className="font-medium text-slate-900 flex items-center gap-1">
-                                            <FaCalendarAlt className="text-slate-400 text-xs" />
-                                            {details.bill_date}
-                                        </span>
-                                    </div>
-                                    <div className="w-px h-8 bg-slate-300 hidden md:block"></div>
-                                    <div className="text-sm">
-                                        <span className="text-slate-500 block text-xs uppercase font-semibold">Proforma Invoice</span>
-                                        <span className="font-medium text-slate-900 flex items-center gap-1">
-                                            <FaHashtag className="text-slate-400 text-xs" />
-                                            {details.pi_number}
-                                        </span>
-                                    </div>
-                                    <div className="w-px h-8 bg-slate-300 hidden md:block"></div>
-                                    <div className="text-sm">
-                                        <span className="text-slate-500 block text-xs uppercase font-semibold">Bill Type</span>
-                                        <span className={`font-bold flex items-center gap-1 ${details.bill_type === 'INTERNATIONAL' ? 'text-orange-600' : 'text-blue-600'}`}>
-                                            {details.bill_type || 'DOMESTIC'}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <span className="text-xs text-slate-500 uppercase font-semibold">Created By</span>
-                                    <p className="text-sm font-medium text-slate-800">{details.created_by_name}</p>
-                                </div>
-                            </div>
+                        {/* Client Info Card */}
+                        <Card variant="outlined">
+                            <CardContent>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, pb: 1.5, borderBottom: "1px solid #e0e0e0" }}>
+                                    <BusinessIcon sx={{ color: "primary.main" }} fontSize="small" />
+                                    <Typography variant="subtitle2" sx={{ textTransform: "uppercase", fontWeight: "bold" }}>
+                                        Client Information
+                                    </Typography>
+                                </Box>
+                                <Grid container spacing={2}>
+                                    <Grid item xs={12} sm={6} md={4}>
+                                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: "bold", display: "block" }}>
+                                            Client Name
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                                            {details.client_name}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={4}>
+                                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: "bold", display: "block" }}>
+                                            Contact Person
+                                        </Typography>
+                                        <Typography variant="body2">
+                                            {details.contact_person || 'N/A'}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={4}>
+                                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: "bold", display: "block" }}>
+                                            Phone
+                                        </Typography>
+                                        <Typography variant="body2">
+                                            {details.phone || 'N/A'}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={4}>
+                                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: "bold", display: "block" }}>
+                                            Email
+                                        </Typography>
+                                        <Typography variant="body2">
+                                            {details.email || 'N/A'}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={12} md={8}>
+                                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: "bold", display: "block" }}>
+                                            Address
+                                        </Typography>
+                                        <Typography variant="body2">
+                                            {details.address || 'N/A'}
+                                        </Typography>
+                                    </Grid>
+                                </Grid>
+                            </CardContent>
+                        </Card>
 
-                            {/* Client Info Grid */}
-                            <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
-                                <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4 border-b border-slate-200 pb-2 flex items-center gap-2">
-                                    <FaBuilding className="text-slate-400" /> Client Information
-                                </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-                                    <div>
-                                        <p className="text-xs text-slate-500 uppercase">Client Name</p>
-                                        <p className="font-semibold text-slate-900 text-base">{details.client_name}</p>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <div>
-                                            <p className="text-xs text-slate-500 uppercase">Contact Person</p>
-                                            <p className="font-medium text-slate-800">{details.contact_person || 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-slate-500 uppercase">Phone</p>
-                                            <p className="font-medium text-slate-800">{details.phone || 'N/A'}</p>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <div>
-                                            <p className="text-xs text-slate-500 uppercase">Email</p>
-                                            <p className="font-medium text-slate-800">{details.email || 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-slate-500 uppercase">Address</p>
-                                            <p className="text-slate-700 italic">{details.address || 'N/A'}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        {/* Items Table */}
+                        <Box>
+                            <Typography variant="subtitle2" sx={{ textTransform: "uppercase", fontWeight: "bold", mb: 2 }}>
+                                Bill Items
+                            </Typography>
+                            <TableContainer component={Paper}>
+                                <Table size="small">
+                                    <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
+                                        <TableRow>
+                                            <TableCell sx={{ fontWeight: "bold" }}>Product Details</TableCell>
+                                            <TableCell align="center" sx={{ fontWeight: "bold" }}>HSN</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: "bold" }}>Qty</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: "bold" }}>Rate ({activeCurrency})</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: "bold" }}>Amount ({activeCurrency})</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {details.items?.map((item, idx) => (
+                                            <TableRow key={item.id || idx} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#f9f9f9' } }}>
+                                                <TableCell>
+                                                    <Box>
+                                                        <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                                                            {item.item_name}
+                                                        </Typography>
+                                                        <Typography variant="caption" sx={{ fontFamily: "monospace", color: "text.secondary", display: "block" }}>
+                                                            {item.product_code || item.item_code}
+                                                        </Typography>
+                                                        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                                                            {item.description}
+                                                        </Typography>
+                                                    </Box>
+                                                </TableCell>
+                                                <TableCell align="center" sx={{ fontFamily: "monospace", fontSize: "0.85rem" }}>
+                                                    {item.hsn_code}
+                                                </TableCell>
+                                                <TableCell align="right">
+                                                    <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                                                        {Number(item.delivered_quantity !== undefined && item.delivered_quantity !== null ? item.delivered_quantity : item.quantity || 0).toFixed(2)} <span style={{ fontSize: "0.75rem" }}>{item.unit}</span>
+                                                    </Typography>
+                                                    {item.ordered_quantity !== undefined && item.ordered_quantity !== null && (
+                                                        <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
+                                                            Order: {Number(item.ordered_quantity).toFixed(2)}
+                                                        </Typography>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ fontFamily: "monospace" }}>
+                                                    {formatCurrency(toView(item.rate), activeCurrency)}
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: "bold", fontFamily: "monospace" }}>
+                                                    {formatCurrency(toView(item.amount), activeCurrency)}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                    <TableFooter sx={{ backgroundColor: "#f5f5f5" }}>
+                                        <TableRow>
+                                            <TableCell colSpan={4} align="right" sx={{ fontWeight: "bold" }}>
+                                                Total Items Amount ({activeCurrency})
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: "bold", fontFamily: "monospace" }}>
+                                                {formatCurrency(toView(details.subtotal), activeCurrency)}
+                                            </TableCell>
+                                        </TableRow>
+                                    </TableFooter>
+                                </Table>
+                            </TableContainer>
+                        </Box>
 
-                            {/* Items Table */}
-                            <div>
-                                <h3 className="text-lg font-bold text-slate-800 mb-4">Bill Items</h3>
-                                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                                    <table className="w-full text-left text-sm">
-                                        <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase text-xs">
-                                            <tr>
-                                                <th className="px-5 py-3">Product Details</th>
-                                                <th className="px-5 py-3 text-center">HSN</th>
-                                                <th className="px-5 py-3 text-right">Qty</th>
-                                                <th className="px-5 py-3 text-right">Rate ({activeCurrency})</th>
-                                                <th className="px-5 py-3 text-right">Amount ({activeCurrency})</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100 bg-white">
-                                            {details.items?.map((item, idx) => (
-                                                <tr key={item.id || idx} className="odd:bg-slate-100 even:bg-white hover:bg-slate-200   transition-colors">
-                                                    <td className="px-5 py-3">
-                                                        <div className="font-semibold text-slate-800">{item.item_name}</div>
-                                                        <div className="flex flex-wrap gap-2 mt-1">
-                                                            <span className="text-xs font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                                                                {item.product_code || item.item_code}
-                                                            </span>
-                                                        </div>
-                                                        <div className="text-xs text-slate-500 mt-1">{item.description}</div>
-                                                    </td>
-                                                    <td className="px-5 py-3 text-center text-slate-500 font-mono text-xs">
-                                                        {item.hsn_code}
-                                                    </td>
-                                                    <td className="px-5 py-3 text-right">
-                                                        <div className="font-bold text-slate-800">
-                                                            {Number(item.delivered_quantity !== undefined && item.delivered_quantity !== null ? item.delivered_quantity : item.quantity || 0).toFixed(2)} <span className="text-xs font-normal text-slate-500">{item.unit}</span>
-                                                        </div>
-                                                        {item.ordered_quantity !== undefined && item.ordered_quantity !== null && (
-                                                            <div className="text-[10px] text-slate-400 mt-0.5" title="Ordered / Previously Delivered / Pending">
-                                                                Order: {Number(item.ordered_quantity).toFixed(2)} | Pend: {Number(item.pending_quantity || 0).toFixed(2)}
-                                                            </div>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-5 py-3 text-right font-mono text-slate-700">
-                                                        {formatCurrency(toView(item.rate), activeCurrency)}
-                                                    </td>
-                                                    <td className="px-5 py-3 text-right font-semibold font-mono text-slate-900">
-                                                        {formatCurrency(toView(item.amount), activeCurrency)}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                        {/* Table Footer for quick total check */}
-                                        <tfoot className="bg-slate-50 border-t border-slate-200">
-                                            <tr>
-                                                <td colSpan="4" className="px-5 py-2 text-right text-xs text-slate-500 uppercase font-semibold">Total Items Amount ({activeCurrency})</td>
-                                                <td className="px-5 py-2 text-right font-mono font-medium text-slate-700">
-                                                    {formatCurrency(toView(details.subtotal), activeCurrency)}
-                                                </td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-                            </div>
-
-                            {/* Financial Summary */}
-                            {/* Bottom Section: Remarks & Financials */}
-                            <div className="flex flex-col md:flex-row gap-6">
-                                {/* Left Side: Remarks & Balance */}
-                                <div className="flex-1 flex flex-col gap-4">
-                                    <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 flex-1">
-                                        <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 border-b border-slate-200 pb-2 flex items-center gap-2">
-                                            <FaInfoCircle className="text-slate-400" /> Remarks
-                                        </h3>
-                                        <p className="text-sm text-slate-600 italic leading-relaxed">
+                        {/* Bottom Section: Remarks & Financials */}
+                        <Grid container spacing={3}>
+                            {/* Left Side: Remarks & Summary */}
+                            <Grid item xs={12} md={6}>
+                                <Card variant="outlined">
+                                    <CardContent>
+                                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5, pb: 1.5, borderBottom: "1px solid #e0e0e0" }}>
+                                            <InfoIcon sx={{ color: "primary.main" }} fontSize="small" />
+                                            <Typography variant="subtitle2" sx={{ textTransform: "uppercase", fontWeight: "bold" }}>
+                                                Remarks
+                                            </Typography>
+                                        </Box>
+                                        <Typography variant="body2" sx={{ color: "text.secondary", minHeight: "60px" }}>
                                             {details.remarks || "No remarks provided."}
-                                        </p>
-                                    </div>
-
-                                    {/* Quick Summary Box moved here */}
-                                    <div className="bg-blue-50/50 rounded-xl p-5 border border-blue-100 flex items-center justify-between">
-                                        <div>
-                                            <p className="text-xs text-blue-500 uppercase font-bold">Total Items</p>
-                                            <p className="text-2xl font-bold text-blue-700">{details.total_items || details.items?.length || 0}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-xs text-blue-500 uppercase font-bold">Balance Due ({activeCurrency})</p>
-                                            <p className="text-xl font-bold text-red-600">
+                                        </Typography>
+                                    </CardContent>
+                                </Card>
+                                <Paper sx={{ mt: 2, p: 2, backgroundColor: "#e3f2fd", border: "1px solid #bbdefb" }}>
+                                    <Grid container spacing={2}>
+                                        <Grid item xs={6}>
+                                            <Typography variant="caption" sx={{ color: "primary.main", fontWeight: "bold", display: "block" }}>
+                                                Total Items
+                                            </Typography>
+                                            <Typography variant="h6" sx={{ color: "primary.main", fontWeight: "bold" }}>
+                                                {details.total_items || details.items?.length || 0}
+                                            </Typography>
+                                        </Grid>
+                                        <Grid item xs={6} sx={{ textAlign: "right" }}>
+                                            <Typography variant="caption" sx={{ color: "error.main", fontWeight: "bold", display: "block" }}>
+                                                Balance Due ({activeCurrency})
+                                            </Typography>
+                                            <Typography variant="h6" sx={{ color: "error.main", fontWeight: "bold" }}>
                                                 {formatCurrency(toView(details.balance), activeCurrency)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
+                                            </Typography>
+                                        </Grid>
+                                    </Grid>
+                                </Paper>
+                            </Grid>
 
-                                {/* Right Side: Financial Summary */}
-                                <div className="w-full md:w-96 bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-3 shadow-sm">
-                                    <div className="flex justify-between text-slate-600 text-sm">
-                                        <span>Subtotal ({activeCurrency})</span>
-                                        <span className="font-mono font-medium">
-                                            {formatCurrency(toView(details.subtotal), activeCurrency)}
-                                        </span>
-                                    </div>
-                                    <div className="py-3 border-y border-slate-200 space-y-2">
+                            {/* Right Side: Financial Summary */}
+                            <Grid item xs={12} md={6}>
+                                <Paper sx={{ p: 2.5, backgroundColor: "#f5f5f5" }}>
+                                    <Stack spacing={1.5}>
+                                        <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                                            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                                                Subtotal ({activeCurrency})
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ fontFamily: "monospace", fontWeight: "bold" }}>
+                                                {formatCurrency(toView(details.subtotal), activeCurrency)}
+                                            </Typography>
+                                        </Box>
+                                        <Divider />
                                         {parseFloat(details.cgst_amount) > 0 && (
-                                            <div className="flex justify-between text-xs text-slate-500">
-                                                <span>CGST ({details.cgst_percentage}%)</span>
-                                                <span className="font-mono">{formatCurrency(toView(details.cgst_amount), activeCurrency)}</span>
-                                            </div>
+                                            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                                                <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                                                    CGST ({details.cgst_percentage}%)
+                                                </Typography>
+                                                <Typography variant="caption" sx={{ fontFamily: "monospace" }}>
+                                                    {formatCurrency(toView(details.cgst_amount), activeCurrency)}
+                                                </Typography>
+                                            </Box>
                                         )}
                                         {parseFloat(details.sgst_amount) > 0 && (
-                                            <div className="flex justify-between text-xs text-slate-500">
-                                                <span>SGST ({details.sgst_percentage}%)</span>
-                                                <span className="font-mono">{formatCurrency(toView(details.sgst_amount), activeCurrency)}</span>
-                                            </div>
+                                            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                                                <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                                                    SGST ({details.sgst_percentage}%)
+                                                </Typography>
+                                                <Typography variant="caption" sx={{ fontFamily: "monospace" }}>
+                                                    {formatCurrency(toView(details.sgst_amount), activeCurrency)}
+                                                </Typography>
+                                            </Box>
                                         )}
                                         {parseFloat(details.igst_amount) > 0 && (
-                                            <div className="flex justify-between text-xs text-slate-500">
-                                                <span>IGST ({details.igst_percentage}%)</span>
-                                                <span className="font-mono">{formatCurrency(toView(details.igst_amount), activeCurrency)}</span>
-                                            </div>
+                                            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                                                <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                                                    IGST ({details.igst_percentage}%)
+                                                </Typography>
+                                                <Typography variant="caption" sx={{ fontFamily: "monospace" }}>
+                                                    {formatCurrency(toView(details.igst_amount), activeCurrency)}
+                                                </Typography>
+                                            </Box>
                                         )}
-                                        <div className="flex justify-between text-slate-700 font-semibold text-sm pt-1">
-                                            <span>Total GST</span>
-                                            <span className="font-mono">{formatCurrency(toView(details.total_gst), activeCurrency)}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Grand Total */}
-                                    <div className="flex justify-between items-center text-slate-800 font-bold text-lg">
-                                        <span>Total Amount ({activeCurrency})</span>
-                                        <span className="font-mono">
-                                            {formatCurrency(toView(details.total_amount), activeCurrency)}
-                                        </span>
-                                    </div>
-
-                                    {/* Adjustments */}
-                                    <div className="space-y-2 pt-2">
+                                        <Box sx={{ display: "flex", justifyContent: "space-between", fontWeight: "bold" }}>
+                                            <Typography variant="body2">Total GST</Typography>
+                                            <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+                                                {formatCurrency(toView(details.total_gst), activeCurrency)}
+                                            </Typography>
+                                        </Box>
+                                        <Divider />
+                                        <Box sx={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", color: "primary.main" }}>
+                                            <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                                                Total Amount ({activeCurrency})
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ fontFamily: "monospace", fontWeight: "bold" }}>
+                                                {formatCurrency(toView(details.total_amount), activeCurrency)}
+                                            </Typography>
+                                        </Box>
                                         {parseFloat(details.discount_amount) > 0 && (
-                                            <div className="flex justify-between text-red-600 text-sm font-medium">
-                                                <span>Less: Discount</span>
-                                                <span className="font-mono">- {formatCurrency(toView(details.discount_amount), activeCurrency)}</span>
-                                            </div>
+                                            <Box sx={{ display: "flex", justifyContent: "space-between", color: "error.main" }}>
+                                                <Typography variant="body2">Less: Discount</Typography>
+                                                <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+                                                    - {formatCurrency(toView(details.discount_amount), activeCurrency)}
+                                                </Typography>
+                                            </Box>
                                         )}
-                                        <div className="flex justify-between text-green-600 text-sm font-medium">
-                                            <span>Amount Paid ({activeCurrency})</span>
-                                            <span className="font-mono">
+                                        <Box sx={{ display: "flex", justifyContent: "space-between", color: "success.main" }}>
+                                            <Typography variant="body2">Amount Paid ({activeCurrency})</Typography>
+                                            <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
                                                 {formatCurrency(toView(details.amount_paid), activeCurrency)}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Final Payable */}
-                                    <div className="pt-3 mt-1 border-t-2 border-slate-300">
-                                        <div className="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-                                            <span className="text-slate-800 font-bold">Net Payable ({activeCurrency})</span>
-                                            <span className="font-mono font-bold text-xl text-blue-600">
+                                            </Typography>
+                                        </Box>
+                                        <Divider />
+                                        <Box sx={{ display: "flex", justifyContent: "space-between", backgroundColor: "#fff", p: 1.5, borderRadius: 1, border: "1px solid #e0e0e0" }}>
+                                            <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                                                Net Payable ({activeCurrency})
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ fontFamily: "monospace", fontWeight: "bold", color: "primary.main" }}>
                                                 {formatCurrency(toView(details.net_payable), activeCurrency)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                                            </Typography>
+                                        </Box>
+                                    </Stack>
+                                </Paper>
+                            </Grid>
+                        </Grid>
 
-                        </div>
-                    ) : (
-                        <div className="text-center py-20 text-slate-400 font-medium">
-                            Failed to load bill details.
-                        </div>
-                    )}
-                </div>
+                    </Stack>
+                ) : (
+                    <Alert severity="error">Failed to load bill details.</Alert>
+                )}
+            </DialogContent>
 
-                {/* Footer */}
-                <div className="bg-slate-50 px-6 py-4 border-t border-slate-200 flex justify-end">
-                    <button
-                        onClick={onClose}
-                        className="px-6 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg transition-colors focus:ring-2 focus:ring-slate-400 focus:outline-none"
-                    >
-                        Close
-                    </button>
-                </div>
-            </div>
-        </div>
+            <DialogActions sx={{ p: 2 }}>
+                <Button onClick={onClose}>Close</Button>
+            </DialogActions>
+        </Dialog>
     );
 };
 

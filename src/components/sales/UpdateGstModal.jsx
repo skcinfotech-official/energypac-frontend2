@@ -1,6 +1,21 @@
-
 import { useState, useEffect } from "react";
-import { FaTimes, FaPercent } from "react-icons/fa";
+import {
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Button,
+    TextField,
+    Box,
+    Typography,
+    CircularProgress,
+    Alert,
+    Stack,
+} from "@mui/material";
+import {
+    Close as CloseIcon,
+    Percent as PercentIcon,
+} from "@mui/icons-material";
 import { updateClientQuotationGst, getClientQuotationSummary } from "../../services/salesService";
 
 const UpdateGstModal = ({ isOpen, onClose, quotation, onSuccess }) => {
@@ -61,94 +76,123 @@ const UpdateGstModal = ({ isOpen, onClose, quotation, onSuccess }) => {
     if (!isOpen || !quotation) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                {/* Header */}
-                <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                    <h3 className="font-bold text-slate-800 flex items-center gap-2">
+        <Dialog
+            open={isOpen}
+            onClose={onClose}
+            maxWidth="sm"
+            fullWidth
+            PaperProps={{ sx: { borderRadius: 2 } }}
+        >
+            <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", pb: 2 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <PercentIcon sx={{ color: "primary.main" }} />
+                    <Typography variant="h6" sx={{ fontWeight: "bold" }}>
                         Update GST Rates
-                    </h3>
-                    <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-full transition-all">
-                        <FaTimes />
-                    </button>
-                </div>
+                    </Typography>
+                </Box>
+                <Button
+                    onClick={onClose}
+                    variant="text"
+                    size="small"
+                    sx={{ minWidth: "auto", p: 1 }}
+                >
+                    <CloseIcon />
+                </Button>
+            </DialogTitle>
 
-                <div className="p-6">
-                    <p className="text-sm text-slate-500 mb-4">
-                        Update tax rates for Quotation <span className="font-mono font-semibold text-slate-700">{quotation.quotation_number}</span>
-                    </p>
+            <DialogContent dividers>
+                <Stack spacing={2} sx={{ pt: 2 }}>
+                    <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                        Update tax rates for Quotation{" "}
+                        <Typography
+                            component="span"
+                            sx={{ fontFamily: "monospace", fontWeight: "bold", color: "text.primary" }}
+                        >
+                            {quotation.quotation_number}
+                        </Typography>
+                    </Typography>
 
                     {error && (
-                        <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg border border-red-200 text-sm">
+                        <Alert severity="error" onClose={() => setError("")}>
                             {error}
-                        </div>
+                        </Alert>
                     )}
 
                     {loading ? (
-                        <div className="text-center py-8 text-slate-500">Loading rates...</div>
+                        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", py: 3 }}>
+                            <CircularProgress size={32} />
+                            <Typography sx={{ mt: 1.5, color: "text.secondary", fontSize: "0.875rem" }}>
+                                Loading rates...
+                            </Typography>
+                        </Box>
                     ) : (
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">CGST %</label>
-                                <input
-                                    type="number"
-                                    name="cgst_percentage"
-                                    value={formData.cgst_percentage}
-                                    onChange={handleInputChange}
-                                    className="input w-full"
-                                    step="any"
-                                    min="0"
-                                    max="100"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">SGST %</label>
-                                <input
-                                    type="number"
-                                    name="sgst_percentage"
-                                    value={formData.sgst_percentage}
-                                    onChange={handleInputChange}
-                                    className="input w-full"
-                                    step="any"
-                                    min="0"
-                                    max="100"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">IGST %</label>
-                                <input
-                                    type="number"
-                                    name="igst_percentage"
-                                    value={formData.igst_percentage}
-                                    onChange={handleInputChange}
-                                    className="input w-full"
-                                    step="any"
-                                    min="0"
-                                    max="100"
-                                />
-                            </div>
-
-                            <div className="pt-4 flex justify-end gap-3">
-                                <button
-                                    type="button"
-                                    onClick={onClose}
-                                    className="px-4 py-2 text-slate-600 font-semibold hover:bg-slate-50 rounded-lg transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={submitting}
-                                    className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                                >
-                                    {submitting ? "Updating..." : "Update Rates"}
-                                </button>
-                            </div>
-                        </form>
+                        <Stack spacing={2.5} component="form" onSubmit={handleSubmit}>
+                            <TextField
+                                fullWidth
+                                label="CGST %"
+                                name="cgst_percentage"
+                                type="number"
+                                value={formData.cgst_percentage}
+                                onChange={handleInputChange}
+                                variant="outlined"
+                                size="small"
+                                inputProps={{
+                                    step: "any",
+                                    min: "0",
+                                    max: "100"
+                                }}
+                                helperText="Central GST percentage"
+                            />
+                            <TextField
+                                fullWidth
+                                label="SGST %"
+                                name="sgst_percentage"
+                                type="number"
+                                value={formData.sgst_percentage}
+                                onChange={handleInputChange}
+                                variant="outlined"
+                                size="small"
+                                inputProps={{
+                                    step: "any",
+                                    min: "0",
+                                    max: "100"
+                                }}
+                                helperText="State GST percentage"
+                            />
+                            <TextField
+                                fullWidth
+                                label="IGST %"
+                                name="igst_percentage"
+                                type="number"
+                                value={formData.igst_percentage}
+                                onChange={handleInputChange}
+                                variant="outlined"
+                                size="small"
+                                inputProps={{
+                                    step: "any",
+                                    min: "0",
+                                    max: "100"
+                                }}
+                                helperText="Integrated GST percentage"
+                            />
+                        </Stack>
                     )}
-                </div>
-            </div>
-        </div>
+                </Stack>
+            </DialogContent>
+
+            <DialogActions sx={{ p: 2, gap: 1 }}>
+                <Button onClick={onClose} color="inherit">
+                    Cancel
+                </Button>
+                <Button
+                    onClick={handleSubmit}
+                    variant="contained"
+                    disabled={submitting || loading}
+                >
+                    {submitting ? "Updating..." : "Update Rates"}
+                </Button>
+            </DialogActions>
+        </Dialog>
     );
 };
 

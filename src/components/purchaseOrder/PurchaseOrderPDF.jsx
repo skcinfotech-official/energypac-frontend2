@@ -87,8 +87,39 @@ const getCurrencySymbol = (code) => {
     }
 };
 
-const PurchaseOrderPDF = ({ details }) => {
+const PurchaseOrderPDF = ({ details, verification }) => {
     const poCurrency = (details.currency || 'INR').toUpperCase();
+
+    // Extract verified users from verification data
+    const getVerifiedUser = (role) => {
+        if (!verification || !verification.verifiers) return null;
+        return verification.verifiers.find(v => v.role === role);
+    };
+
+    // Render one signatory slot: signature image (if signed) above the line,
+    // then the signer name (when verified) and the role label.
+    const renderSignatory = (v, label, align) => {
+        const signed = v && v.status === 'VERIFIED';
+        return (
+            <View style={{ width: '50%', alignItems: align }}>
+                <View style={{ width: align === 'flex-end' ? '150px' : '130px', alignItems: 'center' }}>
+                    {signed && v.signature_base64 ? (
+                        <Image src={v.signature_base64} style={{ width: 95, height: 36, objectFit: 'contain', marginBottom: 2 }} />
+                    ) : (
+                        <View style={{ height: 38 }} />
+                    )}
+                    <View style={{ width: '100%', borderTopWidth: 1, borderTopColor: '#000', paddingTop: 3, alignItems: align === 'flex-end' ? 'center' : 'flex-start' }}>
+                        {signed && (
+                            <Text style={{ fontSize: 8, fontWeight: 'bold', color: '#10b981' }}>
+                                ✓ {v.full_name}
+                            </Text>
+                        )}
+                        <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>{label}</Text>
+                    </View>
+                </View>
+            </View>
+        );
+    };
 
     const formatCurrency = (val, curr = "INR") => {
         const c = curr?.toString().trim().toUpperCase() || "INR";
@@ -161,7 +192,8 @@ const PurchaseOrderPDF = ({ details }) => {
         return {
             id: `term-${index}`,
             label: label,
-            value: value
+            value: value,
+            bold: !!(term && typeof term === 'object' && term.bold),
         };
     }).filter(Boolean);
 
@@ -307,7 +339,7 @@ const PurchaseOrderPDF = ({ details }) => {
                                         <Text style={{ width: '12px', fontSize: 7.5, fontWeight: 'bold' }}>{idx + 1}</Text>
                                         <Text style={{ width: '80px', fontSize: 7.5, fontWeight: 'bold' }}>{term.label}</Text>
                                         <Text style={{ width: '8px', fontSize: 7.5, fontWeight: 'bold' }}>:</Text>
-                                        <Text style={{ width: '200px', fontSize: 7.5, lineHeight: 1.1 }}>{term.value}</Text>
+                                        <Text style={{ width: '200px', fontSize: 7.5, lineHeight: 1.1, fontWeight: term.bold ? 'bold' : 'normal' }}>{term.value}</Text>
                                     </View>
                                 ))}
                             </View>
@@ -387,18 +419,10 @@ const PurchaseOrderPDF = ({ details }) => {
                     </View>
                 </View>
 
-                {/* 7. Signatures Block — blank for manual signing */}
+                {/* 7. Signatures Block */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 35 }} wrap={false}>
-                    <View style={{ width: '50%', alignItems: 'flex-start' }}>
-                        <View style={{ marginTop: 25, width: '130px', borderTopWidth: 1, borderTopColor: '#000', paddingTop: 3 }}>
-                            <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>Checked By</Text>
-                        </View>
-                    </View>
-                    <View style={{ width: '50%', alignItems: 'flex-end' }}>
-                        <View style={{ marginTop: 25, width: '150px', borderTopWidth: 1, borderTopColor: '#000', paddingTop: 3, alignItems: 'center' }}>
-                            <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>Authorized Signatory</Text>
-                        </View>
-                    </View>
+                    {renderSignatory(getVerifiedUser('CHECKED_BY'), 'Checked By', 'flex-start')}
+                    {renderSignatory(getVerifiedUser('AUTHORIZED_SIGNATORY'), 'Authorized Signatory', 'flex-end')}
                 </View>
 
                 {/* Dynamic Footer with Page Numbering */}

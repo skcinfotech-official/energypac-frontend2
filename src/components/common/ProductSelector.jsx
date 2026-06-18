@@ -1,7 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { getProducts, createProduct } from "../../services/productService";
-import { HiSearch, HiX, HiPlus } from "react-icons/hi";
+import {
+    Box, Paper, TextField, InputAdornment, CircularProgress, List, ListItem,
+    ListItemButton, Typography, Button, Alert, Select, MenuItem
+} from "@mui/material";
+import { Search as SearchIcon, Close as CloseIcon, Add as AddIcon } from "@mui/icons-material";
 
 const ProductSelector = ({ value, onChange, placeholder = "Search product...", defaultItem = null, excludeIds = [] }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -172,138 +176,190 @@ const ProductSelector = ({ value, onChange, placeholder = "Search product...", d
 
     // Dropdown Content
     const dropdownContent = isOpen && coords.width > 0 && (
-        <div
-            className="product-selector-portal fixed z-[9999] bg-white border border-slate-200 rounded-lg shadow-xl flex flex-col"
-            style={{
-                top: coords.placement === 'bottom' ? coords.top : 'auto',
-                bottom: coords.placement === 'top' ? (window.innerHeight - coords.bottom) : 'auto',
-                left: coords.left,
+        <Paper
+            className="product-selector-portal"
+            sx={{
+                position: 'fixed',
+                zIndex: 9999,
                 width: coords.width,
-                maxHeight: '250px'
+                top: coords.placement === 'bottom' ? coords.top + 4 : 'auto',
+                bottom: coords.placement === 'top' ? (window.innerHeight - coords.bottom + 4) : 'auto',
+                left: coords.left,
+                maxHeight: '320px',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
             }}
+            elevation={4}
         >
-            <div className="sticky top-0 bg-white p-2 border-b border-slate-100 shrink-0">
-                <div className="relative">
-                    <HiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                        autoFocus
-                        type="text"
-                        className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 border-none rounded-md focus:ring-1 focus:ring-blue-500"
-                        placeholder="Type to search..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                </div>
-            </div>
+            <Box sx={{ p: 1, borderBottom: '2px solid', borderColor: '#dbeafe', flexShrink: 0, bgcolor: '#f0f9ff' }}>
+                <TextField
+                    autoFocus
+                    fullWidth
+                    size="small"
+                    placeholder="Search..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <SearchIcon sx={{ fontSize: '1.1rem', color: '#0ea5e9' }} />
+                            </InputAdornment>
+                        ),
+                    }}
+                    sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'white', borderRadius: 1, fontSize: '13px', "& fieldset": { borderColor: '#dbeafe' } } }}
+                />
+            </Box>
 
             {/* Quick Add Form */}
             {showQuickAdd ? (
-                <div className="p-3 border-b border-slate-100 bg-blue-50/50 space-y-2">
-                    <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">Quick Add New Item</span>
-                        <button type="button" onClick={() => { setShowQuickAdd(false); setQuickAddError(""); }} className="text-slate-400 hover:text-slate-600">
-                            <HiX size={14} />
-                        </button>
-                    </div>
-                    <input
+                <Box sx={{ p: 1.2, borderBottom: '2px solid', borderColor: '#dbeafe', bgcolor: '#f0f9ff', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography sx={{ fontWeight: 700, textTransform: 'uppercase', color: '#0ea5e9', letterSpacing: 0.5, fontSize: '9px' }}>
+                            Add New
+                        </Typography>
+                        <CloseIcon
+                            onClick={() => { setShowQuickAdd(false); setQuickAddError(""); }}
+                            sx={{ fontSize: '1rem', cursor: 'pointer', color: '#0ea5e9', '&:hover': { color: '#0284c7' } }}
+                        />
+                    </Box>
+                    <TextField
                         autoFocus
-                        type="text"
-                        placeholder="Item Name *"
+                        fullWidth
+                        size="small"
+                        placeholder="Item Name"
                         value={quickAddForm.item_name}
                         onChange={(e) => setQuickAddForm(prev => ({ ...prev, item_name: e.target.value }))}
-                        className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
                         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleQuickAdd(); } }}
+                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1, fontSize: '12px', "& fieldset": { borderColor: '#dbeafe' } } }}
                     />
-                    <select
+                    <Select
+                        fullWidth
+                        size="small"
                         value={quickAddForm.unit}
                         onChange={(e) => setQuickAddForm(prev => ({ ...prev, unit: e.target.value }))}
-                        className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500 outline-none bg-white"
+                        sx={{ borderRadius: 1, fontSize: '12px', "& .MuiOutlinedInput-notchedOutline": { borderColor: '#dbeafe' } }}
                     >
-                        <option value="PCS">PCS</option>
-                        <option value="KG">KG</option>
-                        <option value="MTR">MTR</option>
-                        <option value="LTR">LTR</option>
-                        <option value="SET">SET</option>
-                        <option value="BOX">BOX</option>
-                        <option value="NOS">NOS</option>
-                        <option value="LOT">LOT</option>
-                    </select>
-                    {quickAddError && <p className="text-[11px] text-red-500 font-medium">{quickAddError}</p>}
-                    <button
-                        type="button"
+                        <MenuItem value="PCS">PCS</MenuItem>
+                        <MenuItem value="KG">KG</MenuItem>
+                        <MenuItem value="MTR">MTR</MenuItem>
+                        <MenuItem value="LTR">LTR</MenuItem>
+                        <MenuItem value="SET">SET</MenuItem>
+                        <MenuItem value="BOX">BOX</MenuItem>
+                        <MenuItem value="NOS">NOS</MenuItem>
+                        <MenuItem value="LOT">LOT</MenuItem>
+                    </Select>
+                    {quickAddError && <Alert severity="error" sx={{ py: 0.5, fontSize: '11px' }}>{quickAddError}</Alert>}
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        size="small"
                         onClick={handleQuickAdd}
                         disabled={quickAddLoading}
-                        className="w-full py-1.5 bg-blue-600 text-white text-xs font-bold rounded-md hover:bg-blue-500 transition-colors disabled:opacity-50"
+                        sx={{ bgcolor: '#0ea5e9', py: 0.8, textTransform: 'uppercase', fontWeight: 700, fontSize: '11px' }}
                     >
-                        {quickAddLoading ? "Creating..." : "Add & Select"}
-                    </button>
-                </div>
+                        {quickAddLoading ? "Creating..." : "Add"}
+                    </Button>
+                </Box>
             ) : (
-                <div className="px-3 py-2 border-b border-slate-100">
-                    <button
-                        type="button"
+                <Box sx={{ px: 1.5, py: 0.8, borderBottom: '2px solid', borderColor: '#dbeafe', bgcolor: '#f8fbff' }}>
+                    <Button
+                        fullWidth
+                        variant="outlined"
+                        size="small"
+                        startIcon={<AddIcon sx={{ fontSize: '16px' }} />}
                         onClick={() => { setShowQuickAdd(true); setQuickAddForm(prev => ({ ...prev, item_name: search })); }}
-                        className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors border border-blue-100"
+                        sx={{ textTransform: 'uppercase', fontWeight: 700, color: '#0ea5e9', borderColor: '#0ea5e9', py: 0.8, fontSize: '11px' }}
                     >
-                        <HiPlus size={14} /> Add New Item
-                    </button>
-                </div>
+                        Add Item
+                    </Button>
+                </Box>
             )}
 
             {/* Scrollable List */}
-            <div className="overflow-y-auto max-h-[200px] py-1">
+            <Box sx={{ overflowY: 'auto', maxHeight: '240px', py: 0.8 }}>
                 {loading ? (
-                    <div className="px-4 py-3 text-sm text-slate-500 text-center">Loading...</div>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 3 }}>
+                        <CircularProgress size={28} sx={{ color: '#0ea5e9' }} />
+                    </Box>
                 ) : filteredProducts.length > 0 ? (
-                    filteredProducts.map((p) => (
-                        <div
-                            key={p.id || p.uuid}
-                            className="px-4 py-2 text-sm hover:bg-blue-50 cursor-pointer transition-colors"
-                            onClick={() => {
-                                onChange(p.uuid || p.id, p);
-                                setIsOpen(false);
-                                setSearch("");
-                            }}
-                        >
-                            <div className="font-medium text-slate-900">{p.item_name}</div>
-                            <div className="text-xs text-slate-500 flex items-center justify-between">
-                                <span>{p.item_code || "No code"}</span>
-                                <span className={p.current_stock > 0 ? "text-emerald-600 font-medium" : "text-red-500"}>
-                                    Stock: {p.current_stock ?? '-'}
-                                </span>
-                            </div>
-                        </div>
-                    ))
+                    <List disablePadding>
+                        {filteredProducts.map((p) => (
+                            <ListItemButton
+                                key={p.id || p.uuid}
+                                onClick={() => {
+                                    onChange(p.uuid || p.id, p);
+                                    setIsOpen(false);
+                                    setSearch("");
+                                }}
+                                sx={{ py: 1.4, px: 2, borderBottom: '1px solid', borderColor: '#f0f0f0', '&:last-child': { borderBottom: 'none' }, '&:hover': { bgcolor: '#f0f9ff', borderLeft: '3px solid #0ea5e9', pl: '1.7rem' } }}
+                            >
+                                <Box sx={{ width: '100%' }}>
+                                    <Typography sx={{ fontWeight: 700, color: '#1e293b', fontSize: '14px', mb: 0.6 }}>
+                                        {p.item_name}
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                                        <Typography sx={{ color: '#64748b', fontSize: '12px', fontFamily: 'monospace', fontWeight: 600 }}>
+                                            {p.item_code || "N/A"}
+                                        </Typography>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: p.current_stock > 0 ? '#d1fae5' : '#fee2e2', px: 1.2, py: 0.4, borderRadius: 1 }}>
+                                            <Typography sx={{ fontWeight: 700, color: p.current_stock > 0 ? '#10b981' : '#ef4444', fontSize: '12px' }}>
+                                                {p.current_stock ?? '-'}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                </Box>
+                            </ListItemButton>
+                        ))}
+                    </List>
                 ) : (
-                    <div className="px-4 py-3 text-sm text-slate-500 text-center">No products found</div>
+                    <Typography sx={{ textAlign: 'center', color: 'text.secondary', py: 3, fontSize: '12px' }}>
+                        No products found
+                    </Typography>
                 )}
-            </div>
-        </div>
+            </Box>
+        </Paper>
     );
 
     return (
-        <div className="relative w-full" ref={dropdownRef}>
-            <div
-                className="input flex items-center justify-between cursor-pointer"
+        <Box sx={{ position: 'relative', width: '100%' }} ref={dropdownRef}>
+            <Box
                 onClick={() => setIsOpen(!isOpen)}
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    px: 2,
+                    py: 1.2,
+                    border: '2px solid',
+                    borderColor: isOpen ? '#0ea5e9' : '#dbeafe',
+                    borderRadius: 1.2,
+                    bgcolor: 'background.paper',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    minHeight: '44px',
+                    boxShadow: isOpen ? '0 2px 8px rgba(14, 165, 233, 0.12)' : '0 1px 3px rgba(0, 0, 0, 0.05)',
+                    '&:hover': { borderColor: '#0ea5e9', boxShadow: '0 2px 8px rgba(14, 165, 233, 0.1)' },
+                }}
             >
-                <span className={!selectedProduct ? "text-slate-400" : "text-slate-800"}>
+                <Typography sx={{ color: !selectedProduct ? 'text.secondary' : 'text.primary', fontSize: '14px', fontWeight: selectedProduct ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                     {selectedProduct ? `${selectedProduct.item_name} (${selectedProduct.item_code || "N/A"})` : placeholder}
-                </span>
+                </Typography>
                 {value && (
-                    <HiX
-                        className="text-slate-400 hover:text-slate-600 ml-2"
+                    <CloseIcon
                         onClick={(e) => {
                             e.stopPropagation();
                             onChange("");
                             setSearch("");
                         }}
+                        sx={{ cursor: 'pointer', color: 'text.secondary', ml: 1.5, flexShrink: 0, fontSize: '18px', '&:hover': { color: 'text.primary' } }}
                     />
                 )}
-            </div>
+            </Box>
 
             {isOpen && createPortal(dropdownContent, document.body)}
-        </div>
+        </Box>
     );
 };
 

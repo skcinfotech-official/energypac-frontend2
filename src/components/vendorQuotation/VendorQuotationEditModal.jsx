@@ -1,8 +1,52 @@
 import { useEffect, useState } from "react";
+import {
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Box,
+    Card,
+    CardContent,
+    TextField,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableRow,
+    Typography,
+    Button,
+    Alert,
+    CircularProgress,
+    Grid,
+    Chip,
+} from "@mui/material";
+import {
+    Close as CloseIcon,
+    FilePresent as FileInvoiceDollarIcon,
+    PersonOutlined as UserTieIcon,
+    Inventory2Outlined as BoxOpenIcon,
+    ChecklistOutlined as ClipboardListIcon,
+    EventOutlined as CalendarAltIcon,
+    Info as InformationCircleIcon,
+} from "@mui/icons-material";
+import { styled } from "@mui/material/styles";
 import { getVendorQuotationById, updateQuotation } from "../../services/vendorQuotationService";
 import { exchangeRateService } from "../../services/exchangeRateService";
-import { HiX, HiInformationCircle, HiRefresh } from "react-icons/hi";
-import { FaFileInvoiceDollar, FaUserTie, FaBoxOpen, FaClipboardList, FaSave, FaCalendarAlt } from "react-icons/fa";
+
+const StyledDialog = styled(Dialog)(({ theme }) => ({
+    "& .MuiDialog-paper": {
+        borderRadius: "16px",
+        maxWidth: "90vw",
+        width: "100%",
+    },
+}));
+
+const StyledInput = styled(TextField)(({ theme }) => ({
+    "& .MuiInputBase-root": {
+        backgroundColor: "#ffffff",
+        fontSize: "0.875rem",
+    },
+}));
 
 const VendorQuotationEditModal = ({ open, onClose, quotationId, onSuccess }) => {
     const [data, setData] = useState(null);
@@ -21,7 +65,7 @@ const VendorQuotationEditModal = ({ open, onClose, quotationId, onSuccess }) => 
             setData(null);
             setItems([]);
         }
-    }, [open, quotationId,]);
+    }, [open, quotationId]);
 
     const loadDetails = async () => {
         setLoading(true);
@@ -30,12 +74,8 @@ const VendorQuotationEditModal = ({ open, onClose, quotationId, onSuccess }) => 
             const res = await getVendorQuotationById(quotationId);
             setData(res);
             setCurrency(res.currency || "INR");
-            
-            // If it's a USD quotation, fetch the rate used (or current if not stored)
+
             if (res.currency === "USD") {
-                // If the backend doesn't provide the historical rate, we fetch current
-                // But usually we should use what's in the data.
-                // For now, let's fetch current to show what it would be worth now if not provided.
                 try {
                     const rateData = await exchangeRateService.getCurrentRate();
                     setExchangeRate(rateData.rate);
@@ -44,12 +84,13 @@ const VendorQuotationEditModal = ({ open, onClose, quotationId, onSuccess }) => 
                 }
             }
 
-            // Initialize editable items
             if (res.items) {
-                setItems(res.items.map(item => ({
-                    ...item,
-                    quoted_rate: item.quoted_rate || ""
-                })));
+                setItems(
+                    res.items.map((item) => ({
+                        ...item,
+                        quoted_rate: item.quoted_rate || "",
+                    }))
+                );
             }
         } catch (err) {
             console.error(err);
@@ -84,15 +125,12 @@ const VendorQuotationEditModal = ({ open, onClose, quotationId, onSuccess }) => 
         setSubmitting(true);
         setError("");
         try {
-            // Construct payload. 
-            // For PATCH, typically we send the list of items to update.
-            // We include 'id' to identify the quotation item (not vendor_item) as we are editing an existing quote.
             const payload = {
-                items: items.map(item => ({
+                items: items.map((item) => ({
                     id: item.id,
                     vendor_item: item.vendor_item,
-                    quoted_rate: parseFloat(item.quoted_rate) || 0
-                }))
+                    quoted_rate: parseFloat(item.quoted_rate) || 0,
+                })),
             };
 
             await updateQuotation(quotationId, payload);
@@ -106,203 +144,286 @@ const VendorQuotationEditModal = ({ open, onClose, quotationId, onSuccess }) => 
         }
     };
 
-    if (!open) return null;
-
     return (
-        <div
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-100 p-4 animate-in fade-in duration-300"
-            onClick={onClose}
-        >
-            <div
-                className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300 overflow-visible"
-                onClick={(e) => e.stopPropagation()}
-            >
-                {/* Header */}
-                <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-                    <div>
-                        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                            <FaFileInvoiceDollar className="text-blue-600" />
+        <StyledDialog open={open} onClose={onClose} maxWidth="md" fullWidth sx={{ zIndex: 9999 }} PaperProps={{ sx: { borderRadius: 3, zIndex: 9999 } }} BackdropProps={{ sx: { zIndex: 9998 } }}>
+            {/* HEADER */}
+            <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", bgcolor: "#1a1a2e", color: "white", py: 2.5, px: 3, fontWeight: 900 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <FileInvoiceDollarIcon sx={{ color: "#0ea5e9", fontSize: 24 }} />
+                    <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 900, textTransform: "uppercase" }}>
                             Edit Quotation
-                        </h2>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="p-2 hover:bg-white rounded-full transition-colors text-slate-400 hover:text-slate-600 shadow-sm border border-transparent hover:border-slate-200"
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "#cbd5e1", fontSize: "9px", textTransform: "uppercase" }}>Update quotation rates and details</Typography>
+                    </Box>
+                </Box>
+                <Button size="small" onClick={onClose} sx={{ minWidth: "auto", color: "#cbd5e1", "&:hover": { color: "white" } }}>
+                    <CloseIcon />
+                </Button>
+            </DialogTitle>
+
+            {/* CONTENT */}
+            <DialogContent dividers sx={{ display: "flex", flexDirection: "column", gap: 2, bgcolor: "#f1f5f9" }}>
+                {error && (
+                    <Alert
+                        severity="error"
+                        icon={<InformationCircleIcon />}
+                        sx={{ borderRadius: 2 }}
                     >
-                        <HiX size={20} />
-                    </button>
-                </div>
+                        {error}
+                    </Alert>
+                )}
 
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                    {error && (
-                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-3">
-                            <HiInformationCircle className="text-xl shrink-0" />
-                            <p className="text-sm font-medium">{error}</p>
-                        </div>
-                    )}
+                {loading ? (
+                    <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+                        <CircularProgress size={40} />
+                    </Box>
+                ) : data ? (
+                    <>
+                        {/* Top Card: Info */}
+                        <Card sx={{ border: "1px solid #e5e7eb" }}>
+                            <CardContent sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 2 }}>
+                                {/* Left: General Info */}
+                                <Box>
+                                    <Typography variant="h6" sx={{ fontWeight: 700, color: "#1f2937", mb: 1.5 }}>
+                                        {data.quotation_number || "Draft Quotation"}
+                                    </Typography>
 
-                    {loading ? (
-                        <div className="text-center py-12 text-slate-500 animate-pulse">Loading details...</div>
-                    ) : data ? (
-                        <>
-                            {/* Top Card: Info */}
-                            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                                <div className="flex flex-wrap justify-between gap-6">
-                                    {/* Left: General Info */}
-                                    <div className="space-y-3">
-                                        <div className="flex items-center gap-2 text-lg font-bold text-slate-800">
-                                            <span>{data.quotation_number || "Draft Quotation"}</span>
-                                        </div>
+                                    <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                            <BoxOpenIcon sx={{ color: "#9ca3af", fontSize: 16 }} />
+                                            <Typography variant="body2" sx={{ fontWeight: 600, color: "#6b7280" }}>
+                                                Requisition:
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: "#1f2937" }}>
+                                                {data.requisition_number}
+                                            </Typography>
+                                        </Box>
 
-                                        <div className="space-y-1 text-sm text-slate-600">
-                                            <div className="flex items-center gap-2">
-                                                <FaBoxOpen className="text-slate-400 w-4" />
-                                                <span className="font-semibold">Requisition:</span> {data.requisition_number}
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <FaUserTie className="text-slate-400 w-4" />
-                                                <span className="font-semibold">Vendor:</span> {data.vendor_name}
-                                                <span className="text-xs bg-slate-100 px-1.5 rounded-md text-slate-500">{data.vendor_code}</span>
-                                            </div>
-                                            <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-xs">
-                                                {(data.gst_number || data?.vendor?.gst_number) && (
-                                                    <span className="font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">GST: {data.gst_number || data?.vendor?.gst_number}</span>
-                                                )}
-                                                {(data.pan_number || data?.vendor?.pan_number) && (
-                                                    <span className="font-bold text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">PAN: {data.pan_number || data?.vendor?.pan_number}</span>
-                                                )}
-                                                {(data.bank_name || data?.vendor?.bank_name || data.bank_account_number || data?.vendor?.bank_account_number || data?.account_number || data?.vendor?.account_number) && (
-                                                    <span className="text-slate-500 italic flex gap-2">
-                                                        <span>{data.bank_name || data?.vendor?.bank_name}</span> |
-                                                        <span>{data.bank_account_number || data?.vendor?.bank_account_number || data?.account_number || data?.vendor?.account_number}</span> |
-                                                        <span>{data.ifsc_code || data?.vendor?.ifsc_code}</span>
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <FaCalendarAlt className="text-slate-400 w-4" />
-                                                <span className="font-semibold">Quoted Date:</span> {data.quotation_date}
-                                            </div>
-                                        </div>
-                                    </div>
+                                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                            <UserTieIcon sx={{ color: "#9ca3af", fontSize: 16 }} />
+                                            <Typography variant="body2" sx={{ fontWeight: 600, color: "#6b7280" }}>
+                                                Vendor:
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: "#1f2937" }}>
+                                                {data.vendor_name}
+                                            </Typography>
+                                            <Chip
+                                                label={data.vendor_code}
+                                                size="small"
+                                                variant="outlined"
+                                                sx={{ ml: 1 }}
+                                            />
+                                        </Box>
 
-                                    {/* Right: Terms & Validity */}
-                                    <div className="text-right space-y-2 text-sm">
-                                        <div className="bg-amber-50 text-amber-900 px-3 py-1 rounded-lg border border-amber-100 inline-block mb-2">
-                                            <span className="font-semibold">Valid Until:</span> {data.validity_date}
-                                        </div>
-                                        <div><span className="text-slate-500 font-semibold">Ref No:</span> {data.reference_number || "-"}</div>
-                                        <div className="flex justify-end gap-2 items-center mt-2">
-                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Currency:</span>
-                                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${currency === "USD" ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-700"}`}>
-                                                {currency}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, pt: 0.5 }}>
+                                            {(data.gst_number || data?.vendor?.gst_number) && (
+                                                <Chip
+                                                    label={`GST: ${data.gst_number || data?.vendor?.gst_number}`}
+                                                    size="small"
+                                                    variant="outlined"
+                                                    sx={{ fontSize: "0.75rem" }}
+                                                />
+                                            )}
+                                            {(data.pan_number || data?.vendor?.pan_number) && (
+                                                <Chip
+                                                    label={`PAN: ${data.pan_number || data?.vendor?.pan_number}`}
+                                                    size="small"
+                                                    variant="outlined"
+                                                    sx={{ fontSize: "0.75rem" }}
+                                                />
+                                            )}
+                                        </Box>
 
-                            {/* Items Table */}
-                            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                                <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex justify-between items-center">
-                                    <h3 className="font-bold text-slate-700 flex items-center gap-2 text-sm uppercase tracking-wide">
-                                        <FaClipboardList /> Edit Rates
-                                    </h3>
-                                    <div className="text-sm font-bold text-slate-900">
-                                        Total Items: {items.length}
-                                    </div>
-                                </div>
+                                        {(data.bank_name || data?.vendor?.bank_name || data.bank_account_number || data?.vendor?.bank_account_number || data?.account_number || data?.vendor?.account_number) && (
+                                            <Typography variant="caption" sx={{ fontStyle: "italic", color: "#6b7280", pt: 0.5 }}>
+                                                {data.bank_name || data?.vendor?.bank_name} | {data.bank_account_number || data?.vendor?.bank_account_number || data?.account_number || data?.vendor?.account_number} | {data.ifsc_code || data?.vendor?.ifsc_code}
+                                            </Typography>
+                                        )}
 
-                                <table className="w-full text-sm text-left">
-                                    <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 text-xs uppercase">
-                                        <tr>
-                                            <th className="px-5 py-3">Product</th>
-                                            <th className="px-5 py-3 text-right">Quantity</th>
-                                            <th className="px-5 py-3 text-right">Rate ({currency})</th>
-                                            <th className="px-5 py-3 text-right">Amount ({currency})</th>
-                                            {currency === "USD" && <th className="px-5 py-3 text-right">Amount (INR)</th>}
-                                            <th className="px-5 py-3">Remarks</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
+                                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, pt: 1 }}>
+                                            <CalendarAltIcon sx={{ color: "#9ca3af", fontSize: 16 }} />
+                                            <Typography variant="body2" sx={{ fontWeight: 600, color: "#6b7280" }}>
+                                                Quoted Date:
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: "#1f2937" }}>
+                                                {data.quotation_date}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                </Box>
+
+                                {/* Right: Terms & Validity */}
+                                <Box sx={{ textAlign: "right" }}>
+                                    <Card sx={{ backgroundColor: "#fffbeb", border: "1px solid #fcd34d", p: 1.5, mb: 1.5 }}>
+                                        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "#92400e" }}>
+                                            Valid Until:
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: "#1f2937" }}>
+                                            {data.validity_date}
+                                        </Typography>
+                                    </Card>
+
+                                    <Typography variant="caption" sx={{ display: "block", color: "#6b7280", fontWeight: 600, mb: 1 }}>
+                                        Ref No: {data.reference_number || "-"}
+                                    </Typography>
+
+                                    <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 1 }}>
+                                        <Typography variant="caption" sx={{ fontWeight: 700, color: "#9ca3af", textTransform: "uppercase" }}>
+                                            Currency:
+                                        </Typography>
+                                        <Chip
+                                            label={currency}
+                                            color={currency === "USD" ? "primary" : "default"}
+                                            size="small"
+                                            sx={{
+                                                fontWeight: 700,
+                                                color: currency === "USD" ? "#ffffff" : "#1f2937",
+                                            }}
+                                        />
+                                    </Box>
+                                </Box>
+                            </CardContent>
+                        </Card>
+
+                        {/* Items Table */}
+                        <Card sx={{ border: "1px solid #e5e7eb" }}>
+                            <Box sx={{ backgroundColor: "#f9fafb", px: 2, py: 1.5, borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                    <ClipboardListIcon sx={{ fontSize: 18 }} />
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                                        Edit Rates
+                                    </Typography>
+                                </Box>
+                                <Typography variant="body2" sx={{ fontWeight: 700, color: "#1f2937" }}>
+                                    Total Items: {items.length}
+                                </Typography>
+                            </Box>
+
+                            <Box sx={{ overflowX: "auto" }}>
+                                <Table sx={{ minWidth: 700 }}>
+                                    <TableHead sx={{ backgroundColor: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+                                        <TableRow>
+                                            <TableCell sx={{ fontWeight: 700, color: "#4b5563", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                                                Product
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 700, color: "#4b5563", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                                                Quantity
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 700, color: "#4b5563", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                                                Rate ({currency})
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 700, color: "#4b5563", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                                                Amount ({currency})
+                                            </TableCell>
+                                            {currency === "USD" && (
+                                                <TableCell align="right" sx={{ fontWeight: 700, color: "#4b5563", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                                                    Amount (INR)
+                                                </TableCell>
+                                            )}
+                                            <TableCell sx={{ fontWeight: 700, color: "#4b5563", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                                                Remarks
+                                            </TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody sx={{ borderTop: "1px solid #e5e7eb" }}>
                                         {items.map((item, idx) => (
-                                            <tr key={item.id} className="odd:bg-slate-100 even:bg-white hover:bg-slate-200   ">
-                                                <td className="px-5 py-3">
-                                                    <div className="font-medium text-slate-800">{item.product_name}</div>
-                                                    <div className="text-xs text-slate-400 font-mono">{item.product_code}</div>
-                                                </td>
-                                                <td className="px-5 py-3 text-right font-medium text-slate-700">
-                                                    {Number(item.quantity).toFixed(2)} <span className="text-xs text-slate-400">{item.unit}</span>
-                                                </td>
-                                                <td className="px-5 py-3 text-right">
-                                                    <input
+                                            <TableRow
+                                                key={item.id}
+                                                sx={{
+                                                    backgroundColor: idx % 2 === 0 ? "#f9fafb" : "#ffffff",
+                                                    "&:hover": { backgroundColor: "#f3f4f6" },
+                                                }}
+                                            >
+                                                <TableCell sx={{ py: 1, fontSize: "0.875rem" }}>
+                                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "#1f2937" }}>
+                                                        {item.product_name}
+                                                    </Typography>
+                                                    <Typography variant="caption" sx={{ fontFamily: "monospace", color: "#9ca3af" }}>
+                                                        {item.product_code}
+                                                    </Typography>
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ py: 1, fontWeight: 600, color: "#4b5563", fontSize: "0.875rem" }}>
+                                                    {Number(item.quantity).toFixed(2)} <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{item.unit}</span>
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ py: 1 }}>
+                                                    <StyledInput
                                                         type="number"
-                                                        min="0"
-                                                        step="0.01"
-                                                        className="text-right border border-slate-300 rounded px-2 py-1 w-32 focus:ring-2 focus:ring-blue-500 outline-none"
+                                                        inputProps={{ min: "0", step: "0.01" }}
+                                                        size="small"
                                                         value={item.quoted_rate}
                                                         onChange={(e) => handleRateChange(idx, e.target.value)}
+                                                        sx={{ width: "100px" }}
                                                     />
-                                                </td>
-                                                <td className="px-5 py-3 text-right font-bold text-slate-900">
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ py: 1, fontWeight: 700, color: "#1f2937", fontSize: "0.875rem" }}>
                                                     {currency === "USD" ? "$" : "₹"} {calculateRowAmount(item.quantity, item.quoted_rate)}
-                                                </td>
+                                                </TableCell>
                                                 {currency === "USD" && (
-                                                    <td className="px-5 py-3 text-right font-bold text-blue-600">
+                                                    <TableCell align="right" sx={{ py: 1, fontWeight: 700, color: "#2563eb", fontSize: "0.875rem" }}>
                                                         ₹ {(parseFloat(calculateRowAmount(item.quantity, item.quoted_rate)) * exchangeRate).toFixed(2)}
-                                                    </td>
+                                                    </TableCell>
                                                 )}
-                                                <td className="px-5 py-3 text-slate-500 italic max-w-xs truncate">
+                                                <TableCell sx={{ py: 1, color: "#6b7280", fontSize: "0.875rem", maxWidth: "150px", overflow: "hidden", textOverflow: "ellipsis", fontStyle: "italic" }}>
                                                     {item.remarks || "-"}
-                                                </td>
-                                            </tr>
+                                                </TableCell>
+                                            </TableRow>
                                         ))}
-                                    </tbody>
-                                    {/* Table Footer Total */}
-                                    <tfoot className="bg-slate-50 font-bold text-slate-900">
-                                        <tr>
-                                            <td colSpan={currency === "USD" ? "4" : "3"} className="px-5 py-3 text-right text-slate-600 uppercase text-xs tracking-wider">Total Amount</td>
-                                            <td className="px-5 py-3 text-right text-base border-t border-slate-200 whitespace-nowrap">
-                                                <div className="flex flex-col items-end">
-                                                    <span>{totalAmount.toLocaleString('en-IN', { style: 'currency', currency: currency })}</span>
+                                    </TableBody>
+                                    <Box
+                                        component="tfoot"
+                                        sx={{
+                                            backgroundColor: "#f9fafb",
+                                            fontWeight: 700,
+                                            color: "#1f2937",
+                                            display: "table-footer-group",
+                                        }}
+                                    >
+                                        <TableRow>
+                                            <TableCell colSpan={currency === "USD" ? "4" : "3"} align="right" sx={{ py: 1.5, fontSize: "0.75rem", textTransform: "uppercase", borderTop: "1px solid #e5e7eb", color: "#6b7280" }}>
+                                                Total Amount
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ py: 1.5, borderTop: "1px solid #e5e7eb" }}>
+                                                <Box>
+                                                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#1f2937" }}>
+                                                        {totalAmount.toLocaleString("en-IN", { style: "currency", currency: currency })}
+                                                    </Typography>
                                                     {currency === "USD" && (
-                                                        <span className="text-xs text-blue-600 font-semibold">
-                                                            (Approx {totalAmountINR.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })})
-                                                        </span>
+                                                        <Typography variant="caption" sx={{ fontWeight: 600, color: "#2563eb" }}>
+                                                            (Approx {totalAmountINR.toLocaleString("en-IN", { style: "currency", currency: "INR" })})
+                                                        </Typography>
                                                     )}
-                                                </div>
-                                            </td>
-                                            <td></td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                        </>
-                    ) : (
-                        <div className="text-center py-12 text-slate-400">No data found</div>
-                    )}
-                </div>
+                                                </Box>
+                                            </TableCell>
+                                            <TableCell sx={{ borderTop: "1px solid #e5e7eb" }}></TableCell>
+                                        </TableRow>
+                                    </Box>
+                                </Table>
+                            </Box>
+                        </Card>
+                    </>
+                ) : (
+                    <Typography sx={{ textAlign: "center", py: 4, color: "#9ca3af" }}>
+                        No data found
+                    </Typography>
+                )}
+            </DialogContent>
 
-                {/* Footer Actions */}
-                <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
-                    <button
-                        onClick={onClose}
-                        className="bg-white hover:bg-slate-100 text-slate-700 font-semibold px-4 py-2 rounded-lg border border-slate-300 flex items-center gap-2"
-                        disabled={submitting}
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={handleSubmit}
-                        disabled={submitting || !data}
-                        className="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2 rounded-lg flex items-center gap-2"
-                    >
-                        {submitting ? "Updating..." : "Update Quotation"}
-                    </button>
-                </div>
-            </div>
-        </div>
+            {/* ACTIONS */}
+            <DialogActions sx={{ p: 2, backgroundColor: "#ffffff", borderTop: "1px solid #e2e8f0", gap: 1 }}>
+                <Button onClick={onClose} variant="outlined" disabled={submitting}>
+                    Cancel
+                </Button>
+                <Button
+                    onClick={handleSubmit}
+                    variant="contained"
+                    color="primary"
+                    disabled={submitting || !data}
+                >
+                    {submitting ? "Updating..." : "Update Quotation"}
+                </Button>
+            </DialogActions>
+        </StyledDialog>
     );
 };
 

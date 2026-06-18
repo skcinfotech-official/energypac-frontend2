@@ -1,5 +1,28 @@
 import { useState } from "react";
-import { FaTimes, FaEnvelope, FaLock, FaCheckCircle, FaKey, FaShieldAlt } from "react-icons/fa";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  Alert,
+  Typography,
+  Box,
+  FormControlLabel,
+  Checkbox,
+  LinearProgress,
+  InputAdornment,
+  CircularProgress,
+} from "@mui/material";
+import {
+  Close as CloseIcon,
+  Key as KeyIcon,
+  Email as EmailIcon,
+  Lock as LockIcon,
+  CheckCircle as CheckCircleIcon,
+  Security as SecurityIcon,
+} from "@mui/icons-material";
 import { forgotPassword, verifyOtp, resetPassword } from "../../services/authService";
 import { toast } from "react-hot-toast";
 
@@ -13,9 +36,6 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
-
-  if (!isOpen) return null;
-
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -27,7 +47,6 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
     } catch (err) {
       setError(err);
     } finally {
-
       setLoading(false);
     }
   };
@@ -43,7 +62,6 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
     } catch (err) {
       setError(err);
     } finally {
-
       setLoading(false);
     }
   };
@@ -61,7 +79,7 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
         email,
         otp,
         new_password: newPassword,
-        confirm_password: confirmPassword
+        confirm_password: confirmPassword,
       });
       toast.success("Password reset successfully. You can now login.");
       setError("");
@@ -75,7 +93,6 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
     } catch (err) {
       setError(err);
     } finally {
-
       setLoading(false);
     }
   };
@@ -84,195 +101,277 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
     switch (step) {
       case 1:
         return (
-          <form onSubmit={handleEmailSubmit} className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="space-y-2">
-              <label className="text-slate-400 text-xs font-bold uppercase tracking-widest ml-1">Email Address</label>
-              <div className="relative group">
-                <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
-                <input
-                  type="email"
-                  required
-                  placeholder="user@example.com"
-                  className="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-800 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
-
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setError("");
-                  }}
-                />
-              </div>
-              {error && step === 1 && <p className="text-red-500 text-[10px] mt-1 ml-1 font-bold animate-in fade-in duration-300">{error}</p>}
-              {!error && <p className="text-slate-500 text-[10px] italic ml-1">We'll send a 6-digit verification code to this email.</p>}
-            </div>
-
-            <button
+          <Box component="form" onSubmit={handleEmailSubmit} sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <TextField
+              fullWidth
+              type="email"
+              label="Email Address"
+              placeholder="user@example.com"
+              required
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setError("");
+              }}
+              disabled={loading}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <EmailIcon sx={{ color: "action.active" }} />
+                  </InputAdornment>
+                ),
+              }}
+              variant="outlined"
+              size="small"
+            />
+            <Typography variant="caption" sx={{ color: "text.secondary", fontStyle: "italic", mt: -2 }}>
+              We'll send a 6-digit verification code to this email.
+            </Typography>
+            {error && step === 1 && (
+              <Alert severity="error" sx={{ py: 1 }}>
+                {error}
+              </Alert>
+            )}
+            <Button
+              fullWidth
+              variant="contained"
+              color="primary"
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
+              sx={{ py: 1.5 }}
             >
-              {loading ? "Sending..." : "Send OTP"}
-            </button>
-          </form>
+              {loading ? (
+                <>
+                  <CircularProgress size={20} sx={{ mr: 1 }} />
+                  Sending...
+                </>
+              ) : (
+                "Send OTP"
+              )}
+            </Button>
+          </Box>
         );
+
       case 2:
         return (
-          <form onSubmit={handleOtpSubmit} className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="space-y-2">
-              <label className="text-slate-400 text-xs font-bold uppercase tracking-widest ml-1">Verification Code</label>
-              <div className="relative group">
-                <FaShieldAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
-                <input
-                  type="text"
-                  required
-                  placeholder="Enter 6-digit OTP"
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-800 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all tracking-[0.5em] font-mono text-center font-bold"
-
-                  value={otp}
-                  onChange={(e) => {
-                    setOtp(e.target.value);
-                    setError("");
-                  }}
-                  maxLength={6}
-                />
-              </div>
-              {error && step === 2 && <p className="text-red-500 text-[10px] mt-1 ml-1 font-bold animate-in fade-in duration-300">{error}</p>}
-              <div className="flex justify-between items-center px-1">
-                <p className="text-slate-500 text-[10px]">OTP sent to {email}</p>
-
-                <button type="button" onClick={() => setStep(1)} className="text-blue-500 text-[10px] hover:underline">Change Email</button>
-              </div>
-            </div>
-            <button
+          <Box component="form" onSubmit={handleOtpSubmit} sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <TextField
+              fullWidth
+              type="text"
+              label="Verification Code"
+              placeholder="Enter 6-digit OTP"
+              required
+              value={otp}
+              onChange={(e) => {
+                setOtp(e.target.value);
+                setError("");
+              }}
+              disabled={loading}
+              inputProps={{ maxLength: 6, style: { textAlign: "center", letterSpacing: "0.5em", fontFamily: "monospace", fontWeight: "bold" } }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SecurityIcon sx={{ color: "action.active" }} />
+                  </InputAdornment>
+                ),
+              }}
+              variant="outlined"
+              size="small"
+            />
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: -1 }}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                OTP sent to {email}
+              </Typography>
+              <Button
+                size="small"
+                onClick={() => setStep(1)}
+                disabled={loading}
+                sx={{ textTransform: "none", color: "primary.main" }}
+              >
+                Change Email
+              </Button>
+            </Box>
+            {error && step === 2 && (
+              <Alert severity="error" sx={{ py: 1, mt: -1 }}>
+                {error}
+              </Alert>
+            )}
+            <Button
+              fullWidth
+              variant="contained"
+              color="primary"
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
+              sx={{ py: 1.5 }}
             >
-              {loading ? "Verifying..." : "Verify OTP"}
-            </button>
-          </form>
+              {loading ? (
+                <>
+                  <CircularProgress size={20} sx={{ mr: 1 }} />
+                  Verifying...
+                </>
+              ) : (
+                "Verify OTP"
+              )}
+            </Button>
+          </Box>
         );
+
       case 3:
         return (
-          <form onSubmit={handleResetSubmit} className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="space-y-2">
-              <label className="text-slate-400 text-xs font-bold uppercase tracking-widest ml-1">New Password</label>
-              <div className="relative group">
-                <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  placeholder="••••••••"
-                  className="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-800 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
-
-                  value={newPassword}
-                  onChange={(e) => {
-                    setNewPassword(e.target.value);
-                    setError("");
-                  }}
+          <Box component="form" onSubmit={handleResetSubmit} sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+            <TextField
+              fullWidth
+              type={showPassword ? "text" : "password"}
+              label="New Password"
+              placeholder="••••••••"
+              required
+              value={newPassword}
+              onChange={(e) => {
+                setNewPassword(e.target.value);
+                setError("");
+              }}
+              disabled={loading}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LockIcon sx={{ color: "action.active" }} />
+                  </InputAdornment>
+                ),
+              }}
+              variant="outlined"
+              size="small"
+            />
+            <TextField
+              fullWidth
+              type={showPassword ? "text" : "password"}
+              label="Confirm Password"
+              placeholder="••••••••"
+              required
+              value={confirmPassword}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                setError("");
+              }}
+              disabled={loading}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <CheckCircleIcon sx={{ color: "action.active" }} />
+                  </InputAdornment>
+                ),
+              }}
+              variant="outlined"
+              size="small"
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={showPassword}
+                  onChange={() => setShowPassword(!showPassword)}
+                  disabled={loading}
+                  size="small"
                 />
-
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-slate-400 text-xs font-bold uppercase tracking-widest ml-1">Confirm Password</label>
-              <div className="relative group">
-                <FaCheckCircle className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  placeholder="••••••••"
-                  className="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-800 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
-
-                  value={confirmPassword}
-                  onChange={(e) => {
-                    setConfirmPassword(e.target.value);
-                    setError("");
-                  }}
-                />
-              </div>
-              {error && step === 3 && <p className="text-red-500 text-[10px] mt-1 ml-1 font-bold animate-in fade-in duration-300">{error}</p>}
-            </div>
-
-            <div className="flex items-center gap-2 px-1">
-              <input 
-                type="checkbox" 
-                id="show-pass" 
-                checked={showPassword} 
-                onChange={() => setShowPassword(!showPassword)}
-                className="rounded border-slate-200 bg-white text-blue-600 focus:ring-blue-500/20"
-
-              />
-              <label htmlFor="show-pass" className="text-slate-500 text-[10px] cursor-pointer">Show Passwords</label>
-            </div>
-            <button
+              }
+              label={<Typography variant="caption">Show Passwords</Typography>}
+              sx={{ mt: -1 }}
+            />
+            {error && step === 3 && (
+              <Alert severity="error" sx={{ py: 1 }}>
+                {error}
+              </Alert>
+            )}
+            <Button
+              fullWidth
+              variant="contained"
+              color="success"
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold rounded-2xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2"
+              sx={{ py: 1.5 }}
             >
-              {loading ? "Updating..." : "Reset Password"}
-            </button>
-          </form>
+              {loading ? (
+                <>
+                  <CircularProgress size={20} sx={{ mr: 1 }} />
+                  Updating...
+                </>
+              ) : (
+                "Reset Password"
+              )}
+            </Button>
+          </Box>
         );
+
       default:
         return null;
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div 
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300" 
-        onClick={() => !loading && onClose()}
-      ></div>
-
-      
-      <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-
-        {/* HEADER */}
-        <div className="px-8 py-6 border-b border-slate-200 flex items-center justify-between bg-white">
-
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-600/10 rounded-2xl text-blue-500 border border-blue-500/20 shadow-inner">
-              <FaKey className="text-xl" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-slate-800">Reset Access</h3>
-              <p className="text-slate-500 text-[10px] uppercase tracking-widest mt-0.5">Secure Password Recovery</p>
-            </div>
-
-          </div>
-          <button 
-            onClick={onClose}
-            disabled={loading}
-            className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          fontWeight: 700,
+          pb: 1,
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <Box
+            sx={{
+              p: 1.5,
+              bgcolor: "primary.lighter",
+              borderRadius: 2,
+              color: "primary.main",
+            }}
           >
-            <FaTimes />
-          </button>
+            <KeyIcon />
+          </Box>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              Reset Access
+            </Typography>
+            <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase" }}>
+              Secure Password Recovery
+            </Typography>
+          </Box>
+        </Box>
+        <Button
+          onClick={onClose}
+          disabled={loading}
+          variant="text"
+          size="small"
+          sx={{ minWidth: "auto", color: "text.secondary" }}
+        >
+          <CloseIcon />
+        </Button>
+      </DialogTitle>
 
-        </div>
+      <LinearProgress
+        variant="determinate"
+        value={(step / 3) * 100}
+        sx={{ height: 2, bgcolor: "action.disabledBackground" }}
+      />
 
-        {/* PROGRESS BAR */}
-        <div className="h-1 w-full bg-slate-100 flex">
+      <DialogContent sx={{ pt: 3 }}>
+        {renderStep()}
+      </DialogContent>
 
-          <div className={`h-full bg-blue-600 transition-all duration-500 ${step >= 1 ? 'w-1/3' : 'w-0'}`}></div>
-          <div className={`h-full bg-blue-600 transition-all duration-500 ${step >= 2 ? 'w-1/3' : 'w-0'}`}></div>
-          <div className={`h-full bg-blue-600 transition-all duration-500 ${step >= 3 ? 'w-1/3' : 'w-0'}`}></div>
-        </div>
-
-        {/* BODY */}
-        <div className="p-8">
-          {renderStep()}
-        </div>
-
-        {/* FOOTER */}
-        <div className="px-8 py-4 bg-slate-50 text-center">
-          <p className="text-[9px] text-slate-400 uppercase tracking-widest font-bold">
-            Identity Protection System • Energypac Security
-          </p>
-        </div>
-
-      </div>
-    </div>
+      <Box sx={{ px: 3, py: 2, bgcolor: "action.hover", textAlign: "center" }}>
+        <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", fontWeight: 600 }}>
+          Identity Protection System • Energypac Security
+        </Typography>
+      </Box>
+    </Dialog>
   );
 }

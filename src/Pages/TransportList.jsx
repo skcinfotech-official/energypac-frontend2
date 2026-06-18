@@ -1,28 +1,77 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-    FaTruck,
-    FaSearch,
-    FaPlus,
-    FaTrash,
-    FaEdit,
-    FaEye,
-    FaCalendarAlt,
-    FaUser,
-    FaPhone,
-    FaMapMarkerAlt,
-    FaChevronDown,
-    FaTimes,
-    FaCoins,
-    FaInfoCircle,
-    FaFileInvoiceDollar,
-    FaCheck,
-    FaLink
-} from "react-icons/fa";
-import { getTransports, createTransport, updateTransport, markTransportDelivered, getTransportsByPO, getTransportsByPI, getLandedCostPO, getLandedCostPI } from "../services/transportService";
+    Box,
+    Card,
+    Typography,
+    Button,
+    TextField,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    TableFooter,
+    IconButton,
+    Tooltip,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    CircularProgress,
+    Chip,
+    InputAdornment,
+    Select,
+    MenuItem,
+    FormControl,
+    InputLabel,
+    Grid,
+    Paper,
+    Divider,
+    RadioGroup,
+    Radio,
+    FormControlLabel,
+    ToggleButton,
+    ToggleButtonGroup,
+    Skeleton,
+    Autocomplete,
+    ClickAwayListener,
+    Popper,
+    List,
+    ListItemButton,
+    ListItemText,
+    Stack
+} from "@mui/material";
+import LocalShippingIcon from "@mui/icons-material/LocalShipping";
+import SearchIcon from "@mui/icons-material/Search";
+import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import PersonIcon from "@mui/icons-material/Person";
+import PhoneIcon from "@mui/icons-material/Phone";
+import PlaceIcon from "@mui/icons-material/Place";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import CloseIcon from "@mui/icons-material/Close";
+import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
+import InfoIcon from "@mui/icons-material/Info";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import CheckIcon from "@mui/icons-material/Check";
+import LinkIcon from "@mui/icons-material/Link";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import { getTransports, createTransport, updateTransport, markTransportDelivered, getTransportsByPO, getTransportsByPI, getLandedCostPO, getLandedCostPI, getTransporters, getDispatchTracker, getTransportNote } from "../services/transportService";
+import { pdf } from "@react-pdf/renderer";
+import { saveAs } from "file-saver";
+import TransportNoteSheetPDF from "../components/transport/TransportNoteSheetPDF";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import { fetchPurchaseOrders } from "../services/purchaseOrderService";
 import { getProformaInvoices } from "../services/salesService";
+import { verificationService } from "../services/verificationService";
 import AlertToast from "../components/ui/AlertToast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
+import { CheckCircle, Schedule, Error } from "@mui/icons-material";
 
 const COST_TYPES = [
     { value: "FREIGHT", label: "Freight Cost" },
@@ -46,6 +95,7 @@ const TransportList = () => {
     const [next, setNext] = useState(null);
     const [previous, setPrevious] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
+    const [verificationStatuses, setVerificationStatuses] = useState({});
 
     // Toast and Confirm State
     const [alert, setAlert] = useState({ open: false, type: "success", message: "" });
@@ -70,17 +120,26 @@ const TransportList = () => {
         purchase_order: null, // PO UUID
         proforma_invoice: null, // PI UUID
         linked_number: "", // Number string for UI display
+        transporter: null, // Transporter master UUID (optional)
         transporter_name: "",
         transporter_contact: "",
         vehicle_number: "",
         driver_name: "",
         driver_contact: "",
+        lr_number: "",
+        invoice_reference: "",
         dispatch_date: "",
         expected_delivery_date: "",
         dispatch_from: "",
         dispatch_to: "",
         cost_items: []
     });
+
+    // Transporter master list (for the optional dropdown)
+    const [transporterOptions, setTransporterOptions] = useState([]);
+    // Consignment items for partial-shipment tracking: [{ key, po_item|pi_item, product_name, product_code, unit, ordered, shipped, pending, ship_qty }]
+    const [consignmentItems, setConsignmentItems] = useState([]);
+    const [consignmentLoading, setConsignmentLoading] = useState(false);
 
     // Filter & Landed Cost state
     const [selectedFilterDoc, setSelectedFilterDoc] = useState(null); // { id, type, label }
@@ -107,6 +166,82 @@ const TransportList = () => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // Load transporter master list whenever the form opens
+    useEffect(() => {
+        if (!formModal.open) return;
+        (async () => {
+            try {
+                const res = await getTransporters({ is_active: true });
+                setTransporterOptions(res?.results || res || []);
+            } catch (err) {
+                console.error("Failed to load transporters", err);
+            }
+        })();
+    }, [formModal.open]);
+
+    // Fetch ordered/shipped/pending item breakdown for the selected PO/PI
+    const loadConsignmentForRef = async (type, id, existingItems = []) => {
+        setConsignmentLoading(true);
+        try {
+            const params = type === "PO" ? { purchase_order: id } : { proforma_invoice: id };
+            const tracker = await getDispatchTracker(params);
+            // map existing consignment lines (edit mode) by source item id so we can prefill ship_qty
+            const existingByItem = {};
+            existingItems.forEach((ci) => {
+                const srcId = ci.po_item || ci.pi_item;
+                if (srcId) existingByItem[srcId] = Number(ci.quantity) || 0;
+            });
+            const rows = (tracker.items || []).map((it) => {
+                const prefill = existingByItem[it.item_id] || 0;
+                // in edit mode, the shipped figure already includes this entry's qty — add it back to available
+                const pending = Number(it.pending_qty) + prefill;
+                return {
+                    key: it.item_id,
+                    source: type === "PO" ? "po_item" : "pi_item",
+                    source_id: it.item_id,
+                    product_name: it.product_name,
+                    product_code: it.product_code,
+                    unit: it.unit,
+                    ordered: Number(it.ordered_qty),
+                    shipped: Number(it.shipped_qty),
+                    pending,
+                    ship_qty: prefill,
+                };
+            });
+            setConsignmentItems(rows);
+        } catch (err) {
+            console.error("Failed to load consignment items", err);
+            setConsignmentItems([]);
+        } finally {
+            setConsignmentLoading(false);
+        }
+    };
+
+    const handleConsignmentQtyChange = (key, value) => {
+        setConsignmentItems((prev) => prev.map((row) => {
+            if (row.key !== key) return row;
+            let v = parseFloat(value);
+            if (isNaN(v) || v < 0) v = 0;
+            if (v > row.pending) v = row.pending;
+            return { ...row, ship_qty: v };
+        }));
+    };
+
+    const fetchVerificationStatusesForDocs = async (transports) => {
+        const statuses = {};
+        for (const transport of transports) {
+            const docId = transport.purchase_order || transport.proforma_invoice;
+            const docType = transport.purchase_order ? 'PO' : 'PI';
+            if (docId) {
+                const status = docType === 'PO'
+                    ? await verificationService.getPOVerificationStatus(docId)
+                    : await verificationService.getPIVerificationStatus(docId);
+                statuses[docId] = { ...status, type: docType };
+            }
+        }
+        setVerificationStatuses(statuses);
+    };
+
     // Load transports on page load or filter changes
     const fetchTransports = async (pageNum = 1) => {
         setLoading(true);
@@ -123,6 +258,7 @@ const TransportList = () => {
                 setTotalCount(list.length);
                 setNext(null);
                 setPrevious(null);
+                fetchVerificationStatusesForDocs(list);
             } else {
                 data = await getTransports(pageNum, searchQuery);
                 if (data) {
@@ -131,6 +267,7 @@ const TransportList = () => {
                     setNext(data.next);
                     setPrevious(data.previous);
                     setPage(pageNum);
+                    fetchVerificationStatusesForDocs(data.results || []);
                 }
             }
         } catch (error) {
@@ -179,35 +316,11 @@ const TransportList = () => {
         return () => clearTimeout(timer);
     }, [refSearch, refType, isRefDropdownOpen]);
 
-    // Handle reference selection
+    // Handle reference selection — multiple transport entries per PO/PI are now allowed
+    // (partial shipments), so we load the item-level pending breakdown instead of blocking.
     const handleRefSelect = async (item) => {
         setIsRefDropdownOpen(false);
         setRefSearch("");
-
-        if (formModal.mode === "create") {
-            try {
-                let existingEntries = [];
-                if (refType === "PO") {
-                    const res = await getTransportsByPO(item.id);
-                    existingEntries = (Array.isArray(res) ? res : (res?.results || [])).filter(e => e.status !== "CANCELLED");
-                } else {
-                    const res = await getTransportsByPI(item.id);
-                    existingEntries = (Array.isArray(res) ? res : (res?.results || [])).filter(e => e.status !== "CANCELLED");
-                }
-
-                if (existingEntries.length > 0) {
-                    const refNum = refType === "PO" ? (item.po_number || item.id) : (item.pi_number || item.id);
-                    setAlert({
-                        open: true,
-                        type: "error",
-                        message: `Transport entry "${existingEntries[0].transport_number}" already exists for ${refNum}. Duplicate entries are not allowed.`
-                    });
-                    return;
-                }
-            } catch (err) {
-                console.error("Failed to check existing transport entries", err);
-            }
-        }
 
         if (refType === "PO") {
             setFormData(prev => ({
@@ -224,6 +337,7 @@ const TransportList = () => {
                 linked_number: item.pi_number || item.id
             }));
         }
+        loadConsignmentForRef(refType, item.id);
     };
 
     // Fetch POs or PIs dynamically inside FILTER
@@ -281,6 +395,39 @@ const TransportList = () => {
         setLandedCostData(null);
     };
 
+    const getVerificationStatusChip = (transport) => {
+        const docId = transport.purchase_order || transport.proforma_invoice;
+        let verStatus = verificationStatuses[docId]?.status || 'NOT_SENT';
+        // Normalize NOT_STARTED to NOT_SENT
+        if (verStatus === 'NOT_STARTED') verStatus = 'NOT_SENT';
+
+        let label, color, icon;
+
+        switch (verStatus) {
+            case 'VERIFIED':
+                label = 'Verified';
+                color = 'success';
+                icon = <CheckCircle sx={{ mr: 0.5, fontSize: 14 }} />;
+                break;
+            case 'PENDING':
+                label = 'Pending';
+                color = 'warning';
+                icon = <Schedule sx={{ mr: 0.5, fontSize: 14 }} />;
+                break;
+            case 'REJECTED':
+                label = 'Rejected';
+                color = 'error';
+                icon = <Error sx={{ mr: 0.5, fontSize: 14 }} />;
+                break;
+            default:
+                label = 'Not Sent';
+                color = 'default';
+                icon = null;
+        }
+
+        return <Chip icon={icon} label={label} color={color} size="small" variant="outlined" />;
+    };
+
     // Cost Items dynamically added/removed
     const handleAddCostLine = () => {
         setFormData(prev => ({
@@ -319,15 +466,19 @@ const TransportList = () => {
     const handleOpenForm = (mode, transportObj = null) => {
         if (mode === "create") {
             setRefType("PO");
+            setConsignmentItems([]);
             setFormData({
                 purchase_order: null,
                 proforma_invoice: null,
                 linked_number: "",
+                transporter: null,
                 transporter_name: "",
                 transporter_contact: "",
                 vehicle_number: "",
                 driver_name: "",
                 driver_contact: "",
+                lr_number: "",
+                invoice_reference: "",
                 dispatch_date: "",
                 expected_delivery_date: "",
                 dispatch_from: "",
@@ -339,15 +490,19 @@ const TransportList = () => {
             const poId = transportObj.purchase_order;
             const piId = transportObj.proforma_invoice;
             setRefType(poId ? "PO" : "PI");
+            setConsignmentItems([]);
             setFormData({
                 purchase_order: poId || null,
                 proforma_invoice: piId || null,
                 linked_number: transportObj.po_number || transportObj.pi_number || transportObj.purchase_order_number || transportObj.proforma_invoice_number || "Linked Ref",
+                transporter: transportObj.transporter || null,
                 transporter_name: transportObj.transporter_name || "",
                 transporter_contact: transportObj.transporter_contact || "",
                 vehicle_number: transportObj.vehicle_number || "",
                 driver_name: transportObj.driver_name || "",
                 driver_contact: transportObj.driver_contact || "",
+                lr_number: transportObj.lr_number || "",
+                invoice_reference: transportObj.invoice_reference || "",
                 dispatch_date: transportObj.dispatch_date || "",
                 expected_delivery_date: transportObj.expected_delivery_date || "",
                 dispatch_from: transportObj.dispatch_from || "",
@@ -359,11 +514,15 @@ const TransportList = () => {
                 }))
             });
             setFormModal({ open: true, mode: "edit", id: transportObj.id });
+            // prefill the item-level shipment breakdown for this entry
+            if (poId || piId) {
+                loadConsignmentForRef(poId ? "PO" : "PI", poId || piId, transportObj.consignment_items || []);
+            }
         }
     };
 
     const handleFormSubmit = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
         if (!formData.purchase_order && !formData.proforma_invoice) {
             setAlert({ open: true, type: "error", message: "Please select a Purchase Order or Proforma Invoice first." });
             return;
@@ -391,20 +550,36 @@ const TransportList = () => {
                 amount: Number(parseFloat(item.amount).toFixed(2))
             }));
 
+            // consignment lines with a positive ship qty become partial-shipment records
+            const cleanedConsignment = consignmentItems
+                .filter(row => Number(row.ship_qty) > 0)
+                .map(row => ({
+                    [row.source]: row.source_id,
+                    quantity: Number(parseFloat(row.ship_qty).toFixed(2)),
+                }));
+
             const payload = {
                 purchase_order: formData.purchase_order,
                 proforma_invoice: formData.proforma_invoice,
+                transporter: formData.transporter,
                 transporter_name: formData.transporter_name,
                 transporter_contact: formData.transporter_contact,
                 vehicle_number: formData.vehicle_number,
                 driver_name: formData.driver_name,
                 driver_contact: formData.driver_contact,
+                lr_number: formData.lr_number,
+                invoice_reference: formData.invoice_reference,
                 dispatch_date: formData.dispatch_date,
                 expected_delivery_date: formData.expected_delivery_date,
                 dispatch_from: formData.dispatch_from,
                 dispatch_to: formData.dispatch_to,
-                cost_items: cleanedCostItems
+                cost_items: cleanedCostItems,
             };
+            // Only send consignment_items when the breakdown actually loaded — avoids
+            // wiping existing partial-shipment records if the tracker failed to load on edit.
+            if (consignmentItems.length > 0) {
+                payload.consignment_items = cleanedConsignment;
+            }
 
             if (formModal.mode === "create") {
                 await createTransport(payload);
@@ -445,6 +620,17 @@ const TransportList = () => {
         });
     };
 
+    const handleDownloadNote = async (transportObj) => {
+        try {
+            const note = await getTransportNote(transportObj.id);
+            const blob = await pdf(<TransportNoteSheetPDF note={note} />).toBlob();
+            saveAs(blob, `${(note.transport_number || "transport").replace(/\//g, "_")}_note.pdf`);
+        } catch (error) {
+            console.error("Failed to generate transport note:", error);
+            setAlert({ open: true, type: "error", message: "Failed to generate transport note PDF." });
+        }
+    };
+
     const formatCurrency = (amount) => {
         return Number(amount || 0).toLocaleString('en-IN', {
             style: 'currency',
@@ -466,317 +652,437 @@ const TransportList = () => {
 
     return (
         <>
-            <div className="max-w-7xl mx-auto space-y-6 animate-fade-in py-1">
+            <Box sx={{ maxWidth: 1280, mx: "auto", py: 1, display: "flex", flexDirection: "column", gap: 3 }}>
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <div>
-                        <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
-                            <FaTruck className="text-blue-600" />
+                <Paper elevation={0} sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, alignItems: { md: "center" }, justifyContent: "space-between", gap: 2, p: 3, borderRadius: 3, border: "1px solid", borderColor: "grey.200" }}>
+                    <Box>
+                        <Typography variant="h5" sx={{ fontWeight: 800, color: "grey.800", display: "flex", alignItems: "center", gap: 1.5 }}>
+                            <LocalShippingIcon sx={{ color: "primary.main" }} />
                             Logistics &amp; Transport Management
-                        </h1>
-                        <p className="text-slate-500 mt-1 font-medium ">Track vehicle routing, logistical cost breakdowns, and freight delivery details against POs and PIs</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <button
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: "grey.500", mt: 0.5, fontWeight: 500 }}>
+                            Track vehicle routing, logistical cost breakdowns, and freight delivery details against POs and PIs
+                        </Typography>
+                    </Box>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                        <Button
+                            variant="contained"
+                            startIcon={<AddIcon />}
                             onClick={() => handleOpenForm("create")}
-                            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-black rounded-xl transition-all shadow-lg shadow-blue-600/20 active:scale-95"
+                            sx={{ borderRadius: 2.5, textTransform: "uppercase", fontWeight: 900, px: 3, py: 1.2, fontSize: "0.8rem", boxShadow: "0 4px 14px 0 rgba(25,118,210,0.25)" }}
                         >
-                            <FaPlus className="text-xs" />
-                            LOG NEW SHIPMENT
-                        </button>
-                        <div className="bg-slate-50 px-5 py-2 rounded-xl border border-slate-200">
-                            <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Logistics Cost (Page)</p>
-                            <p className="text-xl font-black text-slate-800 leading-tight">{formatCurrency(totalTransportsCost)}</p>
-                        </div>
-                    </div>
-                </div>
+                            Log New Shipment
+                        </Button>
+                        <Paper variant="outlined" sx={{ px: 2.5, py: 1, borderRadius: 2.5, bgcolor: "grey.50" }}>
+                            <Typography sx={{ fontSize: "0.6rem", textTransform: "uppercase", fontWeight: 800, color: "grey.400", letterSpacing: 1 }}>Logistics Cost (Page)</Typography>
+                            <Typography sx={{ fontSize: "1.2rem", fontWeight: 900, color: "grey.800", lineHeight: 1.2 }}>{formatCurrency(totalTransportsCost)}</Typography>
+                        </Paper>
+                    </Box>
+                </Paper>
 
                 {/* Filters */}
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Search query */}
-                    <div>
-                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2">Search Transporter / Driver / Vehicle / Ref</label>
-                        <div className="relative">
-                            <input
-                                type="text"
+                <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: "1px solid", borderColor: "grey.200" }}>
+                    <Grid container spacing={3}>
+                        {/* Search query */}
+                        <Grid item xs={12} lg={4}>
+                            <Typography sx={{ fontSize: "0.65rem", fontWeight: 800, color: "grey.500", textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>
+                                Search Transporter / Driver / Vehicle / Ref
+                            </Typography>
+                            <TextField
+                                fullWidth
+                                size="small"
                                 placeholder="E.g. Blue Dart, Raju, MH12AB..., TRN/..."
                                 value={searchQuery}
                                 onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-                                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <SearchIcon sx={{ color: "grey.400", fontSize: 20 }} />
+                                        </InputAdornment>
+                                    ),
+                                    sx: { borderRadius: 2.5, bgcolor: "grey.50", fontWeight: 600, fontSize: "0.875rem" }
+                                }}
                             />
-                            <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                        </div>
-                    </div>
+                        </Grid>
 
-                    {/* Filter Shipments by Link Category */}
-                    <div>
-                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2">Filter Shipments by Link Category</label>
-                        <div className="flex bg-slate-100 p-1.5 rounded-xl shadow-inner border border-slate-200">
-                            <button
-                                type="button"
-                                onClick={() => setDocTypeFilter("ALL")}
-                                className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${docTypeFilter === "ALL" ? "bg-white text-blue-600 shadow animate-fade-in" : "text-slate-500"}`}
+                        {/* Filter Shipments by Link Category */}
+                        <Grid item xs={12} lg={4}>
+                            <Typography sx={{ fontSize: "0.65rem", fontWeight: 800, color: "grey.500", textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>
+                                Filter Shipments by Link Category
+                            </Typography>
+                            <ToggleButtonGroup
+                                value={docTypeFilter}
+                                exclusive
+                                onChange={(e, val) => { if (val !== null) setDocTypeFilter(val); }}
+                                fullWidth
+                                size="small"
+                                sx={{
+                                    bgcolor: "grey.100",
+                                    borderRadius: 2.5,
+                                    p: 0.5,
+                                    "& .MuiToggleButton-root": {
+                                        border: "none",
+                                        borderRadius: "8px !important",
+                                        textTransform: "uppercase",
+                                        fontWeight: 900,
+                                        fontSize: "0.6rem",
+                                        letterSpacing: 1,
+                                        py: 1,
+                                        color: "grey.500",
+                                        "&.Mui-selected": {
+                                            bgcolor: "white",
+                                            color: "primary.main",
+                                            boxShadow: 1,
+                                            "&:hover": { bgcolor: "white" }
+                                        }
+                                    }
+                                }}
                             >
-                                All Shipments
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setDocTypeFilter("PO")}
-                                className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${docTypeFilter === "PO" ? "bg-white text-blue-600 shadow animate-fade-in" : "text-slate-500"}`}
-                            >
-                                All PO
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setDocTypeFilter("PI")}
-                                className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${docTypeFilter === "PI" ? "bg-white text-blue-600 shadow animate-fade-in" : "text-slate-500"}`}
-                            >
-                                All PI
-                            </button>
-                        </div>
-                    </div>
+                                <ToggleButton value="ALL">All Shipments</ToggleButton>
+                                <ToggleButton value="PO">All PO</ToggleButton>
+                                <ToggleButton value="PI">All PI</ToggleButton>
+                            </ToggleButtonGroup>
+                        </Grid>
 
-                    {/* Landed Cost Selector */}
-                    <div className="relative" ref={filterDropdownRef}>
-                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2">Landed Cost Reference Selector</label>
-                        <div className="flex gap-2">
-                            <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner border border-slate-200 self-start">
-                                <button
-                                    type="button"
-                                    onClick={() => { setFilterRefType("PO"); setFilterRefSearch(""); setFilterRefList([]); }}
-                                    className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${filterRefType === "PO" ? "bg-white text-blue-600 shadow animate-fade-in" : "text-slate-500"}`}
-                                >
-                                    PO
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => { setFilterRefType("PI"); setFilterRefSearch(""); setFilterRefList([]); }}
-                                    className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${filterRefType === "PI" ? "bg-white text-blue-600 shadow animate-fade-in" : "text-slate-500"}`}
-                                >
-                                    PI
-                                </button>
-                            </div>
-                            <div className="relative flex-1">
-                                <input
-                                    type="text"
-                                    readOnly={!!selectedFilterDoc}
-                                    value={selectedFilterDoc ? selectedFilterDoc.label : filterRefSearch}
-                                    onClick={() => !selectedFilterDoc && setIsFilterRefDropdownOpen(true)}
-                                    onChange={(e) => { setFilterRefSearch(e.target.value); setIsFilterRefDropdownOpen(true); }}
-                                    placeholder={`Search linked ${filterRefType}...`}
-                                    className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
-                                />
-                                {selectedFilterDoc ? (
-                                    <button
-                                        type="button"
-                                        onClick={handleClearFilterDoc}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 p-1 transition-colors"
+                        {/* Landed Cost Selector */}
+                        <Grid item xs={12} lg={4}>
+                            <Box ref={filterDropdownRef} sx={{ position: "relative" }}>
+                                <Typography sx={{ fontSize: "0.65rem", fontWeight: 800, color: "grey.500", textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>
+                                    Landed Cost Reference Selector
+                                </Typography>
+                                <Box sx={{ display: "flex", gap: 1 }}>
+                                    <ToggleButtonGroup
+                                        value={filterRefType}
+                                        exclusive
+                                        onChange={(e, val) => {
+                                            if (val !== null) {
+                                                setFilterRefType(val);
+                                                setFilterRefSearch("");
+                                                setFilterRefList([]);
+                                            }
+                                        }}
+                                        size="small"
+                                        sx={{
+                                            bgcolor: "grey.100",
+                                            borderRadius: 2.5,
+                                            p: 0.25,
+                                            alignSelf: "flex-start",
+                                            "& .MuiToggleButton-root": {
+                                                border: "none",
+                                                borderRadius: "8px !important",
+                                                textTransform: "uppercase",
+                                                fontWeight: 900,
+                                                fontSize: "0.6rem",
+                                                letterSpacing: 1,
+                                                px: 1.5,
+                                                py: 0.75,
+                                                color: "grey.500",
+                                                "&.Mui-selected": {
+                                                    bgcolor: "white",
+                                                    color: "primary.main",
+                                                    boxShadow: 1,
+                                                    "&:hover": { bgcolor: "white" }
+                                                }
+                                            }
+                                        }}
                                     >
-                                        <FaTimes size={12} />
-                                    </button>
-                                ) : (
-                                    <FaChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
-                                )}
-                            </div>
-                        </div>
+                                        <ToggleButton value="PO">PO</ToggleButton>
+                                        <ToggleButton value="PI">PI</ToggleButton>
+                                    </ToggleButtonGroup>
+                                    <Box sx={{ position: "relative", flex: 1 }}>
+                                        <TextField
+                                            fullWidth
+                                            size="small"
+                                            readOnly={!!selectedFilterDoc}
+                                            value={selectedFilterDoc ? selectedFilterDoc.label : filterRefSearch}
+                                            onClick={() => !selectedFilterDoc && setIsFilterRefDropdownOpen(true)}
+                                            onChange={(e) => { setFilterRefSearch(e.target.value); setIsFilterRefDropdownOpen(true); }}
+                                            placeholder={`Search linked ${filterRefType}...`}
+                                            InputProps={{
+                                                readOnly: !!selectedFilterDoc,
+                                                endAdornment: (
+                                                    <InputAdornment position="end">
+                                                        {selectedFilterDoc ? (
+                                                            <IconButton size="small" onClick={handleClearFilterDoc} sx={{ color: "grey.400", "&:hover": { color: "error.main" } }}>
+                                                                <CloseIcon sx={{ fontSize: 16 }} />
+                                                            </IconButton>
+                                                        ) : (
+                                                            <ExpandMoreIcon sx={{ fontSize: 16, color: "grey.400" }} />
+                                                        )}
+                                                    </InputAdornment>
+                                                ),
+                                                sx: { borderRadius: 2.5, bgcolor: "grey.50", fontWeight: 700, fontSize: "0.875rem", cursor: "pointer" }
+                                            }}
+                                        />
 
-                        {/* Dropdown Results */}
-                        {isFilterRefDropdownOpen && (
-                            <div className="absolute left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl z-[100] max-h-52 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
-                                {filterRefLoading ? (
-                                    <div className="p-3 text-center text-[10px] text-slate-400 font-bold uppercase animate-pulse">Searching active docs...</div>
-                                ) : filterRefList.length > 0 ? (
-                                    filterRefList.map((item) => (
-                                        <button
-                                            key={item.id}
-                                            type="button"
-                                            onClick={() => handleSelectFilterDoc(item)}
-                                            className="w-full text-left px-4 py-2.5 hover:bg-blue-50/50 text-slate-700 hover:text-blue-600 font-bold transition-all border-b border-slate-100 flex items-center justify-between text-[11px]"
-                                        >
-                                            <span>{filterRefType === "PO" ? item.po_number : item.pi_number}</span>
-                                            <span className="text-[9px] uppercase font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">{item.client_name || item.vendor_name || "Active"}</span>
-                                        </button>
-                                    ))
-                                ) : (
-                                    <div className="p-3 text-center text-[10px] text-slate-400 font-bold uppercase">No matching references found</div>
-                                )}
-                            </div>
-                        )}
+                                        {/* Dropdown Results */}
+                                        {isFilterRefDropdownOpen && (
+                                            <Paper elevation={8} sx={{ position: "absolute", left: 0, right: 0, mt: 1, borderRadius: 2.5, zIndex: 100, maxHeight: 208, overflow: "auto", border: "1px solid", borderColor: "grey.200" }}>
+                                                {filterRefLoading ? (
+                                                    <Typography sx={{ p: 1.5, textAlign: "center", fontSize: "0.6rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase" }}>
+                                                        Searching active docs...
+                                                    </Typography>
+                                                ) : filterRefList.length > 0 ? (
+                                                    filterRefList.map((item) => (
+                                                        <Box
+                                                            key={item.id}
+                                                            onClick={() => handleSelectFilterDoc(item)}
+                                                            sx={{
+                                                                display: "flex",
+                                                                alignItems: "center",
+                                                                justifyContent: "space-between",
+                                                                px: 2,
+                                                                py: 1.2,
+                                                                cursor: "pointer",
+                                                                fontWeight: 700,
+                                                                fontSize: "0.7rem",
+                                                                color: "grey.700",
+                                                                borderBottom: "1px solid",
+                                                                borderColor: "grey.100",
+                                                                "&:hover": { bgcolor: "primary.50", color: "primary.main" },
+                                                                transition: "all 0.15s"
+                                                            }}
+                                                        >
+                                                            <span>{filterRefType === "PO" ? item.po_number : item.pi_number}</span>
+                                                            <Chip label={item.client_name || item.vendor_name || "Active"} size="small" variant="outlined" sx={{ fontSize: "0.55rem", fontWeight: 700, textTransform: "uppercase", height: 20 }} />
+                                                        </Box>
+                                                    ))
+                                                ) : (
+                                                    <Typography sx={{ p: 1.5, textAlign: "center", fontSize: "0.6rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase" }}>
+                                                        No matching references found
+                                                    </Typography>
+                                                )}
+                                            </Paper>
+                                        )}
+                                    </Box>
+                                </Box>
 
-                        {/* Landed Cost Calculated details right underneath */}
-                        {selectedFilterDoc && (
-                            <div className="mt-2 text-xs bg-emerald-50 text-emerald-800 border border-emerald-100 rounded-xl p-2.5 flex items-center justify-between animate-fade-in">
-                                <span>Landed Cost (<strong className="font-mono text-[10px]">{selectedFilterDoc.label}</strong>):</span>
-                                <strong className="font-mono text-emerald-700">{formatCurrency(landedCostData?.landed_cost || 0)}</strong>
-                            </div>
-                        )}
-                    </div>
-                </div>
+                                {/* Landed Cost Calculated details */}
+                                {selectedFilterDoc && (
+                                    <Paper elevation={0} sx={{ mt: 1, px: 1.5, py: 1, borderRadius: 2.5, bgcolor: "#ecfdf5", border: "1px solid", borderColor: "#a7f3d0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                        <Typography sx={{ fontSize: "0.75rem", color: "#065f46" }}>
+                                            Landed Cost (<strong style={{ fontFamily: "monospace", fontSize: "0.65rem" }}>{selectedFilterDoc.label}</strong>):
+                                        </Typography>
+                                        <Typography sx={{ fontFamily: "monospace", fontWeight: 900, color: "#047857", fontSize: "0.8rem" }}>
+                                            {formatCurrency(landedCostData?.landed_cost || 0)}
+                                        </Typography>
+                                    </Paper>
+                                )}
+                            </Box>
+                        </Grid>
+                    </Grid>
+                </Paper>
 
                 {/* Table list */}
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full border-collapse">
-                            <thead>
-                                <tr className="bg-slate-50/80 border-b border-slate-200">
-                                    <th className="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Transport Ref &amp; Dates</th>
-                                    <th className="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Associated PO / PI</th>
-                                    <th className="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Transporter &amp; Vehicle</th>
-                                    <th className="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Driver Details</th>
-                                    <th className="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Dispatch Route</th>
-                                    <th className="px-6 py-4 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Freight Cost</th>
-                                    <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
+                <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid", borderColor: "grey.200", overflow: "hidden" }}>
+                    <TableContainer>
+                        <Table
+                            size="small"
+                            sx={{
+                                // compact: tighter padding + smaller text so it fits without horizontal scroll
+                                '& .MuiTableCell-root': { py: 0.75, px: 1 },
+                                '& .MuiTableCell-head': { fontSize: '0.6rem !important', letterSpacing: '0.5px !important' },
+                                '& .MuiTypography-root': { fontSize: '0.68rem' },
+                                '& .MuiChip-root': { height: 18, fontSize: '0.58rem' },
+                                '& .MuiChip-root .MuiChip-label': { px: 0.75 },
+                            }}
+                        >
+                            <TableHead>
+                                <TableRow sx={{ bgcolor: "grey.50" }}>
+                                    <TableCell sx={{ fontWeight: 800, fontSize: "0.68rem", color: "grey.500", textTransform: "uppercase", letterSpacing: 1 }}>Transport Ref &amp; Dates</TableCell>
+                                    <TableCell sx={{ fontWeight: 800, fontSize: "0.68rem", color: "grey.500", textTransform: "uppercase", letterSpacing: 1 }}>Associated PO / PI</TableCell>
+                                    <TableCell sx={{ fontWeight: 800, fontSize: "0.68rem", color: "grey.500", textTransform: "uppercase", letterSpacing: 1 }}>Transporter &amp; Vehicle</TableCell>
+                                    <TableCell sx={{ fontWeight: 800, fontSize: "0.68rem", color: "grey.500", textTransform: "uppercase", letterSpacing: 1 }}>Driver Details</TableCell>
+                                    <TableCell sx={{ fontWeight: 800, fontSize: "0.68rem", color: "grey.500", textTransform: "uppercase", letterSpacing: 1 }}>Dispatch Route</TableCell>
+                                    <TableCell sx={{ fontWeight: 800, fontSize: "0.68rem", color: "grey.500", textTransform: "uppercase", letterSpacing: 1, textAlign: "right" }}>Total Freight Cost</TableCell>
+                                    <TableCell sx={{ fontWeight: 800, fontSize: "0.68rem", color: "grey.500", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Doc Verification</TableCell>
+                                    <TableCell sx={{ fontWeight: 800, fontSize: "0.68rem", color: "grey.500", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Actions</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
                                 {loading && filteredTransports.length === 0 ? (
                                     Array(5).fill(0).map((_, i) => (
-                                        <tr key={i} className="animate-pulse">
-                                            <td colSpan="7" className="px-6 py-10"><div className="h-4 bg-slate-100 rounded w-full"></div></td>
-                                        </tr>
+                                        <TableRow key={i}>
+                                            <TableCell colSpan={8} sx={{ px: 3, py: 4 }}>
+                                                <Skeleton variant="rectangular" height={20} sx={{ borderRadius: 1 }} />
+                                            </TableCell>
+                                        </TableRow>
                                     ))
                                 ) : filteredTransports.length > 0 ? (
                                     filteredTransports.map((trn) => {
                                         const totalTrnCost = trn.total_cost ? parseFloat(trn.total_cost) : (trn.cost_items || []).reduce((s, cost) => s + parseFloat(cost.amount || 0), 0);
                                         return (
-                                            <tr key={trn.id} className="group hover:bg-slate-50 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded border border-blue-100 self-start text-xs">
-                                                                {trn.transport_number || `TRN/${trn.id.substring(0,6).toUpperCase()}`}
-                                                            </span>
-                                                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
-                                                                trn.status?.toUpperCase() === "DELIVERED" 
-                                                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200" 
-                                                                    : "bg-amber-50 text-amber-700 border border-amber-200"
-                                                            }`}>
-                                                                {trn.status_display || trn.status || "Pending"}
-                                                            </span>
-                                                        </div>
-                                                        <span className="text-[10px] text-slate-400 font-bold uppercase mt-1 flex items-center gap-1.5">
-                                                            <FaCalendarAlt size={10} />
+                                            <TableRow key={trn.id} hover sx={{ "&:hover": { bgcolor: "grey.50" }, transition: "background 0.15s" }}>
+                                                <TableCell sx={{ py: 2 }}>
+                                                    <Box sx={{ display: "flex", flexDirection: "column" }}>
+                                                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                                                            <Chip
+                                                                label={trn.transport_number || `TRN/${trn.id.substring(0, 6).toUpperCase()}`}
+                                                                size="small"
+                                                                sx={{ fontFamily: "monospace", fontWeight: 700, bgcolor: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", fontSize: "0.75rem", height: 24 }}
+                                                            />
+                                                            <Chip
+                                                                label={trn.status_display || trn.status || "Pending"}
+                                                                size="small"
+                                                                sx={{
+                                                                    fontWeight: 900,
+                                                                    fontSize: "0.55rem",
+                                                                    textTransform: "uppercase",
+                                                                    height: 20,
+                                                                    ...(trn.status?.toUpperCase() === "DELIVERED"
+                                                                        ? { bgcolor: "#ecfdf5", color: "#047857", border: "1px solid #a7f3d0" }
+                                                                        : { bgcolor: "#fffbeb", color: "#b45309", border: "1px solid #fde68a" }
+                                                                    )
+                                                                }}
+                                                            />
+                                                        </Box>
+                                                        <Typography sx={{ fontSize: "0.62rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase", mt: 0.5, display: "flex", alignItems: "center", gap: 0.75 }}>
+                                                            <CalendarTodayIcon sx={{ fontSize: 12 }} />
                                                             Disp: {trn.dispatch_date}
-                                                        </span>
-                                                        <span className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1.5 mt-0.5">
-                                                            <FaCalendarAlt size={10} />
+                                                        </Typography>
+                                                        <Typography sx={{ fontSize: "0.62rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase", mt: 0.25, display: "flex", alignItems: "center", gap: 0.75 }}>
+                                                            <CalendarTodayIcon sx={{ fontSize: 12 }} />
                                                             Exp: {trn.expected_delivery_date}
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col text-slate-700 font-medium">
+                                                        </Typography>
+                                                    </Box>
+                                                </TableCell>
+                                                <TableCell sx={{ py: 2 }}>
+                                                    <Box sx={{ display: "flex", flexDirection: "column" }}>
                                                         {trn.po_number || trn.purchase_order_number ? (
-                                                            <span className="text-xs font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 self-start">
-                                                                PO: {trn.po_number || trn.purchase_order_number}
-                                                            </span>
+                                                            <Chip
+                                                                label={`PO: ${trn.po_number || trn.purchase_order_number}`}
+                                                                size="small"
+                                                                sx={{ fontFamily: "monospace", fontWeight: 700, bgcolor: "grey.100", color: "grey.800", border: "1px solid", borderColor: "grey.200", fontSize: "0.75rem", height: 24, alignSelf: "flex-start" }}
+                                                            />
                                                         ) : trn.pi_number || trn.proforma_invoice_number ? (
-                                                            <span className="text-xs font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 self-start">
-                                                                PI: {trn.pi_number || trn.proforma_invoice_number}
-                                                            </span>
+                                                            <Chip
+                                                                label={`PI: ${trn.pi_number || trn.proforma_invoice_number}`}
+                                                                size="small"
+                                                                sx={{ fontFamily: "monospace", fontWeight: 700, bgcolor: "grey.100", color: "grey.800", border: "1px solid", borderColor: "grey.200", fontSize: "0.75rem", height: 24, alignSelf: "flex-start" }}
+                                                            />
                                                         ) : (
-                                                            <span className="text-slate-400 italic">No Ref linked</span>
+                                                            <Typography sx={{ color: "grey.400", fontStyle: "italic", fontSize: "0.8rem" }}>No Ref linked</Typography>
                                                         )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-bold text-slate-800">{trn.transporter_name}</span>
-                                                        <span className="text-[11px] text-slate-400 font-bold uppercase">{trn.vehicle_number}</span>
-                                                        <span className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5"><FaPhone size={10}/> {trn.transporter_contact}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-                                                            <FaUser size={11} className="text-slate-400" />
+                                                    </Box>
+                                                </TableCell>
+                                                <TableCell sx={{ py: 2 }}>
+                                                    <Box sx={{ display: "flex", flexDirection: "column" }}>
+                                                        <Typography sx={{ fontSize: "0.875rem", fontWeight: 700, color: "grey.800" }}>{trn.transporter_name}</Typography>
+                                                        <Typography sx={{ fontSize: "0.68rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase" }}>{trn.vehicle_number}</Typography>
+                                                        <Typography sx={{ fontSize: "0.62rem", color: "grey.400", display: "flex", alignItems: "center", gap: 0.5, mt: 0.25 }}>
+                                                            <PhoneIcon sx={{ fontSize: 12 }} /> {trn.transporter_contact}
+                                                        </Typography>
+                                                    </Box>
+                                                </TableCell>
+                                                <TableCell sx={{ py: 2 }}>
+                                                    <Box sx={{ display: "flex", flexDirection: "column" }}>
+                                                        <Typography sx={{ fontSize: "0.875rem", fontWeight: 700, color: "grey.800", display: "flex", alignItems: "center", gap: 0.75 }}>
+                                                            <PersonIcon sx={{ fontSize: 14, color: "grey.400" }} />
                                                             {trn.driver_name}
-                                                        </span>
-                                                        <span className="text-[10px] text-slate-400 flex items-center gap-1 mt-1"><FaPhone size={10}/> {trn.driver_contact}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col text-xs font-semibold text-slate-600">
-                                                        <span className="flex items-center gap-1"><FaMapMarkerAlt size={10} className="text-emerald-500"/> From: {trn.dispatch_from}</span>
-                                                        <span className="flex items-center gap-1 mt-1"><FaMapMarkerAlt size={10} className="text-red-500"/> To: {trn.dispatch_to}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <span className="text-sm font-black text-slate-800">{formatCurrency(totalTrnCost)}</span>
-                                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter mt-0.5">{(trn.cost_items || []).length} Cost items</p>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center justify-center gap-2">
-                                                        <button
-                                                            onClick={() => setViewingTransport(trn)}
-                                                            className="p-2 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-all active:scale-90"
-                                                            title="Quick View"
-                                                        >
-                                                            <FaEye size={14} />
-                                                        </button>
+                                                        </Typography>
+                                                        <Typography sx={{ fontSize: "0.62rem", color: "grey.400", display: "flex", alignItems: "center", gap: 0.5, mt: 0.5 }}>
+                                                            <PhoneIcon sx={{ fontSize: 12 }} /> {trn.driver_contact}
+                                                        </Typography>
+                                                    </Box>
+                                                </TableCell>
+                                                <TableCell sx={{ py: 2 }}>
+                                                    <Box sx={{ display: "flex", flexDirection: "column", fontSize: "0.75rem", fontWeight: 600, color: "grey.600" }}>
+                                                        <Typography sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: "0.75rem", fontWeight: 600 }}>
+                                                            <PlaceIcon sx={{ fontSize: 14, color: "success.main" }} /> From: {trn.dispatch_from}
+                                                        </Typography>
+                                                        <Typography sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: "0.75rem", fontWeight: 600, mt: 0.5 }}>
+                                                            <PlaceIcon sx={{ fontSize: 14, color: "error.main" }} /> To: {trn.dispatch_to}
+                                                        </Typography>
+                                                    </Box>
+                                                </TableCell>
+                                                <TableCell sx={{ py: 2, textAlign: "right" }}>
+                                                    <Typography sx={{ fontSize: "0.875rem", fontWeight: 900, color: "grey.800" }}>{formatCurrency(totalTrnCost)}</Typography>
+                                                    <Typography sx={{ fontSize: "0.55rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, mt: 0.25 }}>
+                                                        {(trn.cost_items || []).length} Cost items
+                                                    </Typography>
+                                                </TableCell>
+                                                <TableCell sx={{ py: 2, textAlign: "center" }}>
+                                                    {getVerificationStatusChip(trn)}
+                                                </TableCell>
+                                                <TableCell sx={{ py: 2 }}>
+                                                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0.5 }}>
+                                                        <Tooltip title="Quick View">
+                                                            <IconButton size="small" onClick={() => setViewingTransport(trn)} sx={{ color: "grey.500", "&:hover": { color: "primary.main", bgcolor: "primary.50" } }}>
+                                                                <VisibilityIcon sx={{ fontSize: 18 }} />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                        <Tooltip title="Transport Note PDF">
+                                                            <IconButton size="small" onClick={() => handleDownloadNote(trn)} sx={{ color: "#b91c1c", "&:hover": { color: "#7f1d1d", bgcolor: "#fef2f2" } }}>
+                                                                <PictureAsPdfIcon sx={{ fontSize: 18 }} />
+                                                            </IconButton>
+                                                        </Tooltip>
                                                         {trn.status?.toUpperCase() !== "DELIVERED" && (
-                                                            <button
-                                                                onClick={() => handleOpenForm("edit", trn)}
-                                                                className="p-2 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-all active:scale-90"
-                                                                title="Modify records"
-                                                            >
-                                                                <FaEdit size={14} />
-                                                            </button>
+                                                            <Tooltip title="Modify records">
+                                                                <IconButton size="small" onClick={() => handleOpenForm("edit", trn)} sx={{ color: "primary.main", "&:hover": { color: "primary.dark", bgcolor: "primary.50" } }}>
+                                                                    <EditIcon sx={{ fontSize: 18 }} />
+                                                                </IconButton>
+                                                            </Tooltip>
                                                         )}
                                                         {trn.status?.toUpperCase() !== "DELIVERED" && (
-                                                            <button
-                                                                onClick={() => handleMarkDelivered(trn)}
-                                                                className="p-2 rounded-lg text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 transition-all active:scale-90"
-                                                                title="Mark Delivered"
-                                                            >
-                                                                <FaCheck size={14} />
-                                                            </button>
+                                                            <Tooltip title="Mark Delivered">
+                                                                <IconButton size="small" onClick={() => handleMarkDelivered(trn)} sx={{ color: "success.main", "&:hover": { color: "success.dark", bgcolor: "#ecfdf5" } }}>
+                                                                    <CheckIcon sx={{ fontSize: 18 }} />
+                                                                </IconButton>
+                                                            </Tooltip>
                                                         )}
-                                                    </div>
-                                                </td>
-                                            </tr>
+                                                    </Box>
+                                                </TableCell>
+                                            </TableRow>
                                         );
                                     })
                                 ) : (
-                                    <tr>
-                                        <td colSpan="7" className="px-6 py-20 text-center">
-                                            <div className="flex flex-col items-center gap-3">
-                                                <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center text-slate-300">
-                                                    <FaTruck size={32} />
-                                                </div>
-                                                <p className="text-slate-500 font-black uppercase tracking-widest text-sm">No logistical shipments logged</p>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                    <TableRow>
+                                        <TableCell colSpan={8} sx={{ py: 10, textAlign: "center" }}>
+                                            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1.5 }}>
+                                                <Box sx={{ width: 80, height: 80, bgcolor: "grey.100", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "grey.300" }}>
+                                                    <LocalShippingIcon sx={{ fontSize: 40 }} />
+                                                </Box>
+                                                <Typography sx={{ color: "grey.500", fontWeight: 900, textTransform: "uppercase", letterSpacing: 2, fontSize: "0.875rem" }}>
+                                                    No logistical shipments logged
+                                                </Typography>
+                                            </Box>
+                                        </TableCell>
+                                    </TableRow>
                                 )}
-                            </tbody>
-                        </table>
-                    </div>
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
 
                     {/* Pagination */}
-                    <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-                        <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">
-                            Showing <span className="text-slate-800">{filteredTransports.length}</span> of <span className="text-slate-800">{totalCount}</span> shipments
-                        </div>
-                        <div className="flex gap-3">
-                            <button
+                    <Box sx={{ px: 3, py: 2, bgcolor: "grey.50", borderTop: "1px solid", borderColor: "grey.200", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <Typography sx={{ fontSize: "0.75rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5 }}>
+                            Showing <Box component="span" sx={{ color: "grey.800" }}>{filteredTransports.length}</Box> of <Box component="span" sx={{ color: "grey.800" }}>{totalCount}</Box> shipments
+                        </Typography>
+                        <Box sx={{ display: "flex", gap: 1.5 }}>
+                            <Button
+                                variant="outlined"
+                                size="small"
+                                startIcon={<ChevronLeftIcon />}
                                 onClick={handlePrev}
                                 disabled={!previous}
-                                className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-all shadow-sm hover:shadow active:scale-95"
+                                sx={{ borderRadius: 2.5, fontWeight: 900, fontSize: "0.7rem", textTransform: "uppercase", px: 2.5, borderColor: "grey.200", color: "grey.600" }}
                             >
-                                PREVIOUS
-                            </button>
-                            <button
+                                Previous
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                size="small"
+                                endIcon={<ChevronRightIcon />}
                                 onClick={handleNext}
                                 disabled={!next}
-                                className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-all shadow-sm hover:shadow active:scale-95"
+                                sx={{ borderRadius: 2.5, fontWeight: 900, fontSize: "0.7rem", textTransform: "uppercase", px: 2.5, borderColor: "grey.200", color: "grey.600" }}
                             >
-                                NEXT PAGE
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                                Next Page
+                            </Button>
+                        </Box>
+                    </Box>
+                </Paper>
+            </Box>
 
             {/* Alert toast */}
             <AlertToast
@@ -798,481 +1104,769 @@ const TransportList = () => {
                 onCancel={() => setConfirm(prev => ({ ...prev, open: false }))}
                 confirmText="Confirm"
                 confirmButtonClass="bg-emerald-600 hover:bg-emerald-500"
-                icon={FaCheck}
+                icon={CheckIcon}
                 iconBgClass="bg-emerald-100 text-emerald-600"
             />
 
-            {/* Log / Edit form Modal */}
-            {formModal.open && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setFormModal({ open: false, mode: "create", id: null })}></div>
-                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
-                        {/* Modal Header */}
-                        <div className="bg-slate-900 text-white p-6 flex justify-between items-center">
-                            <div>
-                                <h3 className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
-                                    <FaTruck className="text-blue-400" />
-                                    {formModal.mode === "create" ? "Log Logistical Transport shipment" : "Modify Transport Logistics Records"}
-                                </h3>
-                                <p className="text-[10px] text-slate-400 uppercase font-bold mt-1">Specify dispatch routes and cost items</p>
-                            </div>
-                            <button onClick={() => setFormModal({ open: false, mode: "create", id: null })} className="p-2 hover:bg-white/10 rounded-full transition-colors"><FaTimes size={18} /></button>
-                        </div>
+            {/* Log / Edit form Dialog */}
+            <Dialog
+                open={formModal.open}
+                onClose={() => setFormModal({ open: false, mode: "create", id: null })}
+                maxWidth="md"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3, maxHeight: "90vh" } }}
+            >
+                <DialogTitle sx={{ bgcolor: "grey.900", color: "white", py: 2.5, px: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 900, textTransform: "uppercase", letterSpacing: 0.5, display: "flex", alignItems: "center", gap: 1 }}>
+                            <LocalShippingIcon sx={{ color: "#60a5fa" }} />
+                            {formModal.mode === "create" ? "Log Logistical Transport shipment" : "Modify Transport Logistics Records"}
+                        </Typography>
+                        <Typography sx={{ fontSize: "0.6rem", color: "grey.400", textTransform: "uppercase", fontWeight: 700, mt: 0.25 }}>
+                            Specify dispatch routes and cost items
+                        </Typography>
+                    </Box>
+                    <IconButton onClick={() => setFormModal({ open: false, mode: "create", id: null })} sx={{ color: "white", "&:hover": { bgcolor: "rgba(255,255,255,0.1)" } }}>
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
 
-                        {/* Modal Form */}
-                        <form onSubmit={handleFormSubmit} className="flex-1 overflow-y-auto bg-slate-50 p-8 space-y-6">
-                            {/* Ref Select Section */}
-                            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                                <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2 border-b border-slate-100 pb-2">
-                                    <FaLink className="text-slate-400" /> Associated Documents Reference
-                                </h4>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Reference Type</label>
-                                        <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner border border-slate-200">
-                                            <button
-                                                type="button"
-                                                onClick={() => { setRefType("PO"); setFormData(prev => ({ ...prev, purchase_order: null, proforma_invoice: null, linked_number: "" })); }}
-                                                className={`flex-1 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-all ${refType === "PO" ? "bg-white text-blue-600 shadow" : "text-slate-500"}`}
-                                            >
-                                                Purchase Order (PO)
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => { setRefType("PI"); setFormData(prev => ({ ...prev, purchase_order: null, proforma_invoice: null, linked_number: "" })); }}
-                                                className={`flex-1 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-all ${refType === "PI" ? "bg-white text-blue-600 shadow" : "text-slate-500"}`}
-                                            >
-                                                Proforma Invoice (PI)
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="md:col-span-2 relative" ref={dropdownRef}>
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Select {refType} *</label>
-                                        <div className="relative">
-                                            <input
-                                                type="text"
-                                                required
-                                                readOnly={!!formData.purchase_order || !!formData.proforma_invoice}
-                                                value={formData.linked_number || refSearch}
-                                                onClick={() => !formData.linked_number && setIsRefDropdownOpen(true)}
-                                                onChange={(e) => { setRefSearch(e.target.value); setIsRefDropdownOpen(true); }}
-                                                placeholder={`Click to search and select linked active ${refType}...`}
-                                                className="w-full pl-5 pr-10 py-3.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all cursor-pointer"
-                                            />
-                                            {formData.linked_number ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setFormData(prev => ({ ...prev, purchase_order: null, proforma_invoice: null, linked_number: "" }))}
-                                                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 p-1 transition-colors"
-                                                >
-                                                    <FaTimes size={14} />
-                                                </button>
+                <DialogContent sx={{ bgcolor: "grey.50", p: 4, display: "flex", flexDirection: "column", gap: 3, pt: "24px !important" }}>
+                    {/* Ref Select Section */}
+                    <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: "1px solid", borderColor: "grey.200" }}>
+                        <Typography sx={{ fontSize: "0.7rem", fontWeight: 900, color: "grey.800", textTransform: "uppercase", letterSpacing: 1.5, display: "flex", alignItems: "center", gap: 1, borderBottom: "1px solid", borderColor: "grey.100", pb: 1, mb: 2 }}>
+                            <LinkIcon sx={{ color: "grey.400", fontSize: 16 }} /> Associated Documents Reference
+                        </Typography>
+                        <Grid container spacing={3}>
+                            <Grid item xs={12} md={4}>
+                                <Typography sx={{ fontSize: "0.6rem", fontWeight: 900, color: "grey.500", textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>
+                                    Reference Type
+                                </Typography>
+                                <ToggleButtonGroup
+                                    value={refType}
+                                    exclusive
+                                    onChange={(e, val) => {
+                                        if (val !== null) {
+                                            setRefType(val);
+                                            setFormData(prev => ({ ...prev, purchase_order: null, proforma_invoice: null, linked_number: "" }));
+                                        }
+                                    }}
+                                    fullWidth
+                                    size="small"
+                                    sx={{
+                                        bgcolor: "grey.100",
+                                        borderRadius: 2.5,
+                                        p: 0.25,
+                                        "& .MuiToggleButton-root": {
+                                            border: "none",
+                                            borderRadius: "8px !important",
+                                            textTransform: "uppercase",
+                                            fontWeight: 900,
+                                            fontSize: "0.65rem",
+                                            letterSpacing: 1,
+                                            py: 1,
+                                            color: "grey.500",
+                                            "&.Mui-selected": {
+                                                bgcolor: "white",
+                                                color: "primary.main",
+                                                boxShadow: 1,
+                                                "&:hover": { bgcolor: "white" }
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <ToggleButton value="PO">Purchase Order (PO)</ToggleButton>
+                                    <ToggleButton value="PI">Proforma Invoice (PI)</ToggleButton>
+                                </ToggleButtonGroup>
+                            </Grid>
+                            <Grid item xs={12} md={8}>
+                                <Box ref={dropdownRef} sx={{ position: "relative" }}>
+                                    <Typography sx={{ fontSize: "0.6rem", fontWeight: 900, color: "grey.500", textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>
+                                        Select {refType} *
+                                    </Typography>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
+                                        required
+                                        value={formData.linked_number || refSearch}
+                                        onClick={() => !formData.linked_number && setIsRefDropdownOpen(true)}
+                                        onChange={(e) => { setRefSearch(e.target.value); setIsRefDropdownOpen(true); }}
+                                        placeholder={`Click to search and select linked active ${refType}...`}
+                                        InputProps={{
+                                            readOnly: !!formData.purchase_order || !!formData.proforma_invoice,
+                                            endAdornment: (
+                                                <InputAdornment position="end">
+                                                    {formData.linked_number ? (
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => setFormData(prev => ({ ...prev, purchase_order: null, proforma_invoice: null, linked_number: "" }))}
+                                                            sx={{ color: "grey.400", "&:hover": { color: "error.main" } }}
+                                                        >
+                                                            <CloseIcon sx={{ fontSize: 18 }} />
+                                                        </IconButton>
+                                                    ) : (
+                                                        <ExpandMoreIcon sx={{ fontSize: 18, color: "grey.400" }} />
+                                                    )}
+                                                </InputAdornment>
+                                            ),
+                                            sx: { borderRadius: 2.5, fontWeight: 700, fontSize: "0.875rem", cursor: "pointer", py: 0.5 }
+                                        }}
+                                    />
+
+                                    {/* Autocomplete Ref Select Dropdown */}
+                                    {isRefDropdownOpen && (
+                                        <Paper elevation={8} sx={{ position: "absolute", left: 0, right: 0, mt: 1, borderRadius: 2.5, zIndex: 100, maxHeight: 224, overflow: "auto", border: "1px solid", borderColor: "grey.200" }}>
+                                            {refLoading ? (
+                                                <Typography sx={{ p: 2, textAlign: "center", fontSize: "0.7rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase" }}>
+                                                    Searching active references...
+                                                </Typography>
+                                            ) : refList.length > 0 ? (
+                                                refList.map((item) => (
+                                                    <Box
+                                                        key={item.id}
+                                                        onClick={() => handleRefSelect(item)}
+                                                        sx={{
+                                                            display: "flex",
+                                                            alignItems: "center",
+                                                            justifyContent: "space-between",
+                                                            px: 2.5,
+                                                            py: 1.5,
+                                                            cursor: "pointer",
+                                                            fontWeight: 700,
+                                                            fontSize: "0.75rem",
+                                                            color: "grey.700",
+                                                            borderBottom: "1px solid",
+                                                            borderColor: "grey.100",
+                                                            "&:hover": { bgcolor: "primary.50", color: "primary.main" },
+                                                            transition: "all 0.15s"
+                                                        }}
+                                                    >
+                                                        <span>{refType === "PO" ? item.po_number : item.pi_number}</span>
+                                                        <Chip label={item.client_name || item.vendor_name || "Active"} size="small" variant="outlined" sx={{ fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", height: 22 }} />
+                                                    </Box>
+                                                ))
                                             ) : (
-                                                <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                                <Typography sx={{ p: 2, textAlign: "center", fontSize: "0.7rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase" }}>
+                                                    No matching references found
+                                                </Typography>
                                             )}
-                                        </div>
+                                        </Paper>
+                                    )}
+                                </Box>
+                            </Grid>
+                        </Grid>
+                    </Paper>
 
-                                        {/* Autocomplete Ref Select Dropdown */}
-                                        {isRefDropdownOpen && (
-                                            <div className="absolute left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl z-[100] max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
-                                                {refLoading ? (
-                                                    <div className="p-4 text-center text-xs text-slate-400 font-bold uppercase animate-pulse">Searching active references...</div>
-                                                ) : refList.length > 0 ? (
-                                                    refList.map((item) => (
-                                                        <button
-                                                            key={item.id}
-                                                            type="button"
-                                                            onClick={() => handleRefSelect(item)}
-                                                            className="w-full text-left px-5 py-3 hover:bg-blue-50/50 text-slate-700 hover:text-blue-600 font-bold transition-all border-b border-slate-100 flex items-center justify-between text-xs"
-                                                        >
-                                                            <span>{refType === "PO" ? item.po_number : item.pi_number}</span>
-                                                            <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">{item.client_name || item.vendor_name || "Active"}</span>
-                                                        </button>
-                                                    ))
-                                                ) : (
-                                                    <div className="p-4 text-center text-xs text-slate-400 font-bold uppercase">No matching references found</div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
+                    {/* Logistics Details Grid */}
+                    <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: "1px solid", borderColor: "grey.200" }}>
+                        <Typography sx={{ fontSize: "0.7rem", fontWeight: 900, color: "grey.800", textTransform: "uppercase", letterSpacing: 1.5, display: "flex", alignItems: "center", gap: 1, borderBottom: "1px solid", borderColor: "grey.100", pb: 1, mb: 3 }}>
+                            <LocalShippingIcon sx={{ color: "grey.400", fontSize: 16 }} /> Carrier &amp; Dispatch Details
+                        </Typography>
+                        <Grid container spacing={3}>
+                            <Grid item xs={12} md={4}>
+                                <Typography sx={{ fontSize: "0.6rem", fontWeight: 900, color: "grey.500", textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>Transporter (Master)</Typography>
+                                <Select
+                                    fullWidth size="small" displayEmpty
+                                    value={formData.transporter || ""}
+                                    onChange={(e) => {
+                                        const id = e.target.value || null;
+                                        const t = transporterOptions.find(o => o.id === id);
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            transporter: id,
+                                            transporter_name: t ? t.name : prev.transporter_name,
+                                            transporter_contact: t && t.phone ? t.phone : prev.transporter_contact,
+                                        }));
+                                    }}
+                                    sx={{ borderRadius: 2.5, bgcolor: "grey.50", fontSize: "0.8rem", fontWeight: 700 }}
+                                >
+                                    <MenuItem value="" sx={{ fontSize: "0.8rem", fontStyle: "italic" }}>— None / type manually —</MenuItem>
+                                    {transporterOptions.map(o => (
+                                        <MenuItem key={o.id} value={o.id} sx={{ fontSize: "0.8rem" }}>{o.transporter_code} — {o.name}</MenuItem>
+                                    ))}
+                                </Select>
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                                <Typography sx={{ fontSize: "0.6rem", fontWeight: 900, color: "grey.500", textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>Transporter Name *</Typography>
+                                <TextField
+                                    fullWidth size="small" required
+                                    placeholder="E.g. Blue Dart Logistics"
+                                    value={formData.transporter_name}
+                                    onChange={(e) => setFormData({ ...formData, transporter_name: e.target.value })}
+                                    InputProps={{ sx: { borderRadius: 2.5, bgcolor: "grey.50", fontWeight: 700, fontSize: "0.875rem" } }}
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                                <Typography sx={{ fontSize: "0.6rem", fontWeight: 900, color: "grey.500", textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>Transporter Contact *</Typography>
+                                <TextField
+                                    fullWidth size="small" required
+                                    placeholder="10 digit phone number"
+                                    value={formData.transporter_contact}
+                                    onChange={(e) => setFormData({ ...formData, transporter_contact: e.target.value })}
+                                    InputProps={{ sx: { borderRadius: 2.5, bgcolor: "grey.50", fontWeight: 700, fontSize: "0.875rem" } }}
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                                <Typography sx={{ fontSize: "0.6rem", fontWeight: 900, color: "grey.500", textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>Vehicle Number *</Typography>
+                                <TextField
+                                    fullWidth size="small" required
+                                    placeholder="E.g. MH12AB1234"
+                                    value={formData.vehicle_number}
+                                    onChange={(e) => setFormData({ ...formData, vehicle_number: e.target.value })}
+                                    InputProps={{ sx: { borderRadius: 2.5, bgcolor: "grey.50", fontWeight: 700, fontSize: "0.875rem" } }}
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                                <Typography sx={{ fontSize: "0.6rem", fontWeight: 900, color: "grey.500", textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>Driver Name *</Typography>
+                                <TextField
+                                    fullWidth size="small" required
+                                    placeholder="Driver full name"
+                                    value={formData.driver_name}
+                                    onChange={(e) => setFormData({ ...formData, driver_name: e.target.value })}
+                                    InputProps={{ sx: { borderRadius: 2.5, bgcolor: "grey.50", fontWeight: 700, fontSize: "0.875rem" } }}
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                                <Typography sx={{ fontSize: "0.6rem", fontWeight: 900, color: "grey.500", textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>Driver Contact *</Typography>
+                                <TextField
+                                    fullWidth size="small" required
+                                    placeholder="Driver phone number"
+                                    value={formData.driver_contact}
+                                    onChange={(e) => setFormData({ ...formData, driver_contact: e.target.value })}
+                                    InputProps={{ sx: { borderRadius: 2.5, bgcolor: "grey.50", fontWeight: 700, fontSize: "0.875rem" } }}
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                                <Typography sx={{ fontSize: "0.6rem", fontWeight: 900, color: "grey.500", textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>LR / Consignment Note No.</Typography>
+                                <TextField
+                                    fullWidth size="small"
+                                    placeholder="Lorry receipt / bilty no."
+                                    value={formData.lr_number}
+                                    onChange={(e) => setFormData({ ...formData, lr_number: e.target.value })}
+                                    InputProps={{ sx: { borderRadius: 2.5, bgcolor: "grey.50", fontWeight: 700, fontSize: "0.875rem" } }}
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                                <Typography sx={{ fontSize: "0.6rem", fontWeight: 900, color: "grey.500", textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>Transporter Invoice Ref.</Typography>
+                                <TextField
+                                    fullWidth size="small"
+                                    placeholder="Carrier's invoice no."
+                                    value={formData.invoice_reference}
+                                    onChange={(e) => setFormData({ ...formData, invoice_reference: e.target.value })}
+                                    InputProps={{ sx: { borderRadius: 2.5, bgcolor: "grey.50", fontWeight: 700, fontSize: "0.875rem" } }}
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                                <Typography sx={{ fontSize: "0.6rem", fontWeight: 900, color: "grey.500", textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>Dispatch From *</Typography>
+                                <TextField
+                                    fullWidth size="small" required
+                                    placeholder="City of Origin"
+                                    value={formData.dispatch_from}
+                                    onChange={(e) => setFormData({ ...formData, dispatch_from: e.target.value })}
+                                    InputProps={{ sx: { borderRadius: 2.5, bgcolor: "grey.50", fontWeight: 700, fontSize: "0.875rem" } }}
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                                <Typography sx={{ fontSize: "0.6rem", fontWeight: 900, color: "grey.500", textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>Dispatch To *</Typography>
+                                <TextField
+                                    fullWidth size="small" required
+                                    placeholder="Destination City"
+                                    value={formData.dispatch_to}
+                                    onChange={(e) => setFormData({ ...formData, dispatch_to: e.target.value })}
+                                    InputProps={{ sx: { borderRadius: 2.5, bgcolor: "grey.50", fontWeight: 700, fontSize: "0.875rem" } }}
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={4} sx={{ display: { xs: "none", md: "block" } }} />
+                            <Grid item xs={12} md={4}>
+                                <Typography sx={{ fontSize: "0.6rem", fontWeight: 900, color: "grey.500", textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>Dispatch Date *</Typography>
+                                <TextField
+                                    fullWidth size="small" required type="date"
+                                    value={formData.dispatch_date}
+                                    onChange={(e) => setFormData({ ...formData, dispatch_date: e.target.value })}
+                                    InputProps={{ sx: { borderRadius: 2.5, bgcolor: "grey.50", fontWeight: 700, fontSize: "0.875rem" } }}
+                                />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                                <Typography sx={{ fontSize: "0.6rem", fontWeight: 900, color: "grey.500", textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>Expected Delivery Date *</Typography>
+                                <TextField
+                                    fullWidth size="small" required type="date"
+                                    value={formData.expected_delivery_date}
+                                    onChange={(e) => setFormData({ ...formData, expected_delivery_date: e.target.value })}
+                                    InputProps={{ sx: { borderRadius: 2.5, bgcolor: "grey.50", fontWeight: 700, fontSize: "0.875rem" } }}
+                                />
+                            </Grid>
+                        </Grid>
+                    </Paper>
 
-                            {/* Logistics Details Grid */}
-                            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
-                                <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2 border-b border-slate-100 pb-2">
-                                    <FaTruck className="text-slate-400" /> Carrier &amp; Dispatch Details
-                                </h4>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Transporter Name *</label>
-                                        <input
-                                            type="text" required
-                                            placeholder="E.g. Blue Dart Logistics"
-                                            value={formData.transporter_name}
-                                            onChange={(e) => setFormData({ ...formData, transporter_name: e.target.value })}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none transition-all"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Transporter Contact *</label>
-                                        <input
-                                            type="text" required
-                                            placeholder="10 digit phone number"
-                                            value={formData.transporter_contact}
-                                            onChange={(e) => setFormData({ ...formData, transporter_contact: e.target.value })}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none transition-all"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Vehicle Number *</label>
-                                        <input
-                                            type="text" required
-                                            placeholder="E.g. MH12AB1234"
-                                            value={formData.vehicle_number}
-                                            onChange={(e) => setFormData({ ...formData, vehicle_number: e.target.value })}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none transition-all"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Driver Name *</label>
-                                        <input
-                                            type="text" required
-                                            placeholder="Driver full name"
-                                            value={formData.driver_name}
-                                            onChange={(e) => setFormData({ ...formData, driver_name: e.target.value })}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none transition-all"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Driver Contact *</label>
-                                        <input
-                                            type="text" required
-                                            placeholder="Driver phone number"
-                                            value={formData.driver_contact}
-                                            onChange={(e) => setFormData({ ...formData, driver_contact: e.target.value })}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none transition-all"
-                                        />
-                                    </div>
-                                    <div>
-                                        <span className="hidden md:inline">&nbsp;</span>
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Dispatch From *</label>
-                                        <input
-                                            type="text" required
-                                            placeholder="City of Origin"
-                                            value={formData.dispatch_from}
-                                            onChange={(e) => setFormData({ ...formData, dispatch_from: e.target.value })}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none transition-all"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Dispatch To *</label>
-                                        <input
-                                            type="text" required
-                                            placeholder="Destination City"
-                                            value={formData.dispatch_to}
-                                            onChange={(e) => setFormData({ ...formData, dispatch_to: e.target.value })}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none transition-all"
-                                        />
-                                    </div>
-                                    <div>
-                                        <span className="hidden md:inline">&nbsp;</span>
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Dispatch Date *</label>
-                                        <input
-                                            type="date" required
-                                            value={formData.dispatch_date}
-                                            onChange={(e) => setFormData({ ...formData, dispatch_date: e.target.value })}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none transition-all"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Expected Delivery Date *</label>
-                                        <input
-                                            type="date" required
-                                            value={formData.expected_delivery_date}
-                                            onChange={(e) => setFormData({ ...formData, expected_delivery_date: e.target.value })}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none transition-all"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
+                    {/* Consignment Items (partial-shipment tracking) */}
+                    <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: "1px solid", borderColor: "grey.200" }}>
+                        <Typography sx={{ fontSize: "0.7rem", fontWeight: 900, color: "grey.800", textTransform: "uppercase", letterSpacing: 1.5, display: "flex", alignItems: "center", gap: 1, borderBottom: "1px solid", borderColor: "grey.100", pb: 1, mb: 2 }}>
+                            <ReceiptLongIcon sx={{ color: "grey.400", fontSize: 16 }} /> Consignment Items — what's shipping in this trip
+                        </Typography>
+                        {!formData.purchase_order && !formData.proforma_invoice ? (
+                            <Typography sx={{ fontSize: "0.72rem", color: "grey.400", fontStyle: "italic", py: 1 }}>
+                                Select a {refType} above to load its items. Enter the quantity going in this shipment (partial dispatch allowed).
+                            </Typography>
+                        ) : consignmentLoading ? (
+                            <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}><CircularProgress size={22} /></Box>
+                        ) : consignmentItems.length === 0 ? (
+                            <Typography sx={{ fontSize: "0.72rem", color: "grey.400", fontStyle: "italic", py: 1 }}>
+                                No items found on this {refType}, or all items are fully dispatched.
+                            </Typography>
+                        ) : (
+                            <TableContainer sx={{ border: "1px solid", borderColor: "grey.200", borderRadius: 2.5, overflow: "hidden" }}>
+                                <Table size="small">
+                                    <TableHead>
+                                        <TableRow sx={{ bgcolor: "grey.50" }}>
+                                            <TableCell sx={{ fontWeight: 700, fontSize: "0.6rem", color: "grey.600", textTransform: "uppercase", letterSpacing: 1 }}>Item</TableCell>
+                                            <TableCell sx={{ fontWeight: 700, fontSize: "0.6rem", color: "grey.600", textTransform: "uppercase", letterSpacing: 1, textAlign: "right" }}>Ordered</TableCell>
+                                            <TableCell sx={{ fontWeight: 700, fontSize: "0.6rem", color: "grey.600", textTransform: "uppercase", letterSpacing: 1, textAlign: "right" }}>Pending</TableCell>
+                                            <TableCell sx={{ fontWeight: 700, fontSize: "0.6rem", color: "grey.600", textTransform: "uppercase", letterSpacing: 1, width: "20%", textAlign: "right" }}>Ship Now</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {consignmentItems.map((row) => (
+                                            <TableRow key={row.key} hover>
+                                                <TableCell sx={{ py: 1 }}>
+                                                    <Typography sx={{ fontSize: "0.78rem", fontWeight: 700, color: "grey.800" }}>{row.product_name}</Typography>
+                                                    <Typography sx={{ fontSize: "0.6rem", color: "grey.400", fontWeight: 700 }}>{row.product_code} · {row.unit}</Typography>
+                                                </TableCell>
+                                                <TableCell sx={{ py: 1, textAlign: "right", fontSize: "0.78rem", fontWeight: 700 }}>{row.ordered}</TableCell>
+                                                <TableCell sx={{ py: 1, textAlign: "right", fontSize: "0.78rem", fontWeight: 800, color: row.pending > 0 ? "#c2410c" : "#059669" }}>{row.pending}</TableCell>
+                                                <TableCell sx={{ py: 1 }}>
+                                                    <TextField
+                                                        fullWidth size="small" type="number"
+                                                        inputProps={{ min: 0, max: row.pending, step: "0.01", style: { textAlign: "right" } }}
+                                                        value={row.ship_qty}
+                                                        disabled={row.pending <= 0}
+                                                        onChange={(e) => handleConsignmentQtyChange(row.key, e.target.value)}
+                                                        InputProps={{ sx: { borderRadius: 2, bgcolor: "grey.50", fontSize: "0.78rem", fontWeight: 700 } }}
+                                                    />
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        )}
+                    </Paper>
 
-                            {/* Logistics Cost Breakdown Subtable */}
-                            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                                <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                                        <FaCoins className="text-slate-400" /> Freight Cost Breakdown
-                                    </h4>
-                                    <button
-                                        type="button"
-                                        onClick={handleAddCostLine}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 font-black rounded-lg text-[10px] uppercase tracking-wider transition-colors active:scale-95"
-                                    >
-                                        <FaPlus size={8} /> Add Cost line
-                                    </button>
-                                </div>
-
-                                <div className="border border-slate-200 rounded-xl overflow-hidden">
-                                    <table className="w-full text-left text-sm">
-                                        <thead className="bg-slate-50 text-slate-600 font-semibold uppercase text-[10px] tracking-wider">
-                                            <tr>
-                                                <th className="px-5 py-3 w-1/4">Cost Type</th>
-                                                <th className="px-5 py-3 w-1/2">Description / Note</th>
-                                                <th className="px-5 py-3 w-1/5 text-right">Amount (INR)</th>
-                                                <th className="px-5 py-3 text-center">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100 bg-white">
-                                            {formData.cost_items.map((item, idx) => (
-                                                <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                                                    <td className="px-5 py-3">
-                                                        <select
-                                                            required
-                                                            value={item.cost_type}
-                                                            onChange={(e) => handleCostItemChange(idx, "cost_type", e.target.value)}
-                                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-blue-500"
-                                                        >
-                                                            {COST_TYPES.map(type => (
-                                                                <option key={type.value} value={type.value}>{type.label}</option>
-                                                            ))}
-                                                        </select>
-                                                    </td>
-                                                    <td className="px-5 py-3">
-                                                        <input
-                                                            type="text"
-                                                            placeholder="Transit insurance, toll charges, handling notes..."
-                                                            value={item.description}
-                                                            onChange={(e) => handleCostItemChange(idx, "description", e.target.value)}
-                                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold outline-none focus:border-blue-500"
-                                                        />
-                                                    </td>
-                                                    <td className="px-5 py-3 text-right">
-                                                        <div className="relative">
-                                                            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</div>
-                                                            <input
-                                                                type="number" step="0.01" min="0" required
-                                                                value={item.amount || ""}
-                                                                onChange={(e) => handleCostItemChange(idx, "amount", e.target.value)}
-                                                                className="w-full pl-6 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-black text-right outline-none focus:border-blue-500"
-                                                            />
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-5 py-3 text-center">
-                                                        <button
-                                                            type="button"
-                                                            disabled={formData.cost_items.length <= 1}
-                                                            onClick={() => handleRemoveCostLine(idx)}
-                                                            className="p-1.5 text-slate-400 hover:text-red-600 disabled:opacity-30 rounded-lg hover:bg-slate-100 transition-colors"
-                                                        >
-                                                            <FaTrash size={12} />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                        <tfoot className="bg-slate-50 font-bold border-t border-slate-200 text-xs">
-                                            <tr>
-                                                <td colSpan="2" className="px-5 py-3 text-right uppercase tracking-wider text-slate-500">Total Logistics Cost</td>
-                                                <td className="px-5 py-3 text-right font-black text-slate-800 font-mono text-sm">{formatCurrency(totalCost)}</td>
-                                                <td>&nbsp;</td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-                            </div>
-                        </form>
-
-                        {/* Modal Footer */}
-                        <div className="bg-slate-50 px-8 py-4 border-t border-slate-200 flex justify-end gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setFormModal({ open: false, mode: "create", id: null })}
-                                className="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-black text-xs uppercase tracking-widest rounded-xl transition-all active:scale-95"
+                    {/* Logistics Cost Breakdown Subtable */}
+                    <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: "1px solid", borderColor: "grey.200" }}>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid", borderColor: "grey.100", pb: 1, mb: 2 }}>
+                            <Typography sx={{ fontSize: "0.7rem", fontWeight: 900, color: "grey.800", textTransform: "uppercase", letterSpacing: 1.5, display: "flex", alignItems: "center", gap: 1 }}>
+                                <MonetizationOnIcon sx={{ color: "grey.400", fontSize: 16 }} /> Freight Cost Breakdown
+                            </Typography>
+                            <Button
+                                size="small"
+                                startIcon={<AddIcon sx={{ fontSize: 12 }} />}
+                                onClick={handleAddCostLine}
+                                sx={{ fontSize: "0.6rem", fontWeight: 900, textTransform: "uppercase", letterSpacing: 1, color: "primary.main", bgcolor: "primary.50", borderRadius: 2, px: 1.5, "&:hover": { bgcolor: "primary.100" } }}
                             >
-                                Close
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleFormSubmit}
-                                disabled={submitting}
-                                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-blue-500/20 active:scale-95 flex items-center gap-2"
-                            >
-                                {submitting && <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
-                                {submitting ? "SUBMITTING..." : "CONFIRM SHIPMENT LOG"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                                Add Cost line
+                            </Button>
+                        </Box>
 
-            {/* Quick Details View Modal */}
-            {viewingTransport && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setViewingTransport(null)}></div>
-                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
-                        {/* Header */}
-                        <div className="bg-slate-900 text-white p-6 flex justify-between items-center">
-                            <div>
-                                <h3 className="text-lg font-black uppercase tracking-tighter flex items-center gap-3">
-                                    <FaTruck className="text-blue-400" /> Carrier Shipment Report
-                                    <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full ${
-                                        viewingTransport.status?.toUpperCase() === "DELIVERED" 
-                                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" 
-                                            : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                                    }`}>
-                                        {viewingTransport.status_display || viewingTransport.status || "Pending"}
-                                    </span>
-                                </h3>
-                                <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">
-                                    Reference ID: {viewingTransport.transport_number || `TRN/${viewingTransport.id.substring(0,6).toUpperCase()}`}
-                                </p>
-                            </div>
-                            <button onClick={() => setViewingTransport(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><FaTimes size={18} /></button>
-                        </div>
+                        <TableContainer sx={{ border: "1px solid", borderColor: "grey.200", borderRadius: 2.5, overflow: "hidden" }}>
+                            <Table size="small">
+                                <TableHead>
+                                    <TableRow sx={{ bgcolor: "grey.50" }}>
+                                        <TableCell sx={{ fontWeight: 700, fontSize: "0.6rem", color: "grey.600", textTransform: "uppercase", letterSpacing: 1, width: "25%" }}>Cost Type</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, fontSize: "0.6rem", color: "grey.600", textTransform: "uppercase", letterSpacing: 1, width: "50%" }}>Description / Note</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, fontSize: "0.6rem", color: "grey.600", textTransform: "uppercase", letterSpacing: 1, width: "20%", textAlign: "right" }}>Amount (INR)</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, fontSize: "0.6rem", color: "grey.600", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Action</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {formData.cost_items.map((item, idx) => (
+                                        <TableRow key={idx} hover>
+                                            <TableCell sx={{ py: 1.5 }}>
+                                                <Select
+                                                    fullWidth
+                                                    size="small"
+                                                    required
+                                                    value={item.cost_type}
+                                                    onChange={(e) => handleCostItemChange(idx, "cost_type", e.target.value)}
+                                                    sx={{ borderRadius: 2, bgcolor: "grey.50", fontSize: "0.75rem", fontWeight: 700 }}
+                                                >
+                                                    {COST_TYPES.map(type => (
+                                                        <MenuItem key={type.value} value={type.value} sx={{ fontSize: "0.8rem" }}>{type.label}</MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </TableCell>
+                                            <TableCell sx={{ py: 1.5 }}>
+                                                <TextField
+                                                    fullWidth size="small"
+                                                    placeholder="Transit insurance, toll charges, handling notes..."
+                                                    value={item.description}
+                                                    onChange={(e) => handleCostItemChange(idx, "description", e.target.value)}
+                                                    InputProps={{ sx: { borderRadius: 2, bgcolor: "grey.50", fontSize: "0.75rem", fontWeight: 700 } }}
+                                                />
+                                            </TableCell>
+                                            <TableCell sx={{ py: 1.5 }}>
+                                                <TextField
+                                                    fullWidth size="small"
+                                                    type="number"
+                                                    required
+                                                    inputProps={{ step: "0.01", min: "0" }}
+                                                    value={item.amount || ""}
+                                                    onChange={(e) => handleCostItemChange(idx, "amount", e.target.value)}
+                                                    InputProps={{
+                                                        startAdornment: <InputAdornment position="start" sx={{ "& .MuiTypography-root": { fontSize: "0.75rem", fontWeight: 700, color: "grey.400" } }}>&#8377;</InputAdornment>,
+                                                        sx: { borderRadius: 2, bgcolor: "grey.50", fontSize: "0.75rem", fontWeight: 900, "& input": { textAlign: "right" } }
+                                                    }}
+                                                />
+                                            </TableCell>
+                                            <TableCell sx={{ py: 1.5, textAlign: "center" }}>
+                                                <IconButton
+                                                    size="small"
+                                                    disabled={formData.cost_items.length <= 1}
+                                                    onClick={() => handleRemoveCostLine(idx)}
+                                                    sx={{ color: "grey.400", "&:hover": { color: "error.main", bgcolor: "grey.100" } }}
+                                                >
+                                                    <DeleteIcon sx={{ fontSize: 16 }} />
+                                                </IconButton>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                                <TableFooter>
+                                    <TableRow sx={{ bgcolor: "grey.50", "& td": { borderBottom: "none" } }}>
+                                        <TableCell colSpan={2} sx={{ textAlign: "right", fontWeight: 800, fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: 1, color: "grey.500" }}>
+                                            Total Logistics Cost
+                                        </TableCell>
+                                        <TableCell sx={{ textAlign: "right", fontWeight: 900, color: "grey.800", fontFamily: "monospace", fontSize: "0.9rem" }}>
+                                            {formatCurrency(totalCost)}
+                                        </TableCell>
+                                        <TableCell />
+                                    </TableRow>
+                                </TableFooter>
+                            </Table>
+                        </TableContainer>
+                    </Paper>
+                </DialogContent>
 
-                        {/* Body */}
-                        <div className="p-8 overflow-y-auto bg-slate-50 space-y-6 flex-1 text-sm">
+                <DialogActions sx={{ bgcolor: "grey.50", px: 4, py: 2, borderTop: "1px solid", borderColor: "grey.200" }}>
+                    <Button
+                        onClick={() => setFormModal({ open: false, mode: "create", id: null })}
+                        sx={{ borderRadius: 2.5, fontWeight: 900, fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: 1.5, px: 3, py: 1, bgcolor: "grey.200", color: "grey.700", "&:hover": { bgcolor: "grey.300" } }}
+                    >
+                        Close
+                    </Button>
+                    <Button
+                        variant="contained"
+                        onClick={handleFormSubmit}
+                        disabled={submitting}
+                        startIcon={submitting ? <CircularProgress size={14} sx={{ color: "white" }} /> : null}
+                        sx={{ borderRadius: 2.5, fontWeight: 900, fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: 1.5, px: 3, py: 1, boxShadow: "0 4px 14px 0 rgba(25,118,210,0.25)" }}
+                    >
+                        {submitting ? "SUBMITTING..." : "CONFIRM SHIPMENT LOG"}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Quick Details View Dialog */}
+            <Dialog
+                open={!!viewingTransport}
+                onClose={() => setViewingTransport(null)}
+                maxWidth="md"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3, maxHeight: "85vh" } }}
+            >
+                {viewingTransport && (
+                    <>
+                        <DialogTitle sx={{ bgcolor: "grey.900", color: "white", py: 2.5, px: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <Box>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                                    <Typography variant="subtitle1" sx={{ fontWeight: 900, textTransform: "uppercase", letterSpacing: -0.5, display: "flex", alignItems: "center", gap: 1 }}>
+                                        <LocalShippingIcon sx={{ color: "#60a5fa" }} /> Carrier Shipment Report
+                                    </Typography>
+                                    <Chip
+                                        label={viewingTransport.status_display || viewingTransport.status || "Pending"}
+                                        size="small"
+                                        sx={{
+                                            fontWeight: 900,
+                                            fontSize: "0.6rem",
+                                            textTransform: "uppercase",
+                                            height: 22,
+                                            ...(viewingTransport.status?.toUpperCase() === "DELIVERED"
+                                                ? { bgcolor: "rgba(16,185,129,0.15)", color: "#6ee7b7", border: "1px solid rgba(16,185,129,0.3)" }
+                                                : { bgcolor: "rgba(245,158,11,0.15)", color: "#fcd34d", border: "1px solid rgba(245,158,11,0.3)" }
+                                            )
+                                        }}
+                                    />
+                                </Box>
+                                <Typography sx={{ fontSize: "0.6rem", color: "grey.400", fontWeight: 700, mt: 0.5, textTransform: "uppercase", letterSpacing: 2 }}>
+                                    Reference ID: {viewingTransport.transport_number || `TRN/${viewingTransport.id.substring(0, 6).toUpperCase()}`}
+                                </Typography>
+                            </Box>
+                            <IconButton onClick={() => setViewingTransport(null)} sx={{ color: "white", "&:hover": { bgcolor: "rgba(255,255,255,0.1)" } }}>
+                                <CloseIcon />
+                            </IconButton>
+                        </DialogTitle>
+
+                        <DialogContent sx={{ bgcolor: "grey.50", p: 4, display: "flex", flexDirection: "column", gap: 3, pt: "24px !important" }}>
                             {/* Milestone Tracker Banner */}
-                            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between gap-6">
-                                <div className="flex-1 space-y-1">
-                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Logistics Route</span>
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex items-center gap-1 font-bold text-slate-800">
-                                            <FaMapMarkerAlt className="text-emerald-500" /> {viewingTransport.dispatch_from}
-                                        </div>
-                                        <div className="h-0.5 bg-slate-200 w-12 flex-1 relative min-w-8">
-                                            <div className="absolute inset-0 bg-blue-500 rounded animate-pulse" style={{width: '60%'}}></div>
-                                        </div>
-                                        <div className="flex items-center gap-1 font-bold text-slate-800">
-                                            <FaMapMarkerAlt className="text-red-500" /> {viewingTransport.dispatch_to}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="w-px bg-slate-200 hidden md:block"></div>
-                                <div className="flex gap-8">
-                                    <div>
-                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Dispatch Date</span>
-                                        <span className="font-bold text-slate-800">{viewingTransport.dispatch_date}</span>
-                                    </div>
-                                    <div>
-                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Expected Arrival</span>
-                                        <span className="font-bold text-slate-800">{viewingTransport.expected_delivery_date}</span>
-                                    </div>
-                                </div>
-                            </div>
+                            <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: "1px solid", borderColor: "grey.200", display: "flex", flexDirection: { xs: "column", md: "row" }, justifyContent: "space-between", gap: 3 }}>
+                                <Box sx={{ flex: 1 }}>
+                                    <Typography sx={{ fontSize: "0.6rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, mb: 0.5 }}>
+                                        Logistics Route
+                                    </Typography>
+                                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontWeight: 700, color: "grey.800" }}>
+                                            <PlaceIcon sx={{ color: "success.main", fontSize: 18 }} />
+                                            <Typography sx={{ fontWeight: 700 }}>{viewingTransport.dispatch_from}</Typography>
+                                        </Box>
+                                        <Box sx={{ height: 2, bgcolor: "grey.200", flex: 1, minWidth: 32, position: "relative", borderRadius: 1, overflow: "hidden" }}>
+                                            <Box sx={{ position: "absolute", inset: 0, bgcolor: "primary.main", borderRadius: 1, width: "60%", animation: "pulse 2s infinite", "@keyframes pulse": { "0%, 100%": { opacity: 1 }, "50%": { opacity: 0.5 } } }} />
+                                        </Box>
+                                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontWeight: 700, color: "grey.800" }}>
+                                            <PlaceIcon sx={{ color: "error.main", fontSize: 18 }} />
+                                            <Typography sx={{ fontWeight: 700 }}>{viewingTransport.dispatch_to}</Typography>
+                                        </Box>
+                                    </Box>
+                                </Box>
+                                <Divider orientation="vertical" flexItem sx={{ display: { xs: "none", md: "block" } }} />
+                                <Box sx={{ display: "flex", gap: 4 }}>
+                                    <Box>
+                                        <Typography sx={{ fontSize: "0.6rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5 }}>Dispatch Date</Typography>
+                                        <Typography sx={{ fontWeight: 700, color: "grey.800" }}>{viewingTransport.dispatch_date}</Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography sx={{ fontSize: "0.6rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5 }}>Expected Arrival</Typography>
+                                        <Typography sx={{ fontWeight: 700, color: "grey.800" }}>{viewingTransport.expected_delivery_date}</Typography>
+                                    </Box>
+                                </Box>
+                            </Paper>
 
                             {/* Linked Reference & Carrier Details */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                                    <div>
-                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2 block">Linked Reference</span>
-                                        {viewingTransport.po_number || viewingTransport.purchase_order_number ? (
-                                            <div className="font-bold text-slate-800">
-                                                <p className="text-xs uppercase text-slate-400 font-bold">Purchase Order</p>
-                                                <p className="font-mono text-blue-700 bg-blue-50 border border-blue-100 rounded px-2.5 py-1 inline-block mt-1 font-bold text-xs">{viewingTransport.po_number || viewingTransport.purchase_order_number}</p>
-                                            </div>
-                                        ) : viewingTransport.pi_number || viewingTransport.proforma_invoice_number ? (
-                                            <div className="font-bold text-slate-800">
-                                                <p className="text-xs uppercase text-slate-400 font-bold">Proforma Invoice</p>
-                                                <p className="font-mono text-emerald-700 bg-emerald-50 border border-emerald-100 rounded px-2.5 py-1 inline-block mt-1 font-bold text-xs">{viewingTransport.pi_number || viewingTransport.proforma_invoice_number}</p>
-                                            </div>
-                                        ) : (
-                                            <span className="text-slate-400 italic">No Reference Logged</span>
-                                        )}
-                                    </div>
-                                </div>
+                            <Grid container spacing={3}>
+                                <Grid item xs={12} md={4}>
+                                    <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid", borderColor: "grey.200", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                                        <Box>
+                                            <Typography sx={{ fontSize: "0.6rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>
+                                                Linked Reference
+                                            </Typography>
+                                            {viewingTransport.po_number || viewingTransport.purchase_order_number ? (
+                                                <Box>
+                                                    <Typography sx={{ fontSize: "0.7rem", textTransform: "uppercase", color: "grey.400", fontWeight: 700 }}>Purchase Order</Typography>
+                                                    <Chip
+                                                        label={viewingTransport.po_number || viewingTransport.purchase_order_number}
+                                                        size="small"
+                                                        sx={{ fontFamily: "monospace", fontWeight: 700, bgcolor: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", fontSize: "0.75rem", mt: 0.5 }}
+                                                    />
+                                                </Box>
+                                            ) : viewingTransport.pi_number || viewingTransport.proforma_invoice_number ? (
+                                                <Box>
+                                                    <Typography sx={{ fontSize: "0.7rem", textTransform: "uppercase", color: "grey.400", fontWeight: 700 }}>Proforma Invoice</Typography>
+                                                    <Chip
+                                                        label={viewingTransport.pi_number || viewingTransport.proforma_invoice_number}
+                                                        size="small"
+                                                        sx={{ fontFamily: "monospace", fontWeight: 700, bgcolor: "#ecfdf5", color: "#047857", border: "1px solid #a7f3d0", fontSize: "0.75rem", mt: 0.5 }}
+                                                    />
+                                                </Box>
+                                            ) : (
+                                                <Typography sx={{ color: "grey.400", fontStyle: "italic" }}>No Reference Logged</Typography>
+                                            )}
+                                        </Box>
+                                    </Paper>
+                                </Grid>
 
-                                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2 block">Transporter identity</span>
-                                    <div className="space-y-1">
-                                        <p className="font-black text-slate-800">{viewingTransport.transporter_name}</p>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Vehicle: <span className="text-slate-800">{viewingTransport.vehicle_number}</span></p>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Phone: <span className="text-slate-800 font-mono">{viewingTransport.transporter_contact}</span></p>
-                                    </div>
-                                </div>
+                                <Grid item xs={12} md={4}>
+                                    <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid", borderColor: "grey.200", height: "100%" }}>
+                                        <Typography sx={{ fontSize: "0.6rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>
+                                            Transporter identity
+                                        </Typography>
+                                        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                                            <Typography sx={{ fontWeight: 900, color: "grey.800" }}>{viewingTransport.transporter_name}</Typography>
+                                            <Typography sx={{ fontSize: "0.62rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>
+                                                Vehicle: <Box component="span" sx={{ color: "grey.800" }}>{viewingTransport.vehicle_number}</Box>
+                                            </Typography>
+                                            <Typography sx={{ fontSize: "0.62rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>
+                                                Phone: <Box component="span" sx={{ color: "grey.800", fontFamily: "monospace" }}>{viewingTransport.transporter_contact}</Box>
+                                            </Typography>
+                                        </Box>
+                                    </Paper>
+                                </Grid>
 
-                                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2 block">Driver particulars</span>
-                                    <div className="space-y-1">
-                                        <p className="font-bold text-slate-800 flex items-center gap-1.5"><FaUser size={11} className="text-slate-400" /> {viewingTransport.driver_name}</p>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Contact No: <span className="text-slate-800 font-mono">{viewingTransport.driver_contact}</span></p>
-                                    </div>
-                                </div>
-                            </div>
+                                <Grid item xs={12} md={4}>
+                                    <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid", borderColor: "grey.200", height: "100%" }}>
+                                        <Typography sx={{ fontSize: "0.6rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>
+                                            Driver particulars
+                                        </Typography>
+                                        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                                            <Typography sx={{ fontWeight: 700, color: "grey.800", display: "flex", alignItems: "center", gap: 0.75 }}>
+                                                <PersonIcon sx={{ fontSize: 14, color: "grey.400" }} /> {viewingTransport.driver_name}
+                                            </Typography>
+                                            <Typography sx={{ fontSize: "0.62rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>
+                                                Contact No: <Box component="span" sx={{ color: "grey.800", fontFamily: "monospace" }}>{viewingTransport.driver_contact}</Box>
+                                            </Typography>
+                                        </Box>
+                                    </Paper>
+                                </Grid>
+                            </Grid>
+
+                            {/* Carrier docs + Payment status */}
+                            <Grid container spacing={3}>
+                                <Grid item xs={12} md={6}>
+                                    <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid", borderColor: "grey.200", height: "100%" }}>
+                                        <Typography sx={{ fontSize: "0.6rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>
+                                            Carrier Documents
+                                        </Typography>
+                                        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
+                                            <Typography sx={{ fontSize: "0.72rem", color: "grey.500", fontWeight: 700 }}>
+                                                LR / Consignment No.: <Box component="span" sx={{ color: "grey.800", fontFamily: "monospace" }}>{viewingTransport.lr_number || "—"}</Box>
+                                            </Typography>
+                                            <Typography sx={{ fontSize: "0.72rem", color: "grey.500", fontWeight: 700 }}>
+                                                Transporter Invoice Ref.: <Box component="span" sx={{ color: "grey.800", fontFamily: "monospace" }}>{viewingTransport.invoice_reference || "—"}</Box>
+                                            </Typography>
+                                            <Typography sx={{ fontSize: "0.72rem", color: "grey.500", fontWeight: 700 }}>
+                                                Direction: <Box component="span" sx={{ color: "grey.800" }}>{viewingTransport.direction === "SELL" ? "Outbound (Sale)" : viewingTransport.direction === "BUY" ? "Inbound (Purchase)" : "—"}</Box>
+                                            </Typography>
+                                        </Box>
+                                    </Paper>
+                                </Grid>
+                                <Grid item xs={12} md={6}>
+                                    <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid", borderColor: "grey.200", height: "100%" }}>
+                                        <Typography sx={{ fontSize: "0.6rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, mb: 1 }}>
+                                            Transporter Payment
+                                        </Typography>
+                                        <Box sx={{ display: "flex", gap: 3 }}>
+                                            <Box>
+                                                <Typography sx={{ fontSize: "0.55rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase" }}>Paid</Typography>
+                                                <Typography sx={{ fontWeight: 900, color: "#047857", fontSize: "0.9rem" }}>{formatCurrency(viewingTransport.amount_paid)}</Typography>
+                                            </Box>
+                                            <Box>
+                                                <Typography sx={{ fontSize: "0.55rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase" }}>Balance</Typography>
+                                                <Typography sx={{ fontWeight: 900, color: Number(viewingTransport.balance) > 0 ? "#dc2626" : "#059669", fontSize: "0.9rem" }}>{formatCurrency(viewingTransport.balance)}</Typography>
+                                            </Box>
+                                            <Box>
+                                                <Typography sx={{ fontSize: "0.55rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase" }}>Status</Typography>
+                                                <Chip label={(viewingTransport.payment_status_display || viewingTransport.payment_status || "Unpaid")} size="small"
+                                                    sx={{ fontWeight: 800, fontSize: "0.6rem", height: 20, mt: 0.25,
+                                                        ...(viewingTransport.payment_status === "PAID" ? { bgcolor: "#ecfdf5", color: "#047857" }
+                                                            : viewingTransport.payment_status === "PARTIALLY_PAID" ? { bgcolor: "#fffbeb", color: "#b45309" }
+                                                            : { bgcolor: "#fef2f2", color: "#b91c1c" }) }} />
+                                            </Box>
+                                        </Box>
+                                    </Paper>
+                                </Grid>
+                            </Grid>
+
+                            {/* Consignment items shipped in this trip */}
+                            {(viewingTransport.consignment_items || []).length > 0 && (
+                                <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid", borderColor: "grey.200", overflow: "hidden" }}>
+                                    <Box sx={{ px: 2.5, py: 2, borderBottom: "1px solid", borderColor: "grey.100", bgcolor: "grey.50", display: "flex", alignItems: "center", gap: 1 }}>
+                                        <ReceiptLongIcon sx={{ color: "grey.400", fontSize: 16 }} />
+                                        <Typography sx={{ fontSize: "0.6rem", fontWeight: 900, color: "grey.800", textTransform: "uppercase", letterSpacing: 2 }}>
+                                            Consignment Items (this shipment)
+                                        </Typography>
+                                    </Box>
+                                    <TableContainer>
+                                        <Table size="small">
+                                            <TableHead>
+                                                <TableRow sx={{ bgcolor: "grey.50" }}>
+                                                    <TableCell sx={{ fontWeight: 700, fontSize: "0.55rem", color: "grey.400", textTransform: "uppercase", letterSpacing: 1 }}>Item</TableCell>
+                                                    <TableCell sx={{ fontWeight: 700, fontSize: "0.55rem", color: "grey.400", textTransform: "uppercase", letterSpacing: 1 }}>Code</TableCell>
+                                                    <TableCell sx={{ fontWeight: 700, fontSize: "0.55rem", color: "grey.400", textTransform: "uppercase", letterSpacing: 1, textAlign: "right" }}>Qty</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {viewingTransport.consignment_items.map((ci, idx) => (
+                                                    <TableRow key={idx} hover>
+                                                        <TableCell sx={{ py: 1.5 }}><Typography sx={{ fontWeight: 700, color: "grey.700", fontSize: "0.8rem" }}>{ci.product_name}</Typography></TableCell>
+                                                        <TableCell sx={{ py: 1.5 }}><Typography sx={{ fontSize: "0.72rem", color: "grey.500", fontFamily: "monospace" }}>{ci.product_code}</Typography></TableCell>
+                                                        <TableCell sx={{ py: 1.5, textAlign: "right" }}><Typography sx={{ fontWeight: 800, color: "grey.800", fontSize: "0.8rem" }}>{ci.quantity} {ci.unit}</Typography></TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </Paper>
+                            )}
 
                             {/* Cost Breakdown details */}
-                            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                                <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <FaCoins className="text-slate-400" />
-                                        <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Freight &amp; Cargo Cost Breakdown</h4>
-                                    </div>
-                                </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
-                                        <thead>
-                                            <tr className="bg-slate-50/50 border-b border-slate-100 uppercase text-[9px] tracking-wider text-slate-400">
-                                                <th className="px-5 py-3 w-1/3">Cost Type</th>
-                                                <th className="px-5 py-3 w-1/2">Description</th>
-                                                <th className="px-5 py-3 w-1/5 text-right">Amount</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
+                            <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid", borderColor: "grey.200", overflow: "hidden" }}>
+                                <Box sx={{ px: 2.5, py: 2, borderBottom: "1px solid", borderColor: "grey.100", bgcolor: "grey.50", display: "flex", alignItems: "center", gap: 1 }}>
+                                    <MonetizationOnIcon sx={{ color: "grey.400", fontSize: 16 }} />
+                                    <Typography sx={{ fontSize: "0.6rem", fontWeight: 900, color: "grey.800", textTransform: "uppercase", letterSpacing: 2 }}>
+                                        Freight &amp; Cargo Cost Breakdown
+                                    </Typography>
+                                </Box>
+                                <TableContainer>
+                                    <Table size="small">
+                                        <TableHead>
+                                            <TableRow sx={{ bgcolor: "grey.50" }}>
+                                                <TableCell sx={{ fontWeight: 700, fontSize: "0.55rem", color: "grey.400", textTransform: "uppercase", letterSpacing: 1, width: "33%" }}>Cost Type</TableCell>
+                                                <TableCell sx={{ fontWeight: 700, fontSize: "0.55rem", color: "grey.400", textTransform: "uppercase", letterSpacing: 1, width: "50%" }}>Description</TableCell>
+                                                <TableCell sx={{ fontWeight: 700, fontSize: "0.55rem", color: "grey.400", textTransform: "uppercase", letterSpacing: 1, width: "20%", textAlign: "right" }}>Amount</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
                                             {(viewingTransport.cost_items || []).map((cost, idx) => {
                                                 const typeLabel = cost.cost_type_display || COST_TYPES.find(t => t.value === cost.cost_type)?.label || cost.cost_type;
                                                 return (
-                                                    <tr key={idx} className="hover:bg-slate-50/20 transition-colors">
-                                                        <td className="px-5 py-3.5">
-                                                            <span className="font-bold text-slate-700">{typeLabel}</span>
-                                                        </td>
-                                                        <td className="px-5 py-3.5">
-                                                            <span className="text-xs text-slate-500">{cost.description || "—"}</span>
-                                                        </td>
-                                                        <td className="px-5 py-3.5 text-right">
-                                                            <span className="font-black text-slate-800 font-mono">{formatCurrency(cost.amount)}</span>
-                                                        </td>
-                                                    </tr>
+                                                    <TableRow key={idx} hover>
+                                                        <TableCell sx={{ py: 1.5 }}>
+                                                            <Typography sx={{ fontWeight: 700, color: "grey.700", fontSize: "0.8rem" }}>{typeLabel}</Typography>
+                                                        </TableCell>
+                                                        <TableCell sx={{ py: 1.5 }}>
+                                                            <Typography sx={{ fontSize: "0.75rem", color: "grey.500" }}>{cost.description || "—"}</Typography>
+                                                        </TableCell>
+                                                        <TableCell sx={{ py: 1.5, textAlign: "right" }}>
+                                                            <Typography sx={{ fontWeight: 900, color: "grey.800", fontFamily: "monospace", fontSize: "0.8rem" }}>{formatCurrency(cost.amount)}</Typography>
+                                                        </TableCell>
+                                                    </TableRow>
                                                 );
                                             })}
-                                        </tbody>
-                                        <tfoot className="bg-slate-50 border-t border-slate-100 font-bold text-xs">
-                                            <tr>
-                                                <td colSpan="2" className="px-5 py-3 text-right uppercase tracking-wider text-slate-500">Total freight shipment cost</td>
-                                                <td className="px-5 py-3 text-right font-black text-slate-800 font-mono text-sm">
+                                        </TableBody>
+                                        <TableFooter>
+                                            <TableRow sx={{ bgcolor: "grey.50", "& td": { borderBottom: "none" } }}>
+                                                <TableCell colSpan={2} sx={{ textAlign: "right", fontWeight: 800, fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: 1, color: "grey.500" }}>
+                                                    Total freight shipment cost
+                                                </TableCell>
+                                                <TableCell sx={{ textAlign: "right", fontWeight: 900, color: "grey.800", fontFamily: "monospace", fontSize: "0.9rem" }}>
                                                     {formatCurrency(viewingTransport.total_cost || (viewingTransport.cost_items || []).reduce((s, c) => s + parseFloat(c.amount || 0), 0))}
-                                                </td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        </TableFooter>
+                                    </Table>
+                                </TableContainer>
+                            </Paper>
+                        </DialogContent>
 
-                        {/* Footer */}
-                        <div className="bg-slate-50 px-8 py-4 border-t border-slate-200 flex justify-end gap-3">
+                        <DialogActions sx={{ bgcolor: "grey.50", px: 4, py: 2, borderTop: "1px solid", borderColor: "grey.200" }}>
                             {viewingTransport.status?.toUpperCase() !== "DELIVERED" && (
-                                <button
+                                <Button
+                                    variant="contained"
+                                    startIcon={<CheckIcon sx={{ fontSize: 14 }} />}
                                     onClick={() => handleMarkDelivered(viewingTransport)}
-                                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center gap-2"
+                                    sx={{
+                                        borderRadius: 2.5,
+                                        fontWeight: 900,
+                                        fontSize: "0.7rem",
+                                        textTransform: "uppercase",
+                                        letterSpacing: 1.5,
+                                        px: 3,
+                                        py: 1,
+                                        bgcolor: "#059669",
+                                        "&:hover": { bgcolor: "#047857" },
+                                        boxShadow: "0 4px 14px 0 rgba(5,150,105,0.25)"
+                                    }}
                                 >
-                                    <FaCheck size={12} />
                                     Mark Delivered
-                                </button>
+                                </Button>
                             )}
-                            <button
+                            <Button
                                 onClick={() => setViewingTransport(null)}
-                                className="px-6 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-black text-xs uppercase tracking-widest rounded-xl transition-all active:scale-95"
+                                sx={{ borderRadius: 2.5, fontWeight: 900, fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: 1.5, px: 3, py: 1, bgcolor: "grey.200", color: "grey.700", "&:hover": { bgcolor: "grey.300" } }}
                             >
                                 Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                            </Button>
+                        </DialogActions>
+                    </>
+                )}
+            </Dialog>
         </>
     );
 };

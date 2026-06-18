@@ -1,23 +1,67 @@
 import { useState, useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
 import {
-    FaBook, FaChevronRight, FaChevronDown, FaCube, FaUserTie, FaGlobe,
-    FaFileAlt, FaUsers, FaClipboardList, FaBalanceScale, FaBinoculars,
-    FaMoneyCheckAlt, FaChartLine, FaTrophy, FaBoxOpen, FaFileInvoiceDollar,
-    FaMoneyBillWave, FaCoins, FaChartPie, FaTruck, FaUndoAlt, FaUserShield,
-    FaSearch, FaArrowUp, FaHistory, FaRocket, FaShieldAlt, FaLightbulb,
-    FaThLarge, FaList, FaEdit, FaTrash, FaEye, FaPlus, FaFileExcel,
-    FaCheck, FaTimes, FaPaperPlane, FaLock, FaUnlock, FaLink,
-    FaExclamationTriangle, FaInfoCircle, FaArrowRight, FaBoxes
-} from "react-icons/fa";
-import { BiImport, BiSolidPurchaseTag } from "react-icons/bi";
-import { FaMoneyBillTrendUp } from "react-icons/fa6";
+    Box, Typography, TextField, InputAdornment, List, ListItem, ListItemButton,
+    ListItemText, ListItemIcon, Divider, Chip, Avatar, Card, CardContent,
+    Button, Accordion, AccordionSummary, AccordionDetails, Fab, Paper, Collapse
+} from "@mui/material";
+import {
+    MenuBook as MenuBookIcon,
+    ChevronRight as ChevronRightIcon,
+    ExpandMore as ExpandMoreIcon,
+    Widgets as WidgetsIcon,
+    BusinessCenter as BusinessCenterIcon,
+    Language as LanguageIcon,
+    Description as DescriptionIcon,
+    Group as GroupIcon,
+    Assignment as AssignmentIcon,
+    Balance as BalanceIcon,
+    Explore as ExploreIcon,
+    AccountBalanceWallet as AccountBalanceWalletIcon,
+    TrendingUp as TrendingUpIcon,
+    EmojiEvents as EmojiEventsIcon,
+    Inventory2 as Inventory2Icon,
+    Receipt as ReceiptIcon,
+    CheckCircle as CheckCircleIcon,
+    Payments as PaymentsIcon,
+    MonetizationOn as MonetizationOnIcon,
+    PieChart as PieChartIcon,
+    LocalShipping as LocalShippingIcon,
+    Undo as UndoIcon,
+    AdminPanelSettings as AdminPanelSettingsIcon,
+    Search as SearchIcon,
+    KeyboardArrowUp as KeyboardArrowUpIcon,
+    History as HistoryIcon,
+    Rocket as RocketIcon,
+    Shield as ShieldIcon,
+    Lightbulb as LightbulbIcon,
+    Dashboard as DashboardIcon,
+    FormatListBulleted as FormatListBulletedIcon,
+    Edit as EditIcon,
+    Delete as DeleteIcon,
+    Visibility as VisibilityIcon,
+    Add as AddIcon,
+    TableChart as TableChartIcon,
+    Check as CheckIcon,
+    Close as CloseIcon,
+    Send as SendIcon,
+    Lock as LockIcon,
+    LockOpen as LockOpenIcon,
+    Link as LinkIcon,
+    Warning as WarningIcon,
+    Info as InfoIcon,
+    ArrowForward as ArrowForwardIcon,
+    Inventory as InventoryIcon,
+    ImportExport as ImportExportIcon,
+    LocalOffer as LocalOfferIcon,
+    CurrencyExchange as CurrencyExchangeIcon,
+    Analytics as AnalyticsIcon
+} from "@mui/icons-material";
 
 const guideData = [
     {
         id: "getting-started",
         title: "Getting Started",
-        icon: <FaRocket />,
+        icon: <RocketIcon />,
         color: "blue",
         sections: [
             {
@@ -54,12 +98,12 @@ const guideData = [
                 content: {
                     description: "These actions are available across most list pages in the system.",
                     steps: [
-                        { action: "Search", detail: "Use the search bar at the top of any list to filter records by name, number, or other fields", icon: <FaSearch /> },
-                        { action: "Add New", detail: "Click the '+ Add New' or '+ Create' button to open the creation form", icon: <FaPlus /> },
-                        { action: "View Details", detail: "Click the eye icon (👁) on any row to view full details in a modal", icon: <FaEye /> },
-                        { action: "Edit", detail: "Click the pencil icon (✏) to edit an existing record", icon: <FaEdit /> },
-                        { action: "Delete", detail: "Click the trash icon (🗑) to delete a record. You will be asked to confirm with your password", icon: <FaTrash /> },
-                        { action: "Export to Excel", detail: "Click the Excel export button to download the current data as an .xlsx file", icon: <FaFileExcel /> },
+                        { action: "Search", detail: "Use the search bar at the top of any list to filter records by name, number, or other fields", icon: <SearchIcon /> },
+                        { action: "Add New", detail: "Click the '+ Add New' or '+ Create' button to open the creation form", icon: <AddIcon /> },
+                        { action: "View Details", detail: "Click the eye icon (👁) on any row to view full details in a modal", icon: <VisibilityIcon /> },
+                        { action: "Edit", detail: "Click the pencil icon (✏) to edit an existing record", icon: <EditIcon /> },
+                        { action: "Delete", detail: "Click the trash icon (🗑) to delete a record. You will be asked to confirm with your password", icon: <DeleteIcon /> },
+                        { action: "Export to Excel", detail: "Click the Excel export button to download the current data as an .xlsx file", icon: <TableChartIcon /> },
                         { action: "Pagination", detail: "Use the Previous/Next buttons at the bottom of the table to navigate between pages" }
                     ]
                 }
@@ -69,13 +113,13 @@ const guideData = [
     {
         id: "master",
         title: "Master Data",
-        icon: <BiImport />,
+        icon: <ImportExportIcon />,
         color: "indigo",
         sections: [
             {
                 id: "master-items",
                 title: "Items / Products",
-                icon: <FaCube />,
+                icon: <WidgetsIcon />,
                 content: {
                     description: "Manage your product catalog. Items are used across Purchase Orders, Proforma Invoices, Bills, and Returns.",
                     steps: [
@@ -97,7 +141,7 @@ const guideData = [
             {
                 id: "master-vendors",
                 title: "Vendors",
-                icon: <FaUserTie />,
+                icon: <BusinessCenterIcon />,
                 content: {
                     description: "Manage your vendor/supplier database. Vendors are assigned to requisitions and linked to purchase orders.",
                     steps: [
@@ -117,7 +161,7 @@ const guideData = [
             {
                 id: "master-currency",
                 title: "Currency",
-                icon: <FaGlobe />,
+                icon: <LanguageIcon />,
                 content: {
                     description: "Manage currencies and conversion rates for multi-currency transactions. INR is the base currency.",
                     steps: [
@@ -138,7 +182,7 @@ const guideData = [
     {
         id: "purchase",
         title: "Purchase",
-        icon: <BiSolidPurchaseTag />,
+        icon: <LocalOfferIcon />,
         color: "amber",
         sections: [
             {
@@ -158,7 +202,7 @@ const guideData = [
             {
                 id: "purchase-requisition",
                 title: "Requisition",
-                icon: <FaFileAlt />,
+                icon: <DescriptionIcon />,
                 content: {
                     description: "A requisition is the starting point of the purchase process. It lists what items need to be purchased and in what quantity.",
                     steps: [
@@ -180,7 +224,7 @@ const guideData = [
             {
                 id: "purchase-vendor-assignment",
                 title: "Vendor Assignment",
-                icon: <FaUsers />,
+                icon: <GroupIcon />,
                 content: {
                     description: "Assign one or more vendors to a requisition so they can provide quotations.",
                     steps: [
@@ -198,7 +242,7 @@ const guideData = [
             {
                 id: "purchase-quotation",
                 title: "Vendor Quotation",
-                icon: <FaClipboardList />,
+                icon: <AssignmentIcon />,
                 content: {
                     description: "Record and manage quotations received from vendors against assigned requisitions.",
                     steps: [
@@ -216,7 +260,7 @@ const guideData = [
             {
                 id: "purchase-comparison",
                 title: "Quotation Comparison",
-                icon: <FaBalanceScale />,
+                icon: <BalanceIcon />,
                 content: {
                     description: "Compare quotations from different vendors side-by-side to make informed purchasing decisions.",
                     steps: [
@@ -234,7 +278,7 @@ const guideData = [
             {
                 id: "purchase-order",
                 title: "Purchase Order",
-                icon: <BiSolidPurchaseTag />,
+                icon: <LocalOfferIcon />,
                 content: {
                     description: "Purchase Orders (POs) are formal orders sent to vendors. They track items, quantities, prices, payments, and delivery status.",
                     steps: [
@@ -259,7 +303,7 @@ const guideData = [
     {
         id: "sales",
         title: "Sales",
-        icon: <FaMoneyCheckAlt />,
+        icon: <AccountBalanceWalletIcon />,
         color: "emerald",
         sections: [
             {
@@ -279,7 +323,7 @@ const guideData = [
             {
                 id: "sales-dashboard",
                 title: "Sales Dashboard",
-                icon: <FaThLarge />,
+                icon: <DashboardIcon />,
                 content: {
                     description: "A visual overview of your sales performance with key metrics and charts.",
                     steps: [
@@ -292,7 +336,7 @@ const guideData = [
             {
                 id: "sales-client-query",
                 title: "Client Query / Enquiry",
-                icon: <FaUserTie />,
+                icon: <BusinessCenterIcon />,
                 content: {
                     description: "Log and manage client enquiries. This is the first step in the sales pipeline.",
                     steps: [
@@ -310,20 +354,24 @@ const guideData = [
             {
                 id: "sales-proforma",
                 title: "Proforma Invoice (PI)",
-                icon: <FaFileInvoiceDollar />,
+                icon: <ReceiptIcon />,
                 content: {
                     description: "Proforma Invoices are quotations sent to clients. They go through a lifecycle: Draft → Sent → Accepted/Cancelled.",
                     steps: [
-                        { action: "Create PI", detail: "Click '+ New PI'. Select/enter client details, add line items with quantities and prices, select currency, and add terms" },
+                        { action: "Create PI", detail: "Click '+ New PI'. Select/enter client details, add line items with quantities and prices, select currency, and review the terms" },
+                        { action: "Terms & Conditions", detail: "A standard set of terms (Production Time, Mode of Shipment, Terms of Delivery, Terms of Payment, Tolerance, PI Validity, Insurance, Bank Details, etc.) is pre-filled automatically. You can edit any key or value, delete terms, or click 'Add Term' to add your own" },
+                        { action: "Bold a Term", detail: "Tick the 'Bold' checkbox on any term row to make that whole line (key and value) bold — it shows bold in the PI PDF and detail view. Use it to highlight critical terms" },
                         { action: "Send PI", detail: "Click the Send button (paper plane icon) to change status from DRAFT to SENT. This indicates the PI has been shared with the client" },
                         { action: "Accept PI", detail: "Click the Accept button (checkmark) when the client confirms the order. Status changes to ACCEPTED" },
                         { action: "Cancel PI", detail: "Click Cancel (X) to cancel a PI. This requires password confirmation" },
                         { action: "Edit PI", detail: "Edit a PI while it's in DRAFT status. Sent/Accepted PIs cannot be edited" },
-                        { action: "View Details", detail: "Click the eye icon to see full PI details including items, totals, client info, and linked bills" },
+                        { action: "View Details", detail: "Click the eye icon to see full PI details including items, totals, client info, terms, and linked bills" },
                         { action: "Lock/Unlock", detail: "Lock a PI to prevent modifications. Unlock requires password confirmation" }
                     ],
                     tips: [
                         "PI numbers are auto-generated (e.g., PI-001)",
+                        "Default terms are a starting point — edit them per deal before sending",
+                        "Use the Bold checkbox to emphasise must-read terms like Payment or Validity",
                         "Only ACCEPTED PIs can be used to create bills",
                         "Multi-currency PIs show amounts in the selected currency with INR conversion",
                         "The PI PDF can be generated and shared with the client"
@@ -331,9 +379,30 @@ const guideData = [
                 }
             },
             {
+                id: "sales-pi-verification",
+                title: "PI Verification & Signatures",
+                icon: <CheckCircleIcon />,
+                content: {
+                    description: "Before sharing a PI, route it for internal sign-off. A PI needs ONE role — the Authorized Signatory — who applies their digital signature, which then appears on the PI PDF.",
+                    steps: [
+                        { action: "Send for Verification", detail: "Open a PI and click 'Send for Verification'. Pick the Authorized Signatory — yourself ('★ You') or another user — then send" },
+                        { action: "Self-sign or Notify", detail: "Pick yourself and the PI is signed and Verified in one step; pick someone else and they get a notification to sign" },
+                        { action: "Verifier Reviews", detail: "The assigned signatory opens the request from 'Verify Documents', sees the full PI (party, totals, line items) and Approves (applies signature) or Rejects with a reason" },
+                        { action: "Status Lock", detail: "Once a PI is sent or verified, the 'Send for Verification' button becomes a status chip ('Sent for Verification' or 'Verified') — it cannot be re-sent" },
+                        { action: "Signature on PDF", detail: "After approval the signature is rendered on the PI PDF in the Authorized Signatory block. Each user uploads their signature once from their Profile" }
+                    ],
+                    tips: [
+                        "Upload a signature in your Profile before signing",
+                        "A verifier only sees requests assigned to them — the Pending tab shows only what awaits their action",
+                        "The creator, an admin, or any Sales-write user can send a PI for verification",
+                        "A rejected PI can be corrected and sent again"
+                    ]
+                }
+            },
+            {
                 id: "sales-create-bill",
                 title: "Create Bill",
-                icon: <FaMoneyCheckAlt />,
+                icon: <AccountBalanceWalletIcon />,
                 content: {
                     description: "Generate tax invoices/bills from accepted Proforma Invoices. Bills are used for payment tracking and GST compliance.",
                     steps: [
@@ -354,9 +423,66 @@ const guideData = [
                 }
             },
             {
+                id: "sales-commercial-invoices",
+                title: "Commercial Invoices (Export)",
+                icon: <DescriptionIcon />,
+                content: {
+                    description: "For INTERNATIONAL (export) Proforma Invoices, generate the Commercial Invoice and its Packing List — used for customs and shipping. No GST applies to exports.",
+                    steps: [
+                        { action: "View List", detail: "Open Sales → Commercial Invoices to see all export invoices with CI Number, linked PI, invoice number, date, currency, CPT value, status, and packing list status" },
+                        { action: "Generate / Edit", detail: "A Commercial Invoice is created from an international PI. Edit shipping and invoice details as needed" },
+                        { action: "Download PDF", detail: "Use the Actions menu (⋮) → PDF to download the Commercial Invoice document" },
+                        { action: "Download Excel", detail: "Export the invoice data to Excel from the Actions menu" },
+                        { action: "Packing List", detail: "Create or open the Packing List linked to the Commercial Invoice. The 'Packing List' column shows whether one has been created" }
+                    ],
+                    tips: [
+                        "Commercial Invoices are only for International trade-type PIs (exports)",
+                        "Domestic PIs use Tax Invoices / Bills instead (with GST)",
+                        "The packing list is generated against a Commercial Invoice for shipment"
+                    ]
+                }
+            },
+            {
+                id: "sales-domestic-invoices",
+                title: "Domestic Invoices (Tax Invoices)",
+                icon: <ReceiptIcon />,
+                content: {
+                    description: "GST tax invoices for domestic product sales. These are the formal tax documents issued to Indian clients.",
+                    steps: [
+                        { action: "View List", detail: "Open Sales → Domestic Invoices to list all product tax invoices with number, date, party, and amounts" },
+                        { action: "Create / Edit", detail: "Generate a tax invoice with CGST+SGST (intra-state) or IGST (inter-state). Tax amounts are calculated automatically" },
+                        { action: "Download PDF", detail: "Generate the tax invoice PDF for sharing or printing" },
+                        { action: "Download Excel", detail: "Export tax invoice data to Excel" },
+                        { action: "Search", detail: "Search invoices by number or party name" }
+                    ],
+                    tips: [
+                        "Used for domestic (in-India) sales that require GST compliance",
+                        "Choose CGST+SGST for same-state and IGST for cross-state billing"
+                    ]
+                }
+            },
+            {
+                id: "sales-service-invoices",
+                title: "Service Invoices",
+                icon: <ReceiptIcon />,
+                content: {
+                    description: "Standalone GST invoices for services (not tied to product items). Useful for service revenue such as installation, commissioning, or consultancy.",
+                    steps: [
+                        { action: "View List", detail: "Open Sales → Service Invoices to list all service GST invoices" },
+                        { action: "Create Service Invoice", detail: "Click '+ New' to create a standalone service invoice. Enter the service description, amount, and applicable GST" },
+                        { action: "Edit", detail: "Edit a service invoice's details before it is paid" },
+                        { action: "Download PDF / Excel", detail: "Generate the invoice PDF or export to Excel from the row actions" }
+                    ],
+                    tips: [
+                        "Service invoices are independent of product PIs/bills",
+                        "Payments against service invoices are tracked under Finance → Service Invoice Payments"
+                    ]
+                }
+            },
+            {
                 id: "sales-statistics",
                 title: "Sales Statistics",
-                icon: <FaChartLine />,
+                icon: <TrendingUpIcon />,
                 content: {
                     description: "Detailed statistical analysis of your sales data with charts and breakdowns.",
                     steps: [
@@ -369,7 +495,7 @@ const guideData = [
             {
                 id: "sales-performance",
                 title: "Performance Report",
-                icon: <FaTrophy />,
+                icon: <EmojiEventsIcon />,
                 content: {
                     description: "Analyze sales team and individual performance with detailed metrics.",
                     steps: [
@@ -381,7 +507,7 @@ const guideData = [
             {
                 id: "sales-product-analysis",
                 title: "Product Analysis",
-                icon: <FaBoxOpen />,
+                icon: <Inventory2Icon />,
                 content: {
                     description: "Analyze sales performance by product/item to identify top-selling and slow-moving items.",
                     steps: [
@@ -396,13 +522,13 @@ const guideData = [
     {
         id: "finance",
         title: "Finance",
-        icon: <FaMoneyBillTrendUp />,
+        icon: <CurrencyExchangeIcon />,
         color: "violet",
         sections: [
             {
                 id: "finance-dashboard",
                 title: "Finance Dashboard",
-                icon: <FaThLarge />,
+                icon: <DashboardIcon />,
                 content: {
                     description: "A comprehensive financial overview showing cash flow, payments, outstanding amounts, and profitability metrics. All aggregated values are shown in INR.",
                     steps: [
@@ -423,7 +549,7 @@ const guideData = [
             {
                 id: "finance-po-list",
                 title: "Finance PO List",
-                icon: <BiSolidPurchaseTag />,
+                icon: <LocalOfferIcon />,
                 content: {
                     description: "Finance-specific view of Purchase Orders with payment tracking and recording capabilities.",
                     steps: [
@@ -443,7 +569,7 @@ const guideData = [
             {
                 id: "finance-pi-bills",
                 title: "PI Bills List",
-                icon: <FaList />,
+                icon: <FormatListBulletedIcon />,
                 content: {
                     description: "Manage all sales bills/invoices. Track billing status, record client payments, and generate reports.",
                     steps: [
@@ -465,7 +591,7 @@ const guideData = [
             {
                 id: "finance-pi-advance",
                 title: "PI Advance List",
-                icon: <FaCoins />,
+                icon: <MonetizationOnIcon />,
                 content: {
                     description: "Track advance payments received from clients against Proforma Invoices before bills are generated.",
                     steps: [
@@ -480,28 +606,83 @@ const guideData = [
                 }
             },
             {
-                id: "finance-revenue",
-                title: "Revenue Analysis",
-                icon: <FaFileInvoiceDollar />,
+                id: "finance-service-payments",
+                title: "Service Invoice Payments",
+                icon: <PaymentsIcon />,
                 content: {
-                    description: "Analyze revenue trends and profitability with detailed P&L (Profit & Loss) breakdown.",
+                    description: "Record and track collections against standalone Service Tax Invoices (GST, INR).",
                     steps: [
-                        { action: "Profit & Loss Report", detail: "View comprehensive P&L report showing revenue, costs, transport costs, and margins for each PI" },
-                        { action: "Profit Preview", detail: "See expected profit on active PIs before final billing" },
-                        { action: "Date Range Analysis", detail: "Filter by date range to analyze revenue for specific periods" },
-                        { action: "Per-Item Analysis", detail: "Drill down to see profit margins at the item level" }
+                        { action: "Open Page", detail: "Finance → Service Invoice Payments. See summary cards: invoices, billed, received, outstanding." },
+                        { action: "Record Payment", detail: "From a row's actions menu, click Record Payment. Enter amount/date/mode/reference — requires password confirmation." },
+                        { action: "Collection History", detail: "View all collections recorded against a service invoice." },
+                        { action: "Download PDF", detail: "Download the service invoice PDF from the actions menu." }
                     ],
                     tips: [
-                        "P&L includes transport costs for accurate margin calculation",
-                        "All values are converted to INR for consistent comparison",
-                        "Stock-based sales show cost calculated from last purchase price"
+                        "Service invoices are domestic GST and always in INR.",
+                        "Service revenue is shown SEPARATELY from goods margin in Revenue Analysis (no goods COGS)."
+                    ]
+                }
+            },
+            {
+                id: "finance-transport-payments",
+                title: "Transport Payments",
+                icon: <LocalShippingIcon />,
+                content: {
+                    description: "Record freight money for both sides: freight we pay transporters on purchases (Buy), and freight we recover from clients on sales delivery (Sell).",
+                    steps: [
+                        { action: "Open Page", detail: "Finance → Transport Payments. Toggle Buy / Sell / All; see payable, recoverable, paid, and outstanding totals." },
+                        { action: "Record Payment / Receipt", detail: "From a row's actions, record a payment (Buy) or receipt (Sell). Password-confirmed. Recording is Finance-only." },
+                        { action: "Payment History", detail: "View all payments recorded against a shipment." },
+                        { action: "Transport Note PDF", detail: "Download the transport note sheet for any shipment." }
+                    ],
+                    tips: [
+                        "All freight is in INR.",
+                        "Transport users see this data read-only inside the Transport module; only Finance can record."
+                    ]
+                }
+            },
+            {
+                id: "finance-overview",
+                title: "Enterprise Overview (Money In / Out)",
+                icon: <MonetizationOnIcon />,
+                content: {
+                    description: "A consolidated, all-INR money-movement view at the top of Revenue Analysis — how much came in, how much went out, and what's still outstanding, across every module.",
+                    steps: [
+                        { action: "Money In", detail: "Goods sales collected (PI bills) + Service collected + Client advances + Freight recovered from clients." },
+                        { action: "Money Out", detail: "Payments to vendors (purchases) + Freight paid to transporters. Shows Net Cash." },
+                        { action: "Outstanding", detail: "Still to collect from clients, still to pay vendors, and freight payable." },
+                        { action: "FY Filter", detail: "Filter the whole overview by financial year." }
+                    ],
+                    tips: [
+                        "Everything is converted to INR using each PO/PI's stored conversion rate.",
+                        "This is a cash-movement view; profit/margin is shown in the P&L section below."
+                    ]
+                }
+            },
+            {
+                id: "finance-revenue",
+                title: "Revenue Analysis",
+                icon: <ReceiptIcon />,
+                content: {
+                    description: "Enterprise profitability — P&L per deal plus charts, freight, and service breakdowns. All values in INR.",
+                    steps: [
+                        { action: "Profit & Loss Report", detail: "Per-requisition/PI revenue, purchase cost, transport cost, freight recovered, and margin. Freight recovered shows under the Transport column." },
+                        { action: "Freight Strip", detail: "Freight Paid (Buy/Sell), Freight Recovered, and Net Freight Cost KPIs." },
+                        { action: "Service Revenue Strip", detail: "Service invoices billed/received/outstanding — shown separately so it doesn't distort goods margin." },
+                        { action: "Charts & Breakdowns", detail: "Monthly revenue/cost/profit trend, by trade type (Domestic/International), by source, and top performers." },
+                        { action: "Export", detail: "Export the P&L table to Excel (includes freight recovered column)." }
+                    ],
+                    tips: [
+                        "P&L includes transport cost; PO/PI amounts are converted to INR via their conversion rate.",
+                        "Stock-based sales show cost from the last purchase price.",
+                        "Service is reported separately (it has no goods COGS)."
                     ]
                 }
             },
             {
                 id: "finance-item-analytics",
                 title: "Item Analytics",
-                icon: <FaChartLine />,
+                icon: <TrendingUpIcon />,
                 content: {
                     description: "Deep analytics on item-level performance across purchases and sales.",
                     steps: [
@@ -514,7 +695,7 @@ const guideData = [
             {
                 id: "finance-dead-stock",
                 title: "Dead Stock / Inventory Aging",
-                icon: <FaCube />,
+                icon: <WidgetsIcon />,
                 content: {
                     description: "Identify slow-moving and dead stock items that haven't been sold or moved in a long time.",
                     steps: [
@@ -533,13 +714,13 @@ const guideData = [
     {
         id: "transport",
         title: "Transport",
-        icon: <FaTruck />,
+        icon: <LocalShippingIcon />,
         color: "orange",
         sections: [
             {
                 id: "transport-dashboard",
                 title: "Transport Dashboard",
-                icon: <FaChartPie />,
+                icon: <PieChartIcon />,
                 content: {
                     description: "Visual overview of transport operations including delivery status, costs, and logistics metrics.",
                     steps: [
@@ -551,25 +732,75 @@ const guideData = [
             },
             {
                 id: "transport-entry",
-                title: "Transport Entry",
-                icon: <FaList />,
+                title: "Transport Entry (with Consignment Items)",
+                icon: <FormatListBulletedIcon />,
                 content: {
-                    description: "Create and manage transport entries linked to Purchase Orders or Proforma Invoices.",
+                    description: "Log a shipment against a Purchase Order (inbound) or Proforma Invoice (outbound). You can now ship items partially and track exactly which items went in each trip.",
                     steps: [
-                        { action: "Create Entry", detail: "Click '+ New Transport'. Choose reference type (PO or PI), search and select the order, then fill in transport details" },
-                        { action: "Transport Details", detail: "Enter transporter name, contact, vehicle number, driver details, dispatch date, and expected delivery date" },
-                        { action: "Dispatch & Delivery", detail: "Enter dispatch location and delivery destination" },
-                        { action: "Cost Breakdown", detail: "Add transport costs with type selection — Freight, Loading, Unloading, Insurance, Customs, Toll, etc. Multiple cost items can be added" },
-                        { action: "Mark Delivered", detail: "Click the 'Delivered' button when shipment arrives to update status" },
-                        { action: "View Details", detail: "Click the eye icon to view complete transport entry with all cost details" },
-                        { action: "Edit Entry", detail: "Edit transport details before marking as delivered" },
-                        { action: "Landed Cost", detail: "View landed cost (item cost + transport cost) for POs and PIs" }
+                        { action: "Create Entry", detail: "Click 'Log New Shipment'. Choose PO or PI and select the order — the order's items load automatically below as a Consignment Items table." },
+                        { action: "Transporter (Master)", detail: "Pick a transporter from the master dropdown (auto-fills name & contact), or type the name manually. Picking a master lets the shipment appear in that transporter's Ledger." },
+                        { action: "Consignment Items — Ship Now", detail: "For each item enter the quantity going in THIS trip. The 'Pending' column shows how much is still un-shipped; you cannot ship more than pending." },
+                        { action: "Carrier Details", detail: "Enter vehicle number, driver details, LR/Consignment note number, transporter invoice ref, dispatch & expected dates, and from/to route." },
+                        { action: "Cost Breakdown (INR)", detail: "Add freight cost items — Freight, Loading, Unloading, Insurance, Customs, Toll, etc. Transport is always recorded in INR even if the PO/PI is in another currency." },
+                        { action: "View Details", detail: "Click the eye icon to see the full report — route, transporter, driver, LR/invoice refs, payment status (paid/balance), consignment items, and cost breakdown." },
+                        { action: "Mark Delivered", detail: "Click 'Mark Delivered' when the shipment arrives." },
+                        { action: "Transport Note PDF", detail: "Click the red PDF icon on a row to download that shipment's Transport Note Sheet." }
                     ],
                     tips: [
-                        "Transport costs are included in P&L and profit margin calculations",
-                        "Available cost types: Freight, Loading, Unloading, Insurance, Customs, Octroi, Handling, Packaging, Toll, and Other",
-                        "Link transport to the correct PO/PI for accurate cost allocation",
-                        "The system prevents duplicate transport entries for the same order"
+                        "Partial shipments: a PO/PI of 10 items can go 4 now and 6 later — just create another entry; the system tracks the remaining quantity.",
+                        "Different transporters: each trip can use a different transporter and carry a different subset of items — the dispatch tracker adds them all up.",
+                        "Freight is always INR; the linked PO/PI can be in USD or any currency.",
+                        "Transport cost feeds the P&L and landed-cost calculations."
+                    ]
+                }
+            },
+            {
+                id: "transport-dispatch",
+                title: "Pending Dispatch Board & Tracker",
+                icon: <InventoryIcon />,
+                content: {
+                    description: "See which orders still have items to ship, and track shipment progress line-by-line across all transporters.",
+                    steps: [
+                        { action: "Open Board", detail: "Transport → Pending Dispatch. Toggle Inbound (PO) / Outbound (PI)." },
+                        { action: "Read Progress", detail: "Each order shows ordered qty, shipped qty, pending lines, and a % progress bar." },
+                        { action: "Item Tracker", detail: "Click the eye icon to open the dispatch tracker — per item: ordered, shipped, pending, and status (Done/Pending). State is NOT_DISPATCHED / PARTIAL / FULLY_DISPATCHED." },
+                        { action: "Ship Remaining", detail: "Create a new Transport Entry for the same order to ship the remaining quantity." }
+                    ],
+                    tips: [
+                        "Shipped totals are summed across every (non-cancelled) transport entry for that order — even if shipped by different transporters."
+                    ]
+                }
+            },
+            {
+                id: "transporters-ledger",
+                title: "Transporters & Ledger",
+                icon: <FormatListBulletedIcon />,
+                content: {
+                    description: "A master list of transporters/carriers, each with its own running ledger of money billed, paid, and outstanding.",
+                    steps: [
+                        { action: "Add Transporter", detail: "Transport → Transporters → Add. Enter name, contact, phone, GST/PAN, address." },
+                        { action: "Open Ledger", detail: "Click the ledger (receipt) icon on a transporter row." },
+                        { action: "Read Ledger", detail: "Buy Payable Balance = freight you owe on purchases. Sell Recoverable Balance = freight on sales delivery vs what the client reimbursed. Below: every shipment with billed/paid/balance." }
+                    ],
+                    tips: [
+                        "A shipment only appears in a transporter's ledger if you selected that transporter from the master dropdown on the entry."
+                    ]
+                }
+            },
+            {
+                id: "transport-payments-view",
+                title: "Transport Payments (View)",
+                icon: <PaymentsIcon />,
+                content: {
+                    description: "A read-only view inside the Transport module showing what freight money is tied to each shipment — the same data Finance records against.",
+                    steps: [
+                        { action: "Open", detail: "Transport → Transport Payments. Toggle Buy / Sell / All." },
+                        { action: "Summary Cards", detail: "See total freight payable (buy), recoverable (sell), paid, and outstanding." },
+                        { action: "Per-shipment", detail: "Each row shows freight, paid, balance, and payment status. Download the Transport Note PDF or view payment history from the actions menu." }
+                    ],
+                    tips: [
+                        "Transport users get a 'View only' page — recording a payment is a Finance-department action.",
+                        "The actual money is recorded by Finance (see Finance → Transport Payments)."
                     ]
                 }
             }
@@ -578,7 +809,7 @@ const guideData = [
     {
         id: "returns",
         title: "Returns",
-        icon: <FaUndoAlt />,
+        icon: <UndoIcon />,
         color: "rose",
         sections: [
             {
@@ -597,7 +828,7 @@ const guideData = [
             {
                 id: "returns-sales",
                 title: "Sales Returns",
-                icon: <FaBoxes />,
+                icon: <InventoryIcon />,
                 content: {
                     description: "Process items returned by clients. Usable items are added back to stock, unusable items are written off.",
                     steps: [
@@ -617,7 +848,7 @@ const guideData = [
             {
                 id: "returns-purchase",
                 title: "Purchase Returns",
-                icon: <FaTruck />,
+                icon: <LocalShippingIcon />,
                 content: {
                     description: "Process items being returned to vendors. Stock is deducted and a Debit Note is generated.",
                     steps: [
@@ -638,13 +869,13 @@ const guideData = [
     {
         id: "admin",
         title: "Admin Panel",
-        icon: <FaUserShield />,
+        icon: <AdminPanelSettingsIcon />,
         color: "slate",
         sections: [
             {
                 id: "admin-users",
                 title: "User Management",
-                icon: <FaUserShield />,
+                icon: <AdminPanelSettingsIcon />,
                 content: {
                     description: "Admin-only section for managing system users, their roles, and module permissions.",
                     steps: [
@@ -665,7 +896,7 @@ const guideData = [
             {
                 id: "admin-audit",
                 title: "Audit Logs",
-                icon: <FaHistory />,
+                icon: <HistoryIcon />,
                 content: {
                     description: "Track all system activities for compliance and troubleshooting. Every create, update, and delete action is logged.",
                     steps: [
@@ -687,7 +918,7 @@ const guideData = [
     {
         id: "security",
         title: "Security & Best Practices",
-        icon: <FaShieldAlt />,
+        icon: <ShieldIcon />,
         color: "red",
         sections: [
             {
@@ -725,19 +956,123 @@ const guideData = [
                 }
             }
         ]
+    },
+    {
+        id: "signatures",
+        title: "Signatures & Verification",
+        icon: <CheckIcon />,
+        color: "emerald",
+        sections: [
+            {
+                id: "signature-setup",
+                title: "Upload Your Signature",
+                content: {
+                    description: "Set up your digital signature which will be embedded in PDF documents when you approve Purchase Orders and Proforma Invoices.",
+                    steps: [
+                        { action: "Go to Profile", detail: "Click on your name in the sidebar → 'My Profile (Signature)'" },
+                        { action: "Upload Signature", detail: "Click the 'Upload Signature' button and select your signature image file (PNG, JPG, etc.)" },
+                        { action: "Activate Signature", detail: "Once uploaded, your signature becomes active and will be used for all future verifications" },
+                        { action: "Replace Signature", detail: "Upload a new signature anytime to replace your existing one" },
+                        { action: "View Signature", detail: "Your current signature preview is shown in your profile"  }
+                    ],
+                    tips: [
+                        "Use a clear, readable signature image for PDF documents",
+                        "Signature should be on a transparent or white background for best results",
+                        "Keep your signature private and secure — treat it like your digital stamp"
+                    ]
+                }
+            },
+            {
+                id: "pi-verification",
+                title: "Proforma Invoice (PI) Verification",
+                content: {
+                    description: "Route a Proforma Invoice for sign-off. A PI needs ONE role — the Authorized Signatory. You can assign yourself or another user; if you assign yourself, your saved signature is applied automatically.",
+                    steps: [
+                        { action: "Open the PI", detail: "Go to Sales → Proforma Invoice, open a PI, and click the green 'Send for Verification' button" },
+                        { action: "Choose Authorized Signatory", detail: "In the dialog, pick the Authorized Signatory from the dropdown. You appear at the top as '★ (You)' — pick yourself to sign instantly, or pick a colleague" },
+                        { action: "Self-sign (one step)", detail: "If you pick yourself, your signature is applied immediately and the PI becomes Verified — no extra approval step" },
+                        { action: "Assign someone else", detail: "If you pick another user, they get a notification and the PI shows as 'Sent for Verification' until they approve" },
+                        { action: "Signatory Approves/Rejects", detail: "The assigned person opens it from 'Verify Documents', reviews the full PI, then Approves (applies signature) or Rejects with a reason" },
+                        { action: "Status Lock", detail: "Once sent or verified, the 'Send for Verification' button becomes a status chip and cannot be re-sent" },
+                        { action: "Signature on PDF", detail: "After verification the signature appears on the PI PDF in the Authorized Signatory block, with the signer's name" }
+                    ],
+                    tips: [
+                        "Upload your signature in Profile first — you can't sign without one",
+                        "The PI creator, an admin, or any Sales-write user can send a PI for verification",
+                        "A rejected PI can be corrected and sent again"
+                    ]
+                }
+            },
+            {
+                id: "po-verification",
+                title: "Purchase Order (PO) Verification",
+                content: {
+                    description: "Route a Purchase Order for sign-off. A PO uses TWO roles — 'Checked By' and 'Authorized Signatory'. Each can be yourself or another user; your own slots are signed automatically.",
+                    steps: [
+                        { action: "Open the PO", detail: "Go to Purchase → Purchase Order, open a PO, and click 'Send for Verification'" },
+                        { action: "Assign Both Roles", detail: "Pick a 'Checked By' and an 'Authorized Signatory'. You appear as '★ (You)' in both dropdowns — assign yourself to either or both" },
+                        { action: "Auto-sign your part", detail: "Any role you assign to yourself is signed instantly with your saved signature; the other person is notified to sign theirs" },
+                        { action: "Verifiers Approve/Reject", detail: "Assigned users open the request in 'Verify Documents', review the full PO, and Approve or Reject" },
+                        { action: "Status Lock", detail: "Once sent or verified, the button becomes a status chip — the PO can't be re-sent for verification" },
+                        { action: "Download Signed PO", detail: "After both roles sign, the PO PDF shows both signatures (Checked By + Authorized Signatory) with names" }
+                    ],
+                    tips: [
+                        "Both assigned people must have a signature uploaded in their Profile",
+                        "The PO creator, an admin, or any Purchase-write user can send a PO for verification",
+                        "Assign yourself to both roles to fully verify a PO in one step"
+                    ]
+                }
+            },
+            {
+                id: "verify-dashboard",
+                title: "Verify Documents Dashboard",
+                content: {
+                    description: "Central hub where all verification requests are sent to you. Access via sidebar → 'Verify Documents'.",
+                    steps: [
+                        { action: "View Pending", detail: "See all pending verification requests waiting for your approval" },
+                        { action: "Select Document Type", detail: "Switch between PI (Proforma Invoice) and PO (Purchase Order) tabs" },
+                        { action: "Filter by Status", detail: "View Pending, Verified, or Rejected documents" },
+                        { action: "Select Document", detail: "Click on a document row to see its full details" },
+                        { action: "Approve", detail: "Click the green 'Approve' button to sign and verify the document" },
+                        { action: "Add Notes (Optional)", detail: "Add approval notes if needed, then click 'Approve'" },
+                        { action: "Reject", detail: "Click 'Reject' and provide a reason why you cannot approve" },
+                        { action: "View Signature", detail: "Your signature will automatically embed in the PDF once you approve" }
+                    ],
+                    tips: [
+                        "A red badge with count shows pending verifications on the sidebar icon",
+                        "The badge auto-updates every 30 seconds",
+                        "You cannot approve a document twice — once verified, it's locked"
+                    ]
+                }
+            },
+            {
+                id: "notifications",
+                title: "Verification Notifications",
+                content: {
+                    description: "Get real-time notifications when verification requests are sent to you.",
+                    steps: [
+                        { action: "Notification Bell", detail: "Top-right corner shows a notification bell with a red count badge" },
+                        { action: "Badge Count", detail: "The red badge shows total pending verifications (PI + PO combined)" },
+                        { action: "Notification Polling", detail: "The system checks for new notifications every 30 seconds" },
+                        { action: "Auto-Refresh", detail: "Dashboard refreshes automatically when you receive new requests" },
+                        { action: "View Details", detail: "Click 'Verify Documents' to see full details of all pending requests" }
+                    ]
+                }
+            }
+        ]
     }
 ];
 
 const colorMap = {
-    blue: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200", accent: "bg-blue-600", light: "bg-blue-100", gradient: "from-blue-500 to-blue-600" },
-    indigo: { bg: "bg-indigo-50", text: "text-indigo-600", border: "border-indigo-200", accent: "bg-indigo-600", light: "bg-indigo-100", gradient: "from-indigo-500 to-indigo-600" },
-    amber: { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-200", accent: "bg-amber-600", light: "bg-amber-100", gradient: "from-amber-500 to-amber-600" },
-    emerald: { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-200", accent: "bg-emerald-600", light: "bg-emerald-100", gradient: "from-emerald-500 to-emerald-600" },
-    violet: { bg: "bg-violet-50", text: "text-violet-600", border: "border-violet-200", accent: "bg-violet-600", light: "bg-violet-100", gradient: "from-violet-500 to-violet-600" },
-    orange: { bg: "bg-orange-50", text: "text-orange-600", border: "border-orange-200", accent: "bg-orange-600", light: "bg-orange-100", gradient: "from-orange-500 to-orange-600" },
-    rose: { bg: "bg-rose-50", text: "text-rose-600", border: "border-rose-200", accent: "bg-rose-600", light: "bg-rose-100", gradient: "from-rose-500 to-rose-600" },
-    slate: { bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-300", accent: "bg-slate-700", light: "bg-slate-200", gradient: "from-slate-600 to-slate-700" },
-    red: { bg: "bg-red-50", text: "text-red-600", border: "border-red-200", accent: "bg-red-600", light: "bg-red-100", gradient: "from-red-500 to-red-600" },
+    blue: { bg: "#E3F2FD", text: "#1565C0", border: "#BBDEFB", accent: "#1565C0", light: "#E3F2FD", gradientFrom: "#1E88E5", gradientTo: "#1565C0" },
+    indigo: { bg: "#E8EAF6", text: "#283593", border: "#C5CAE9", accent: "#283593", light: "#E8EAF6", gradientFrom: "#3F51B5", gradientTo: "#283593" },
+    amber: { bg: "#FFF8E1", text: "#F57F17", border: "#FFECB3", accent: "#F57F17", light: "#FFF8E1", gradientFrom: "#FFB300", gradientTo: "#F57F17" },
+    emerald: { bg: "#E8F5E9", text: "#2E7D32", border: "#C8E6C9", accent: "#2E7D32", light: "#E8F5E9", gradientFrom: "#43A047", gradientTo: "#2E7D32" },
+    violet: { bg: "#EDE7F6", text: "#4527A0", border: "#D1C4E9", accent: "#4527A0", light: "#EDE7F6", gradientFrom: "#7E57C2", gradientTo: "#4527A0" },
+    orange: { bg: "#FFF3E0", text: "#E65100", border: "#FFE0B2", accent: "#E65100", light: "#FFF3E0", gradientFrom: "#FB8C00", gradientTo: "#E65100" },
+    rose: { bg: "#FCE4EC", text: "#C62828", border: "#F8BBD0", accent: "#C62828", light: "#FCE4EC", gradientFrom: "#E53935", gradientTo: "#C62828" },
+    slate: { bg: "#ECEFF1", text: "#37474F", border: "#CFD8DC", accent: "#37474F", light: "#CFD8DC", gradientFrom: "#546E7A", gradientTo: "#37474F" },
+    red: { bg: "#FFEBEE", text: "#C62828", border: "#FFCDD2", accent: "#C62828", light: "#FFEBEE", gradientFrom: "#E53935", gradientTo: "#C62828" },
 };
 
 export default function UserGuide() {
@@ -827,258 +1162,322 @@ export default function UserGuide() {
     const { prev, next } = getPrevNext();
 
     return (
-        <div className="flex h-[calc(100vh-4rem)] bg-slate-50">
+        <Box sx={{ display: "flex", height: "calc(100vh - 4rem)", bgcolor: "#FAFBFC" }}>
             {/* LEFT SIDEBAR NAV */}
-            <div className="w-72 bg-white border-r border-slate-200 flex flex-col shrink-0">
+            <Box sx={{ width: 288, bgcolor: "#fff", borderRight: "1px solid", borderColor: "grey.200", display: "flex", flexDirection: "column", flexShrink: 0 }}>
                 {/* Guide Header */}
-                <div className="px-5 py-4 border-b border-slate-200 bg-gradient-to-r from-blue-600 to-blue-700">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-white/20 rounded-xl">
-                            <FaBook className="text-white text-lg" />
-                        </div>
-                        <div>
-                            <h2 className="text-sm font-bold text-white">User Guide</h2>
-                            <p className="text-[10px] text-blue-100 font-medium">Energypac ERP</p>
-                        </div>
-                    </div>
-                </div>
+                <Box sx={{ px: 2.5, py: 2, borderBottom: "1px solid", borderColor: "grey.200", background: "linear-gradient(to right, #1565C0, #0D47A1)" }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                        <Avatar sx={{ bgcolor: "rgba(255,255,255,0.2)", borderRadius: 3, width: 36, height: 36 }}>
+                            <MenuBookIcon sx={{ color: "#fff", fontSize: 20 }} />
+                        </Avatar>
+                        <Box>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#fff", fontSize: "0.875rem" }}>User Guide</Typography>
+                            <Typography variant="caption" sx={{ color: "#BBDEFB", fontWeight: 500, fontSize: "0.625rem" }}>Energypac ERP</Typography>
+                        </Box>
+                    </Box>
+                </Box>
 
                 {/* Search */}
-                <div className="px-3 py-3 border-b border-slate-100">
-                    <div className="relative">
-                        <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
-                        <input
-                            type="text"
-                            placeholder="Search guide..."
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            className="w-full pl-8 pr-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all"
-                        />
-                    </div>
+                <Box sx={{ px: 1.5, py: 1.5, borderBottom: "1px solid", borderColor: "grey.100" }}>
+                    <TextField
+                        size="small"
+                        fullWidth
+                        placeholder="Search guide..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon sx={{ fontSize: 16, color: "grey.400" }} />
+                                </InputAdornment>
+                            ),
+                            sx: { fontSize: "0.75rem", bgcolor: "#FAFBFC", borderRadius: 2, "& .MuiOutlinedInput-notchedOutline": { borderColor: "grey.200" }, "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "grey.300" }, "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#1565C0" } }
+                        }}
+                    />
                     {searchResults.length > 0 && (
-                        <div className="mt-2 max-h-60 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
-                            {searchResults.map((r, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => navigateTo(r.moduleId, r.sectionId)}
-                                    className="w-full text-left px-3 py-2 hover:bg-slate-50 border-b border-slate-100 last:border-0 transition-colors"
-                                >
-                                    <p className="text-xs font-semibold text-slate-800">{r.sectionTitle}</p>
-                                    <p className="text-[10px] text-slate-500">{r.moduleTitle}</p>
-                                </button>
-                            ))}
-                        </div>
+                        <Paper elevation={3} sx={{ mt: 1, maxHeight: 240, overflowY: "auto", borderRadius: 2, border: "1px solid", borderColor: "grey.200" }}>
+                            <List disablePadding>
+                                {searchResults.map((r, i) => (
+                                    <ListItem key={i} disablePadding divider={i < searchResults.length - 1}>
+                                        <ListItemButton onClick={() => navigateTo(r.moduleId, r.sectionId)} sx={{ py: 1, px: 1.5 }}>
+                                            <ListItemText
+                                                primary={r.sectionTitle}
+                                                secondary={r.moduleTitle}
+                                                primaryTypographyProps={{ fontSize: "0.75rem", fontWeight: 600, color: "grey.800" }}
+                                                secondaryTypographyProps={{ fontSize: "0.625rem", color: "grey.500" }}
+                                            />
+                                        </ListItemButton>
+                                    </ListItem>
+                                ))}
+                            </List>
+                        </Paper>
                     )}
-                </div>
+                </Box>
 
                 {/* Module List */}
-                <nav className="flex-1 overflow-y-auto no-scrollbar py-2">
+                <Box component="nav" sx={{ flex: 1, overflowY: "auto", py: 1, "&::-webkit-scrollbar": { display: "none" }, scrollbarWidth: "none" }}>
                     {guideData.map(mod => {
                         const mc = colorMap[mod.color];
                         const isExpanded = expandedModules.includes(mod.id);
                         const isActive = activeModule === mod.id;
 
                         return (
-                            <div key={mod.id} className="px-2 mb-0.5">
-                                <button
+                            <Box key={mod.id} sx={{ px: 1, mb: 0.25 }}>
+                                <ListItemButton
                                     onClick={() => {
                                         toggleModule(mod.id);
                                         if (mod.sections.length > 0) {
                                             navigateTo(mod.id, mod.sections[0].id);
                                         }
                                     }}
-                                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-all ${
-                                        isActive
-                                            ? `${mc.bg} ${mc.text} font-bold`
-                                            : "text-slate-600 hover:bg-slate-50"
-                                    }`}
+                                    sx={{
+                                        borderRadius: 2,
+                                        py: 1,
+                                        px: 1.5,
+                                        gap: 1.25,
+                                        bgcolor: isActive ? mc.bg : "transparent",
+                                        "&:hover": { bgcolor: isActive ? mc.bg : "grey.50" }
+                                    }}
                                 >
-                                    <span className={`text-base ${isActive ? mc.text : "text-slate-400"}`}>{mod.icon}</span>
-                                    <span className="text-xs flex-1 truncate">{mod.title}</span>
-                                    <FaChevronDown className={`text-[9px] transition-transform ${isExpanded ? "rotate-180" : ""} ${isActive ? mc.text : "text-slate-400"}`} />
-                                </button>
-                                {isExpanded && (
-                                    <div className="ml-4 pl-3 border-l-2 border-slate-100 mt-1 space-y-0.5">
+                                    <Box sx={{ fontSize: 18, color: isActive ? mc.text : "grey.400", display: "flex", alignItems: "center" }}>
+                                        {mod.icon}
+                                    </Box>
+                                    <Typography sx={{ fontSize: "0.75rem", flex: 1, fontWeight: isActive ? 700 : 400, color: isActive ? mc.text : "grey.600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                        {mod.title}
+                                    </Typography>
+                                    <ExpandMoreIcon sx={{ fontSize: 12, color: isActive ? mc.text : "grey.400", transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+                                </ListItemButton>
+                                <Collapse in={isExpanded}>
+                                    <Box sx={{ ml: 2, pl: 1.5, borderLeft: "2px solid", borderColor: "grey.100", mt: 0.5 }}>
                                         {mod.sections.map(sec => (
-                                            <button
+                                            <ListItemButton
                                                 key={sec.id}
                                                 onClick={() => navigateTo(mod.id, sec.id)}
-                                                className={`w-full text-left px-3 py-1.5 rounded-md text-[11px] transition-all ${
-                                                    activeSection === sec.id
-                                                        ? `${mc.bg} ${mc.text} font-bold`
-                                                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-                                                }`}
+                                                sx={{
+                                                    borderRadius: 1.5,
+                                                    py: 0.75,
+                                                    px: 1.5,
+                                                    mb: 0.25,
+                                                    bgcolor: activeSection === sec.id ? mc.bg : "transparent",
+                                                    "&:hover": { bgcolor: activeSection === sec.id ? mc.bg : "grey.50" }
+                                                }}
                                             >
-                                                <span className="flex items-center gap-2">
-                                                    {sec.icon && <span className="text-[10px] opacity-70">{sec.icon}</span>}
-                                                    <span className="truncate">{sec.title}</span>
-                                                </span>
-                                            </button>
+                                                {sec.icon && (
+                                                    <Box sx={{ fontSize: 12, opacity: 0.7, mr: 1, display: "flex", alignItems: "center", color: activeSection === sec.id ? mc.text : "grey.500" }}>
+                                                        {sec.icon}
+                                                    </Box>
+                                                )}
+                                                <Typography sx={{ fontSize: "0.6875rem", fontWeight: activeSection === sec.id ? 700 : 400, color: activeSection === sec.id ? mc.text : "grey.500", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", "&:hover": { color: activeSection === sec.id ? mc.text : "grey.700" } }}>
+                                                    {sec.title}
+                                                </Typography>
+                                            </ListItemButton>
                                         ))}
-                                    </div>
-                                )}
-                            </div>
+                                    </Box>
+                                </Collapse>
+                            </Box>
                         );
                     })}
-                </nav>
-            </div>
+                </Box>
+            </Box>
 
             {/* MAIN CONTENT */}
-            <div ref={contentRef} className="flex-1 overflow-y-auto">
-                <div className="max-w-4xl mx-auto px-8 py-8">
+            <Box ref={contentRef} sx={{ flex: 1, overflowY: "auto" }}>
+                <Box sx={{ maxWidth: 900, mx: "auto", px: 4, py: 4 }}>
                     {/* Breadcrumb */}
-                    <div className="flex items-center gap-2 text-xs text-slate-500 mb-6">
-                        <span className="font-medium">User Guide</span>
-                        <FaChevronRight className="text-[8px]" />
-                        <span className={`font-medium ${colors.text}`}>{currentModule?.title}</span>
-                        <FaChevronRight className="text-[8px]" />
-                        <span className="font-semibold text-slate-700">{currentSection?.title}</span>
-                    </div>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 500, color: "grey.500" }}>User Guide</Typography>
+                        <ChevronRightIcon sx={{ fontSize: 10, color: "grey.400" }} />
+                        <Typography variant="caption" sx={{ fontWeight: 500, color: colors.text }}>{currentModule?.title}</Typography>
+                        <ChevronRightIcon sx={{ fontSize: 10, color: "grey.400" }} />
+                        <Typography variant="caption" sx={{ fontWeight: 600, color: "grey.700" }}>{currentSection?.title}</Typography>
+                    </Box>
 
                     {/* Section Header */}
-                    <div className={`${colors.bg} rounded-2xl p-6 mb-8 border ${colors.border}`}>
-                        <div className="flex items-start gap-4">
-                            <div className={`p-3 bg-gradient-to-br ${colors.gradient} rounded-xl text-white shadow-lg`}>
-                                {currentSection?.icon || currentModule?.icon}
-                            </div>
-                            <div className="flex-1">
-                                <h1 className="text-xl font-bold text-slate-900 mb-1">{currentSection?.title}</h1>
-                                <p className="text-sm text-slate-600 leading-relaxed">{currentSection?.content?.description}</p>
-                            </div>
-                        </div>
-                    </div>
+                    <Card variant="outlined" sx={{ bgcolor: colors.bg, borderRadius: 4, mb: 4, borderColor: colors.border }}>
+                        <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>
+                            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+                                <Avatar sx={{ background: `linear-gradient(135deg, ${colors.gradientFrom}, ${colors.gradientTo})`, borderRadius: 3, width: 44, height: 44, boxShadow: 3 }}>
+                                    {currentSection?.icon || currentModule?.icon}
+                                </Avatar>
+                                <Box sx={{ flex: 1 }}>
+                                    <Typography variant="h6" sx={{ fontWeight: 700, color: "grey.900", mb: 0.5, fontSize: "1.25rem" }}>{currentSection?.title}</Typography>
+                                    <Typography variant="body2" sx={{ color: "grey.600", lineHeight: 1.6, fontSize: "0.875rem" }}>{currentSection?.content?.description}</Typography>
+                                </Box>
+                            </Box>
+                        </CardContent>
+                    </Card>
 
                     {/* Workflow / Flow Diagram */}
                     {currentSection?.content?.flow && (
-                        <div className="mb-8">
-                            <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                <FaArrowRight className={`text-xs ${colors.text}`} />
+                        <Box sx={{ mb: 4 }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "grey.800", mb: 2, display: "flex", alignItems: "center", gap: 1, fontSize: "0.875rem" }}>
+                                <ArrowForwardIcon sx={{ fontSize: 14, color: colors.text }} />
                                 Workflow Steps
-                            </h3>
-                            <div className="space-y-3">
+                            </Typography>
+                            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
                                 {currentSection.content.flow.map((f, i) => (
-                                    <div key={i} className="flex items-start gap-4 group">
-                                        <div className={`shrink-0 w-8 h-8 rounded-full bg-gradient-to-br ${colors.gradient} text-white flex items-center justify-center text-xs font-bold shadow-md`}>
+                                    <Box key={i} sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+                                        <Avatar sx={{ width: 32, height: 32, background: `linear-gradient(135deg, ${colors.gradientFrom}, ${colors.gradientTo})`, fontSize: "0.75rem", fontWeight: 700, boxShadow: 2, flexShrink: 0 }}>
                                             {i + 1}
-                                        </div>
-                                        <div className={`flex-1 bg-white rounded-xl border border-slate-200 p-4 shadow-sm group-hover:shadow-md transition-shadow`}>
-                                            <p className="text-sm font-bold text-slate-800 mb-1">{f.step.replace(/^\d+\.\s*/, "")}</p>
-                                            <p className="text-xs text-slate-500 leading-relaxed">{f.detail}</p>
-                                        </div>
-                                        {i < currentSection.content.flow.length - 1 && (
-                                            <div className="absolute left-[15px] mt-8 h-3 border-l-2 border-dashed border-slate-200" />
-                                        )}
-                                    </div>
+                                        </Avatar>
+                                        <Card variant="outlined" sx={{ flex: 1, borderRadius: 3, borderColor: "grey.200", "&:hover": { boxShadow: 2 }, transition: "box-shadow 0.2s" }}>
+                                            <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+                                                <Typography variant="body2" sx={{ fontWeight: 700, color: "grey.800", mb: 0.5, fontSize: "0.875rem" }}>{f.step.replace(/^\d+\.\s*/, "")}</Typography>
+                                                <Typography variant="caption" sx={{ color: "grey.500", lineHeight: 1.6, fontSize: "0.75rem" }}>{f.detail}</Typography>
+                                            </CardContent>
+                                        </Card>
+                                    </Box>
                                 ))}
-                            </div>
-                        </div>
+                            </Box>
+                        </Box>
                     )}
 
                     {/* Steps / Actions */}
                     {currentSection?.content?.steps && (
-                        <div className="mb-8">
-                            <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                <FaList className={`text-xs ${colors.text}`} />
+                        <Box sx={{ mb: 4 }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "grey.800", mb: 2, display: "flex", alignItems: "center", gap: 1, fontSize: "0.875rem" }}>
+                                <FormatListBulletedIcon sx={{ fontSize: 14, color: colors.text }} />
                                 How to Use
-                            </h3>
-                            <div className="space-y-3">
+                            </Typography>
+                            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
                                 {currentSection.content.steps.map((s, i) => (
-                                    <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow">
-                                        <div className="flex items-start gap-3">
-                                            <div className={`shrink-0 mt-0.5 p-2 rounded-lg ${colors.light} ${colors.text}`}>
-                                                {s.icon || <span className="text-xs font-bold">{i + 1}</span>}
-                                            </div>
-                                            <div className="flex-1">
-                                                <p className="text-sm font-bold text-slate-800 mb-1">{s.action}</p>
-                                                <p className="text-xs text-slate-500 leading-relaxed">{s.detail}</p>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <Card key={i} variant="outlined" sx={{ borderRadius: 3, borderColor: "grey.200", "&:hover": { boxShadow: 2 }, transition: "box-shadow 0.2s" }}>
+                                        <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+                                            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
+                                                <Avatar variant="rounded" sx={{ width: 32, height: 32, bgcolor: colors.light, color: colors.text, flexShrink: 0, mt: 0.25 }}>
+                                                    {s.icon || <Typography sx={{ fontSize: "0.75rem", fontWeight: 700 }}>{i + 1}</Typography>}
+                                                </Avatar>
+                                                <Box sx={{ flex: 1 }}>
+                                                    <Typography variant="body2" sx={{ fontWeight: 700, color: "grey.800", mb: 0.5, fontSize: "0.875rem" }}>{s.action}</Typography>
+                                                    <Typography variant="caption" sx={{ color: "grey.500", lineHeight: 1.6, fontSize: "0.75rem" }}>{s.detail}</Typography>
+                                                </Box>
+                                            </Box>
+                                        </CardContent>
+                                    </Card>
                                 ))}
-                            </div>
-                        </div>
+                            </Box>
+                        </Box>
                     )}
 
                     {/* Points / Bullets */}
                     {currentSection?.content?.points && (
-                        <div className="mb-8">
-                            <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                <FaInfoCircle className={`text-xs ${colors.text}`} />
+                        <Box sx={{ mb: 4 }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "grey.800", mb: 2, display: "flex", alignItems: "center", gap: 1, fontSize: "0.875rem" }}>
+                                <InfoIcon sx={{ fontSize: 14, color: colors.text }} />
                                 Key Points
-                            </h3>
-                            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-                                <ul className="space-y-3">
-                                    {currentSection.content.points.map((pt, i) => (
-                                        <li key={i} className="flex items-start gap-3">
-                                            <div className={`shrink-0 mt-1 w-1.5 h-1.5 rounded-full ${colors.accent}`} />
-                                            <p className="text-xs text-slate-600 leading-relaxed">{pt}</p>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
+                            </Typography>
+                            <Card variant="outlined" sx={{ borderRadius: 3, borderColor: "grey.200" }}>
+                                <CardContent sx={{ p: 2.5, "&:last-child": { pb: 2.5 } }}>
+                                    <List disablePadding>
+                                        {currentSection.content.points.map((pt, i) => (
+                                            <ListItem key={i} disablePadding sx={{ mb: i < currentSection.content.points.length - 1 ? 1.5 : 0, display: "flex", alignItems: "flex-start", gap: 1.5 }}>
+                                                <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: colors.accent, flexShrink: 0, mt: 0.75 }} />
+                                                <Typography variant="caption" sx={{ color: "grey.600", lineHeight: 1.6, fontSize: "0.75rem" }}>{pt}</Typography>
+                                            </ListItem>
+                                        ))}
+                                    </List>
+                                </CardContent>
+                            </Card>
+                        </Box>
                     )}
 
                     {/* Tips */}
                     {currentSection?.content?.tips && currentSection.content.tips.length > 0 && (
-                        <div className="mb-8">
-                            <div className={`${colors.bg} rounded-xl border ${colors.border} p-5`}>
-                                <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-                                    <FaLightbulb className="text-amber-500 text-xs" />
-                                    Pro Tips
-                                </h3>
-                                <ul className="space-y-2">
-                                    {currentSection.content.tips.map((tip, i) => (
-                                        <li key={i} className="flex items-start gap-2.5">
-                                            <FaChevronRight className={`text-[8px] mt-1.5 ${colors.text} shrink-0`} />
-                                            <p className="text-xs text-slate-600 leading-relaxed">{tip}</p>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
+                        <Box sx={{ mb: 4 }}>
+                            <Card variant="outlined" sx={{ bgcolor: colors.bg, borderRadius: 3, borderColor: colors.border }}>
+                                <CardContent sx={{ p: 2.5, "&:last-child": { pb: 2.5 } }}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "grey.800", mb: 1.5, display: "flex", alignItems: "center", gap: 1, fontSize: "0.875rem" }}>
+                                        <LightbulbIcon sx={{ fontSize: 14, color: "#F57F17" }} />
+                                        Pro Tips
+                                    </Typography>
+                                    <List disablePadding>
+                                        {currentSection.content.tips.map((tip, i) => (
+                                            <ListItem key={i} disablePadding sx={{ mb: i < currentSection.content.tips.length - 1 ? 1 : 0, display: "flex", alignItems: "flex-start", gap: 1.25 }}>
+                                                <ChevronRightIcon sx={{ fontSize: 10, color: colors.text, flexShrink: 0, mt: 0.75 }} />
+                                                <Typography variant="caption" sx={{ color: "grey.600", lineHeight: 1.6, fontSize: "0.75rem" }}>{tip}</Typography>
+                                            </ListItem>
+                                        ))}
+                                    </List>
+                                </CardContent>
+                            </Card>
+                        </Box>
                     )}
 
                     {/* Prev / Next Navigation */}
-                    <div className="flex items-center justify-between pt-6 border-t border-slate-200 mt-8">
+                    <Divider sx={{ mt: 4, mb: 3 }} />
+                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         {prev ? (
-                            <button
+                            <Button
                                 onClick={() => navigateTo(prev.moduleId, prev.sectionId)}
-                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all text-left group shadow-sm"
+                                variant="outlined"
+                                startIcon={<ChevronRightIcon sx={{ fontSize: 12, transform: "rotate(180deg)" }} />}
+                                sx={{
+                                    borderRadius: 3,
+                                    borderColor: "grey.200",
+                                    color: "grey.700",
+                                    textTransform: "none",
+                                    px: 2,
+                                    py: 1.25,
+                                    "&:hover": { bgcolor: "grey.50", borderColor: "grey.300" },
+                                    boxShadow: 1,
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "flex-start"
+                                }}
                             >
-                                <FaChevronRight className="text-[10px] text-slate-400 rotate-180 group-hover:-translate-x-0.5 transition-transform" />
-                                <div>
-                                    <p className="text-[10px] text-slate-400 font-medium">Previous</p>
-                                    <p className="text-xs font-bold text-slate-700">{prev.title}</p>
-                                </div>
-                            </button>
-                        ) : <div />}
+                                <Typography variant="caption" sx={{ color: "grey.400", fontWeight: 500, fontSize: "0.625rem", lineHeight: 1 }}>Previous</Typography>
+                                <Typography variant="caption" sx={{ fontWeight: 700, color: "grey.700", fontSize: "0.75rem" }}>{prev.title}</Typography>
+                            </Button>
+                        ) : <Box />}
 
                         {next ? (
-                            <button
+                            <Button
                                 onClick={() => navigateTo(next.moduleId, next.sectionId)}
-                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all text-right group shadow-sm"
+                                variant="outlined"
+                                endIcon={<ChevronRightIcon sx={{ fontSize: 12 }} />}
+                                sx={{
+                                    borderRadius: 3,
+                                    borderColor: "grey.200",
+                                    color: "grey.700",
+                                    textTransform: "none",
+                                    px: 2,
+                                    py: 1.25,
+                                    "&:hover": { bgcolor: "grey.50", borderColor: "grey.300" },
+                                    boxShadow: 1,
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "flex-end"
+                                }}
                             >
-                                <div>
-                                    <p className="text-[10px] text-slate-400 font-medium">Next</p>
-                                    <p className="text-xs font-bold text-slate-700">{next.title}</p>
-                                </div>
-                                <FaChevronRight className="text-[10px] text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-                            </button>
-                        ) : <div />}
-                    </div>
-                </div>
+                                <Typography variant="caption" sx={{ color: "grey.400", fontWeight: 500, fontSize: "0.625rem", lineHeight: 1 }}>Next</Typography>
+                                <Typography variant="caption" sx={{ fontWeight: 700, color: "grey.700", fontSize: "0.75rem" }}>{next.title}</Typography>
+                            </Button>
+                        ) : <Box />}
+                    </Box>
+                </Box>
 
                 {/* Scroll to top */}
                 {showScrollTop && (
-                    <button
+                    <Fab
+                        size="small"
                         onClick={scrollToTop}
-                        className="fixed bottom-6 right-6 p-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all hover:scale-110 z-50"
+                        sx={{
+                            position: "fixed",
+                            bottom: 24,
+                            right: 24,
+                            bgcolor: "#1565C0",
+                            color: "#fff",
+                            "&:hover": { bgcolor: "#0D47A1", transform: "scale(1.1)" },
+                            transition: "all 0.2s",
+                            zIndex: 50,
+                            boxShadow: 3
+                        }}
                     >
-                        <FaArrowUp className="text-sm" />
-                    </button>
+                        <KeyboardArrowUpIcon />
+                    </Fab>
                 )}
-            </div>
-        </div>
+            </Box>
+        </Box>
     );
 }

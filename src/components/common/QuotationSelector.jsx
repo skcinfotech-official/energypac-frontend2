@@ -1,7 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { getClientQuotations } from "../../services/salesService";
-import { HiSearch, HiX } from "react-icons/hi";
+import {
+    Box, Paper, TextField, InputAdornment, CircularProgress, List,
+    ListItemButton, Typography
+} from "@mui/material";
+import { Search as SearchIcon, Close as CloseIcon } from "@mui/icons-material";
 
 const QuotationSelector = ({ value, onChange, placeholder = "Search quotation...", defaultItem = null, status = "" }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -94,81 +98,117 @@ const QuotationSelector = ({ value, onChange, placeholder = "Search quotation...
     const selectedQuotation = findQuotation(value) || defaultItem;
 
     const dropdownContent = isOpen && coords.width > 0 && (
-        <div
-            className="quotation-selector-portal fixed z-[9999] bg-white border border-slate-200 rounded-lg shadow-xl flex flex-col"
-            style={{
+        <Paper
+            sx={{
+                position: 'fixed',
+                zIndex: 9999,
+                width: coords.width,
                 top: coords.placement === 'bottom' ? coords.top + 4 : 'auto',
                 bottom: coords.placement === 'top' ? (window.innerHeight - coords.bottom) + 4 : 'auto',
                 left: coords.left,
-                width: coords.width,
-                maxHeight: '250px'
+                maxHeight: '250px',
+                display: 'flex',
+                flexDirection: 'column',
             }}
+            elevation={3}
         >
-            <div className="sticky top-0 bg-white p-2 border-b border-slate-100 shrink-0">
-                <div className="relative">
-                    <HiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                        autoFocus
-                        type="text"
-                        className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 border-none rounded-md focus:ring-1 focus:ring-blue-500"
-                        placeholder="Type to search..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                </div>
-            </div>
+            <Box sx={{ p: 1, borderBottom: '1px solid', borderColor: 'divider', flexShrink: 0 }}>
+                <TextField
+                    autoFocus
+                    fullWidth
+                    size="small"
+                    placeholder="Type to search..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <SearchIcon sx={{ fontSize: '1.2rem', color: 'text.secondary' }} />
+                            </InputAdornment>
+                        ),
+                    }}
+                    sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'background.default' } }}
+                />
+            </Box>
 
-            <div className="overflow-y-auto max-h-[200px] py-1">
+            <Box sx={{ overflowY: 'auto', maxHeight: '200px', py: 0.5 }}>
                 {loading ? (
-                    <div className="px-4 py-3 text-sm text-slate-500 text-center">Loading...</div>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2 }}>
+                        <CircularProgress size={24} />
+                    </Box>
                 ) : quotations.length > 0 ? (
-                    quotations.map((q) => (
-                        <div
-                            key={q.id || q.uuid}
-                            className="px-4 py-2 text-sm hover:bg-blue-50 cursor-pointer transition-colors border-b border-slate-50 last:border-none"
-                            onClick={() => {
-                                onChange(q.id || q.uuid, q);
-                                setIsOpen(false);
-                                setSearch("");
-                            }}
-                        >
-                            <div className="font-medium text-slate-900">{q.quotation_number}</div>
-                            <div className="text-xs text-slate-500 flex items-center justify-between mt-0.5">
-                                <span>{q.client_name}</span>
-                                <span className="font-mono text-blue-600 font-semibold">₹{q.total_amount}</span>
-                            </div>
-                        </div>
-                    ))
+                    <List disablePadding>
+                        {quotations.map((q) => (
+                            <ListItemButton
+                                key={q.id || q.uuid}
+                                onClick={() => {
+                                    onChange(q.id || q.uuid, q);
+                                    setIsOpen(false);
+                                    setSearch("");
+                                }}
+                                sx={{ py: 1, px: 2, borderBottom: '1px solid', borderColor: 'divider', '&:last-child': { borderBottom: 'none' } }}
+                            >
+                                <Box sx={{ width: '100%' }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                                        {q.quotation_number}
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5 }}>
+                                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                            {q.client_name}
+                                        </Typography>
+                                        <Typography variant="caption" sx={{ fontFamily: 'monospace', fontWeight: 600, color: 'primary.main' }}>
+                                            ₹{q.total_amount}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                            </ListItemButton>
+                        ))}
+                    </List>
                 ) : (
-                    <div className="px-4 py-3 text-sm text-slate-500 text-center">No quotations found</div>
+                    <Typography variant="body2" sx={{ textAlign: 'center', color: 'text.secondary', py: 2 }}>
+                        No quotations found
+                    </Typography>
                 )}
-            </div>
-        </div>
+            </Box>
+        </Paper>
     );
 
     return (
-        <div className="relative w-full" ref={dropdownRef}>
-            <div
-                className="input flex items-center justify-between cursor-pointer min-h-[42px]"
+        <Box sx={{ position: 'relative', width: '100%' }} ref={dropdownRef}>
+            <Box
                 onClick={() => setIsOpen(!isOpen)}
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    minHeight: '42px',
+                    px: 1.5,
+                    py: 1,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 1,
+                    bgcolor: 'background.paper',
+                    '&:hover': { borderColor: 'primary.main' },
+                }}
             >
-                <span className={!selectedQuotation ? "text-slate-400 truncate" : "text-slate-800 truncate"}>
+                <Typography sx={{ color: !selectedQuotation ? 'text.secondary' : 'text.primary', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {selectedQuotation ? `${selectedQuotation.quotation_number} - ${selectedQuotation.client_name}` : placeholder}
-                </span>
+                </Typography>
                 {value && (
-                    <HiX
-                        className="text-slate-400 hover:text-slate-600 ml-2"
+                    <CloseIcon
                         onClick={(e) => {
                             e.stopPropagation();
                             onChange("", null);
                             setSearch("");
                         }}
+                        sx={{ cursor: 'pointer', color: 'text.secondary', ml: 1, '&:hover': { color: 'text.primary' } }}
                     />
                 )}
-            </div>
+            </Box>
 
             {isOpen && createPortal(dropdownContent, document.body)}
-        </div>
+        </Box>
     );
 };
 

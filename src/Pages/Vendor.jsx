@@ -1,5 +1,16 @@
 import { useEffect, useState } from "react";
-import { FaPlus, FaEdit, FaTrash, FaEye, FaFileExcel } from "react-icons/fa";
+import {
+    Box, Card, Typography, Button, TextField, MenuItem, Select, FormControl,
+    InputLabel, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+    IconButton, Tooltip, CircularProgress, Dialog, DialogTitle, DialogContent,
+    DialogActions, RadioGroup, FormControlLabel, Radio, InputAdornment
+} from "@mui/material";
+import {
+    Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
+    Visibility as ViewIcon, FileDownload as ExcelIcon,
+    Search as SearchIcon,
+    ChevronLeft as PrevIcon, ChevronRight as NextIcon,
+} from "@mui/icons-material";
 
 import VendorModal from "../components/vendors/VendorModal";
 import VendorViewModal from "../components/vendors/VendorViewModal";
@@ -35,7 +46,7 @@ export default function Vendors() {
     const [statusFilter, setStatusFilter] = useState("");
     // "" | "active" | "inactive"
 
-    // ✅ Page state — track current page number
+    // Page state
     const [page, setPage] = useState(1);
 
     /* =========================
@@ -55,13 +66,12 @@ export default function Vendors() {
     });
 
     /* =========================
-       FETCH — accepts explicit pageNum
+       FETCH
        ========================= */
     const fetchVendors = async (pageNum = 1) => {
         try {
             setLoading(true);
 
-            // Build URL with page number when not on page 1
             const pageUrl = pageNum > 1 ? `/api/vendors?page=${pageNum}` : null;
 
             const res = await getVendors({
@@ -80,7 +90,6 @@ export default function Vendors() {
             setNext(res.next);
             setPrevious(res.previous);
 
-            // ✅ always sync page state
             setPage(pageNum);
         } catch (err) {
             console.log(err);
@@ -95,12 +104,11 @@ export default function Vendors() {
     };
 
     /* =========================
-       EFFECT: search/filter change → debounce + RESET to page 1
-       (page is intentionally NOT in the dependency array)
+       EFFECT: search/filter change
        ========================= */
     useEffect(() => {
         const timer = setTimeout(() => {
-            fetchVendors(1); // ✅ always start from page 1 when filters change
+            fetchVendors(1);
         }, 500);
         return () => clearTimeout(timer);
     }, [searchText, statusFilter]);
@@ -159,7 +167,6 @@ export default function Vendors() {
                     ? "Vendor updated successfully"
                     : "Vendor added successfully",
         });
-        // ✅ stay on current page after edit, go to page 1 after add
         fetchVendors(mode === "edit" ? page : 1);
     };
 
@@ -177,7 +184,7 @@ export default function Vendors() {
                         type: "success",
                         message: res.data?.message || res.message || "Vendor deleted successfully",
                     });
-                    fetchVendors(1); // ✅ go to page 1 after delete
+                    fetchVendors(1);
                     setPasswordModal({ open: false });
                 } catch (err) {
                     console.log(err);
@@ -284,181 +291,196 @@ export default function Vendors() {
     };
 
     return (
-        <div>
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-
+        <Box>
+            <Card>
                 {/* HEADER */}
-                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                    <div>
-                        <h3 className="font-bold text-slate-800">Vendors</h3>
-                        <span className="text-sm text-slate-500 font-semibold">
+                <Box sx={{ px: 2.5, py: 2, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+                    <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Vendors</Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
                             Total: {count}
-                        </span>
-                    </div>
+                        </Typography>
+                    </Box>
 
-                    <div className="flex items-center gap-3">
-                        <button
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                            size="small"
+                            variant="contained"
+                            color="success"
+                            startIcon={<ExcelIcon />}
                             onClick={() => {
                                 const today = new Date().toISOString().split('T')[0];
                                 const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
                                 setReportDates({ start: firstDay, end: today });
                                 setShowReportModal(true);
                             }}
-                            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-500"
                         >
-                            <FaFileExcel className="text-sm" />
                             Download Report
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                            size="small"
+                            variant="contained"
+                            startIcon={<AddIcon />}
                             onClick={handleAddVendor}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-500"
+                            sx={{ bgcolor: '#1565C0', '&:hover': { bgcolor: '#0D47A1' } }}
                         >
-                            <FaPlus className="text-xs" />
                             Add Vendor
-                        </button>
-                    </div>
-                </div>
+                        </Button>
+                    </Box>
+                </Box>
 
                 {/* SEARCH & FILTER */}
-                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-                    <div className="flex flex-wrap gap-4 items-end">
-
-                        {/* Search Vendor */}
-                        <div className="flex-1 min-w-55">
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                Search Vendor
-                            </label>
-                            <input
-                                value={searchText}
-                                onChange={(e) => setSearchText(e.target.value)}
-                                placeholder="Search by name, code, phone"
-                                className="input"
-                            />
-                        </div>
-
-                        {/* Status Filter */}
-                        <div className="w-40">
-                            <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                Status
-                            </label>
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
-                                className="input"
-                            >
-                                <option value="">All</option>
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
+                <Box sx={{ px: 2.5, py: 2, borderBottom: '1px solid', borderColor: 'divider', bgcolor: '#FAFBFC', display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-end' }}>
+                    <TextField
+                        size="small"
+                        placeholder="Search by name, code, phone"
+                        label="Search Vendor"
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        sx={{ flex: 1, minWidth: 220 }}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon sx={{ fontSize: '1.1rem', color: 'text.secondary' }} />
+                                </InputAdornment>
+                            )
+                        }}
+                    />
+                    <FormControl size="small" sx={{ minWidth: 160 }}>
+                        <InputLabel>Status</InputLabel>
+                        <Select
+                            value={statusFilter}
+                            label="Status"
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                        >
+                            <MenuItem value="">All</MenuItem>
+                            <MenuItem value="active">Active</MenuItem>
+                            <MenuItem value="inactive">Inactive</MenuItem>
+                        </Select>
+                    </FormControl>
+                </Box>
 
                 {/* TABLE */}
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-blue-50/50 text-slate-800 uppercase text-[10px] font-bold tracking-widest">
-                                <th className="px-6 py-4 text-[13px]">Code</th>
-                                <th className="px-6 py-4 text-[13px]">Vendor Name</th>
-                                <th className="px-6 py-4 text-[13px]">Contact Person</th>
-                                <th className="px-6 py-4 text-[13px]">Phone</th>
-                                <th className="px-6 py-4 text-[13px]">Email</th>
-                                <th className="px-6 py-4 text-[13px]">GST</th>
-                                <th className="px-6 py-4 text-[13px] text-center">Action</th>
-                            </tr>
-                        </thead>
+                <TableContainer>
+                    <Table size="small">
+                        <TableHead>
+                            <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+                                <TableCell sx={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.05em' }}>Code</TableCell>
+                                <TableCell sx={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.05em' }}>Vendor Name</TableCell>
+                                <TableCell sx={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.05em' }}>Contact Person</TableCell>
+                                <TableCell sx={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.05em' }}>Phone</TableCell>
+                                <TableCell sx={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.05em' }}>Email</TableCell>
+                                <TableCell sx={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.05em' }}>GST</TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.05em' }}>Action</TableCell>
+                            </TableRow>
+                        </TableHead>
 
-                        <tbody className="divide-y divide-slate-100">
+                        <TableBody>
                             {loading && (
-                                <tr>
-                                    <td colSpan="7" className="px-6 py-6 text-center text-slate-500">
-                                        Loading vendors...
-                                    </td>
-                                </tr>
+                                <TableRow>
+                                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                                        <CircularProgress size={28} />
+                                    </TableCell>
+                                </TableRow>
                             )}
 
                             {!loading && vendors.length === 0 && (
-                                <tr>
-                                    <td colSpan="7" className="px-6 py-6 text-center text-slate-500">
-                                        No vendors found
-                                    </td>
-                                </tr>
+                                <TableRow>
+                                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                                        <Typography variant="body2" color="text.secondary">No vendors found</Typography>
+                                    </TableCell>
+                                </TableRow>
                             )}
 
-                            {vendors.map((v) => (
-                                <tr key={v.id} className="odd:bg-slate-100 even:bg-white hover:bg-slate-200 transition">
-                                    <td className="px-6 py-4 font-mono text-blue-600 font-semibold">
-                                        {v.vendor_code}
-                                    </td>
-                                    <td className="px-6 py-4 font-semibold text-slate-800">
-                                        {v.vendor_name}
-                                    </td>
-                                    <td className="px-6 py-4 text-slate-700">
-                                        {v.contact_person || "-"}
-                                    </td>
-                                    <td className="px-6 py-4 text-slate-700">
-                                        {v.phone || "-"}
-                                    </td>
-                                    <td className="px-6 py-4 text-slate-600">
-                                        {v.email || "-"}
-                                    </td>
-                                    <td className="px-6 py-4 text-slate-700">
-                                        {v.gst_number || "-"}
-                                    </td>
-
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center justify-center gap-3">
-                                            <button
-                                                onClick={() => handleView(v)}
-                                                className="text-slate-500 hover:text-blue-600"
-                                                title="View"
-                                            >
-                                                <FaEye />
-                                            </button>
-                                            <button
-                                                onClick={() => handleEdit(v)}
-                                                className="text-blue-600 hover:text-blue-800"
-                                                title="Edit"
-                                            >
-                                                <FaEdit />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(v)}
-                                                className="text-red-500 hover:text-red-700"
-                                                title="Delete"
-                                            >
-                                                <FaTrash />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
+                            {!loading && vendors.map((v, index) => (
+                                <TableRow
+                                    key={v.id}
+                                    sx={{
+                                        bgcolor: index % 2 === 0 ? '#F8FAFC' : '#FFFFFF',
+                                        '&:hover': { bgcolor: '#EBF0F5' },
+                                        transition: 'background-color 0.15s'
+                                    }}
+                                >
+                                    <TableCell>
+                                        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600, color: '#1565C0' }}>
+                                            {v.vendor_code}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                            {v.vendor_name}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Typography variant="body2" color="text.secondary">
+                                            {v.contact_person || "-"}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Typography variant="body2" color="text.secondary">
+                                            {v.phone || "-"}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Typography variant="body2" color="text.secondary">
+                                            {v.email || "-"}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Typography variant="body2" color="text.secondary">
+                                            {v.gst_number || "-"}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
+                                            <Tooltip title="View">
+                                                <IconButton size="small" onClick={() => handleView(v)} color="default">
+                                                    <ViewIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Edit">
+                                                <IconButton size="small" onClick={() => handleEdit(v)} color="primary">
+                                                    <EditIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Delete">
+                                                <IconButton size="small" onClick={() => handleDelete(v)} color="error">
+                                                    <DeleteIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </Box>
+                                    </TableCell>
+                                </TableRow>
                             ))}
-                        </tbody>
-                    </table>
-                </div>
+                        </TableBody>
+                    </Table>
+                </TableContainer>
 
                 {/* PAGINATION */}
-                <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
-                    <button
-                        onClick={() => previous && handlePageChange(page - 1)}
+                <Box sx={{ px: 2.5, py: 1.5, borderTop: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Button
+                        size="small"
+                        startIcon={<PrevIcon />}
                         disabled={!previous}
-                        className="text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40"
+                        onClick={() => handlePageChange(page - 1)}
+                        sx={{ fontWeight: 600 }}
                     >
-                        ← Previous
-                    </button>
+                        Previous
+                    </Button>
 
-                    <span className="text-xs text-slate-400">Page {page}</span>
+                    <Typography variant="caption" color="text.secondary">Page {page}</Typography>
 
-                    <button
-                        onClick={() => next && handlePageChange(page + 1)}
+                    <Button
+                        size="small"
+                        endIcon={<NextIcon />}
                         disabled={!next}
-                        className="text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40"
+                        onClick={() => handlePageChange(page + 1)}
+                        sx={{ fontWeight: 600 }}
                     >
-                        Next →
-                    </button>
-                </div>
-            </div>
+                        Next
+                    </Button>
+                </Box>
+            </Card>
 
             {/* MODAL */}
             <VendorModal
@@ -506,113 +528,112 @@ export default function Vendors() {
             />
 
             {/* REPORT MODAL */}
-            {showReportModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                                <FaFileExcel className="text-emerald-600" /> Performance Report
-                            </h3>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <p className="text-sm text-slate-600 font-medium">Select Report Type:</p>
+            <Dialog open={showReportModal} onClose={() => setShowReportModal(false)} maxWidth="xs" fullWidth>
+                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <ExcelIcon sx={{ color: 'success.main' }} /> Performance Report
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontWeight: 500 }}>
+                        Select Report Type:
+                    </Typography>
 
-                            <div className="space-y-3">
-                                {/* Date Range Option */}
-                                <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition">
-                                    <input
-                                        type="radio"
-                                        name="reportType"
-                                        value="date_range"
-                                        checked={reportType === "date_range"}
-                                        onChange={(e) => setReportType(e.target.value)}
-                                        className="text-blue-600 focus:ring-blue-500"
-                                    />
-                                    <span className="text-sm font-semibold text-slate-700">Date Range</span>
-                                </label>
-                                {reportType === "date_range" && (
-                                    <div className="pl-8 pt-2 space-y-3 animate-in fade-in slide-in-from-top-2">
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-600 mb-1">Start Date</label>
-                                                <input
-                                                    type="date"
-                                                    value={reportDates.start}
-                                                    onChange={(e) => setReportDates({ ...reportDates, start: e.target.value })}
-                                                    className="input w-full text-xs"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-600 mb-1">End Date</label>
-                                                <input
-                                                    type="date"
-                                                    value={reportDates.end}
-                                                    onChange={(e) => setReportDates({ ...reportDates, end: e.target.value })}
-                                                    className="input w-full text-xs"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
+                    <RadioGroup value={reportType} onChange={(e) => {
+                        const val = e.target.value;
+                        setReportType(val);
+                        if (val === "vendor" && allVendors.length === 0) {
+                            getVendors({ isActive: true }).then(res => {
+                                setAllVendors(res.results || []);
+                            });
+                        }
+                    }}>
+                        {/* Date Range Option */}
+                        <FormControlLabel
+                            value="date_range"
+                            control={<Radio size="small" />}
+                            label={<Typography variant="body2" sx={{ fontWeight: 600 }}>Date Range</Typography>}
+                            sx={{
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                borderRadius: 2,
+                                mx: 0,
+                                mb: 1,
+                                px: 1,
+                                '&:hover': { bgcolor: '#FAFBFC' }
+                            }}
+                        />
+                        {reportType === "date_range" && (
+                            <Box sx={{ pl: 4, pt: 1, pb: 2, display: 'flex', gap: 2 }}>
+                                <TextField
+                                    type="date"
+                                    label="Start Date"
+                                    size="small"
+                                    value={reportDates.start}
+                                    onChange={(e) => setReportDates({ ...reportDates, start: e.target.value })}
+                                    InputLabelProps={{ shrink: true }}
+                                    sx={{ flex: 1 }}
+                                />
+                                <TextField
+                                    type="date"
+                                    label="End Date"
+                                    size="small"
+                                    value={reportDates.end}
+                                    onChange={(e) => setReportDates({ ...reportDates, end: e.target.value })}
+                                    InputLabelProps={{ shrink: true }}
+                                    sx={{ flex: 1 }}
+                                />
+                            </Box>
+                        )}
 
-                                {/* Specific Vendor Option */}
-                                <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition">
-                                    <input
-                                        type="radio"
-                                        name="reportType"
-                                        value="vendor"
-                                        checked={reportType === "vendor"}
-                                        onChange={(e) => {
-                                            setReportType(e.target.value);
-                                            if (allVendors.length === 0) {
-                                                getVendors({ isActive: true }).then(res => {
-                                                    setAllVendors(res.results || []);
-                                                });
-                                            }
-                                        }}
-                                        className="text-purple-600 focus:ring-purple-500"
-                                    />
-                                    <span className="text-sm font-semibold text-slate-700">Specific Vendor</span>
-                                </label>
-                                {reportType === "vendor" && (
-                                    <div className="pl-8 pt-2 space-y-3 animate-in fade-in slide-in-from-top-2">
-                                        <div>
-                                            <label className="block text-xs font-semibold text-slate-600 mb-1">Select Vendor</label>
-                                            <select
-                                                value={selectedVendorId}
-                                                onChange={(e) => setSelectedVendorId(e.target.value)}
-                                                className="input w-full text-xs"
-                                            >
-                                                <option value="">-- Choose Vendor --</option>
-                                                {allVendors.map(v => (
-                                                    <option key={v.id} value={v.id}>
-                                                        {v.vendor_name} ({v.vendor_code})
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50">
-                            <button
-                                onClick={() => setShowReportModal(false)}
-                                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleDownloadReport}
-                                disabled={downloading}
-                                className="px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-500 disabled:opacity-50 flex items-center gap-2"
-                            >
-                                {downloading ? "Downloading..." : "Download Excel"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
+                        {/* Specific Vendor Option */}
+                        <FormControlLabel
+                            value="vendor"
+                            control={<Radio size="small" />}
+                            label={<Typography variant="body2" sx={{ fontWeight: 600 }}>Specific Vendor</Typography>}
+                            sx={{
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                borderRadius: 2,
+                                mx: 0,
+                                px: 1,
+                                '&:hover': { bgcolor: '#FAFBFC' }
+                            }}
+                        />
+                        {reportType === "vendor" && (
+                            <Box sx={{ pl: 4, pt: 1, pb: 2 }}>
+                                <FormControl size="small" fullWidth>
+                                    <InputLabel>Select Vendor</InputLabel>
+                                    <Select
+                                        value={selectedVendorId}
+                                        label="Select Vendor"
+                                        onChange={(e) => setSelectedVendorId(e.target.value)}
+                                    >
+                                        <MenuItem value="">-- Choose Vendor --</MenuItem>
+                                        {allVendors.map(v => (
+                                            <MenuItem key={v.id} value={v.id}>
+                                                {v.vendor_name} ({v.vendor_code})
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Box>
+                        )}
+                    </RadioGroup>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setShowReportModal(false)} color="inherit">
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleDownloadReport}
+                        disabled={downloading}
+                        variant="contained"
+                        color="success"
+                        startIcon={downloading ? <CircularProgress size={16} color="inherit" /> : <ExcelIcon />}
+                    >
+                        {downloading ? "Downloading..." : "Download Excel"}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </Box>
     );
 }

@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
+import {
+  Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
+  Box, Typography, Grid, Paper, CircularProgress, ToggleButton, ToggleButtonGroup, Card, CardContent,
+  Table, TableHead, TableRow, TableCell, TableBody, TableContainer, IconButton
+} from "@mui/material";
+import { Close as CloseIcon, Refresh as RefreshIcon, AttachMoney as MoneyIcon, Info as InfoIcon } from "@mui/icons-material";
 import { getQuotationItems, createQuotation } from "../../services/vendorQuotationService";
 import { exchangeRateService } from "../../services/exchangeRateService";
-import { HiX, HiRefresh } from "react-icons/hi";
 import AlertToast from "../ui/AlertToast";
 
 const VendorQuotationModal = ({ open, onClose, onSuccess, requisitionId, vendorId }) => {
@@ -22,18 +27,15 @@ const VendorQuotationModal = ({ open, onClose, onSuccess, requisitionId, vendorI
   const loadItems = async () => {
     setLoading(true);
     try {
+      console.log("Loading items for", { requisitionId, vendorId });
       const data = await getQuotationItems(requisitionId, vendorId);
-      // data.items expected array
+      console.log("Items loaded:", data);
       const rawItems = data.items || [];
-      setItems(
-        rawItems.map((item) => ({
-          ...item,
-          quoted_rate: "", // default empty
-        }))
-      );
+      console.log("Raw items:", rawItems);
+      setItems(rawItems.map((item) => ({ ...item, quoted_rate: "" })));
     } catch (err) {
-      console.error(err);
-      setToast({ open: true, type: "error", message: "Failed to load items for quotation." });
+      console.error("Error loading items:", err);
+      setToast({ open: true, type: "error", message: `Failed to load items: ${err.message}` });
     } finally {
       setLoading(false);
     }
@@ -46,7 +48,7 @@ const VendorQuotationModal = ({ open, onClose, onSuccess, requisitionId, vendorI
       setExchangeRate(data.rate);
     } catch (err) {
       console.error(err);
-      setToast({ open: true, type: "error", message: "Failed to fetch exchange rate. Using default 1.0." });
+      setToast({ open: true, type: "error", message: "Failed to fetch exchange rate." });
     } finally {
       setRateLoading(false);
     }
@@ -67,226 +69,183 @@ const VendorQuotationModal = ({ open, onClose, onSuccess, requisitionId, vendorI
   };
 
   const handleSubmit = async () => {
+    if (items.some(item => !item.quoted_rate || Number(item.quoted_rate) <= 0)) {
+      setToast({ open: true, type: "error", message: "Please provide valid rates for all items." });
+      return;
+    }
     setSubmitting(true);
     try {
       const payload = {
         requisition: requisitionId,
         vendor: vendorId,
         currency: currency,
-        items: items.map((i) => ({
-          vendor_item: i.id, // Assuming the API returns 'id' as 'vendor_item' reference
-          quoted_rate: Number(i.quoted_rate || 0),
-        })),
+        items: items.map((i) => ({ vendor_item: i.id, quoted_rate: Number(i.quoted_rate || 0) })),
       };
-
       await createQuotation(payload);
       onSuccess?.();
       onClose();
     } catch (err) {
       console.error(err);
-      setToast({ open: true, type: "error", message: "Failed to create quotation. Please try again." });
+      setToast({ open: true, type: "error", message: "Failed to create quotation." });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const totalAmountOriginal = items.reduce(
-    (sum, i) => sum + (Number(i.quoted_rate || 0) * Number(i.quantity || 0)),
-    0
-  );
-  const totalAmountINR = currency === "USD" ? totalAmountOriginal * exchangeRate : totalAmountOriginal;
-
   if (!open) return null;
 
+  const totalAmountOriginal = items.reduce((sum, i) => sum + Number(i.quoted_rate || 0) * Number(i.quantity || 0), 0);
+  const totalAmountINR = currency === "USD" ? totalAmountOriginal * exchangeRate : totalAmountOriginal;
+
   return (
-    <div
-      className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-100 p-4 animate-in fade-in duration-300"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300 overflow-visible"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900">Enter Quotation Rates</h2>
-            <p className="text-sm text-slate-500">Provide rates for the assigned items</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-white rounded-full transition-colors text-slate-400 hover:text-slate-600 shadow-sm border border-transparent hover:border-slate-200"
-          >
-            <HiX size={20} />
-          </button>
-        </div>
+    <>
+      <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: 3, maxHeight: "95vh" } }}>
+        {/* HEADER */}
+        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", bgcolor: "#1a1a2e", color: "white", py: 2.5, px: 3, fontWeight: 900 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <MoneyIcon sx={{ color: "#0ea5e9", fontSize: 24 }} />
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 900, textTransform: "uppercase" }}>Create Vendor Quotation</Typography>
+              <Typography variant="caption" sx={{ color: "#cbd5e1", fontSize: "9px", textTransform: "uppercase" }}>Provide quotation details and item rates</Typography>
+            </Box>
+          </Box>
+          <IconButton onClick={onClose} sx={{ color: "#cbd5e1", "&:hover": { color: "white" } }}><CloseIcon /></IconButton>
+        </DialogTitle>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Vendor Details Snippet */}
-          {items.length > 0 && items[0].vendor_name && (
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-wrap gap-6 items-start">
-              <div className="space-y-1">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Vendor</span>
-                <div className="font-bold text-slate-800">{items[0].vendor_name}</div>
-                <div className="text-xs text-slate-500 font-mono">{items[0].vendor_code}</div>
-              </div>
-              <div className="space-y-1">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Tax Info</span>
-                <div className="flex gap-2 text-xs">
-                  {items[0].gst_number && <span className="bg-white px-2 py-0.5 rounded border border-slate-200 font-bold text-blue-600">GST: {items[0].gst_number}</span>}
-                  {items[0].pan_number && <span className="bg-white px-2 py-0.5 rounded border border-slate-200 font-bold text-slate-600">PAN: {items[0].pan_number}</span>}
-                </div>
-              </div>
-              {(items[0].bank_name || items[0].bank_account_number || items[0].account_number || items[0].account_name) && (
-                <div className="space-y-1">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Bank Details</span>
-                  <div className="text-xs text-slate-600 leading-tight">
-                    <div><span className="text-slate-400">Bank:</span> {items[0].bank_name || "-"}</div>
-                    <div><span className="text-slate-400">Name:</span> {items[0].account_name || "-"}</div>
-                    <div className="font-mono"><span className="text-slate-400">A/C:</span> {items[0].bank_account_number || items[0].account_number || "-"}</div>
-                    <div><span className="text-slate-400">IFSC:</span> {items[0].ifsc_code || "-"}</div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Currency Selection */}
-          <div className="flex items-center justify-between gap-12 bg-blue-50/50 border border-blue-100 p-3 rounded-xl">
-            <div>
-              <label className="text-[10px] font-bold text-blue-600 uppercase tracking-widest block mb-1.5">Currency</label>
-              <div className="flex gap-1.5">
-                {["INR", "USD"].map((curr) => (
-                  <button
-                    key={curr}
-                    type="button"
-                    onClick={() => setCurrency(curr)}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                      currency === curr
-                        ? "bg-blue-600 text-white shadow-sm"
-                        : "bg-white text-slate-600 border border-slate-200"
-                    }`}
-                  >
-                    {curr}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {currency === "USD" && (
-              <div className="flex items-center gap-3 bg-white px-3 py-2 rounded-lg border border-blue-100 shadow-sm">
-                <div className="text-right">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase leading-none mb-1">Exchange Rate</p>
-                  <p className="text-sm font-black text-blue-600 leading-none">1 USD = ₹ {Number(exchangeRate).toFixed(2)}</p>
-                </div>
-                <button 
-                  type="button" 
-                  onClick={loadExchangeRate} 
-                  className="p-1.5 hover:bg-blue-50 rounded-md text-blue-400 transition-colors"
-                >
-                  <HiRefresh className={rateLoading ? "animate-spin" : ""} size={12} />
-                </button>
-              </div>
+        {/* CONTENT */}
+        <DialogContent sx={{ bgcolor: "#f1f5f9", p: 3 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 3, mt: 1 }}>
+            {/* Vendor Info Card */}
+            {items.length > 0 && items[0].vendor_name && (
+              <Card sx={{ border: "1px solid #e2e8f0", bgcolor: "white" }}>
+                <CardContent sx={{ p: 2.5 }}>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Typography sx={{ fontSize: "10px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", mb: 0.5 }}>Vendor</Typography>
+                      <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#1e293b" }}>{items[0].vendor_name}</Typography>
+                      <Typography sx={{ fontSize: "10px", fontFamily: "monospace", color: "#64748b", mt: 0.5 }}>{items[0].vendor_code}</Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Typography sx={{ fontSize: "10px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", mb: 0.5 }}>GST</Typography>
+                      <Typography sx={{ fontSize: "12px", fontFamily: "monospace", fontWeight: 600, color: "#1e293b" }}>{items[0].gst_number || "N/A"}</Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Typography sx={{ fontSize: "10px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", mb: 0.5 }}>PAN</Typography>
+                      <Typography sx={{ fontSize: "12px", fontFamily: "monospace", fontWeight: 600, color: "#1e293b" }}>{items[0].pan_number || "N/A"}</Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={3}>
+                      <Typography sx={{ fontSize: "10px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", mb: 0.5 }}>Bank A/C</Typography>
+                      <Typography sx={{ fontSize: "11px", fontFamily: "monospace", fontWeight: 600, color: "#1e293b" }}>{items[0].bank_account_number || "N/A"}</Typography>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
             )}
-          </div>
 
-          {/* Currency Selection */}
+            {/* Currency Selection */}
+            <Paper sx={{ p: 2.5, bgcolor: "white", border: "1px solid #e2e8f0" }}>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 3 }}>
+                <Box>
+                  <Typography sx={{ fontSize: "10px", fontWeight: 900, color: "#64748b", textTransform: "uppercase", mb: 1 }}>Select Currency</Typography>
+                  <ToggleButtonGroup value={currency} exclusive onChange={(e, newCurrency) => newCurrency && setCurrency(newCurrency)} size="small">
+                    {["INR", "USD"].map((curr) => (
+                      <ToggleButton key={curr} value={curr} sx={{ px: 3, py: 1, fontSize: "13px", fontWeight: 900, textTransform: "uppercase", "&.Mui-selected": { bgcolor: "#0ea5e9", color: "white" } }}>
+                        {curr}
+                      </ToggleButton>
+                    ))}
+                  </ToggleButtonGroup>
+                </Box>
 
-          {loading ? (
-            <div className="text-center py-8 text-slate-500">Loading items...</div>
-          ) : (
-            <table className="w-full text-left text-sm border border-slate-200 rounded-lg overflow-hidden">
-              <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
-                <tr>
-                  <th className="px-4 py-3">Product</th>
-                  <th className="px-4 py-3 text-right">Quantity</th>
-                  <th className="px-4 py-3 text-right">Rate ({currency})</th>
-                  <th className="px-4 py-3 text-right">Amount ({currency})</th>
-                  {currency === "USD" && <th className="px-4 py-3 text-right">Amount (INR)</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {items.map((item, idx) => (
-                  <tr key={idx} className="odd:bg-slate-100 even:bg-white hover:bg-slate-200   ">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-slate-900">
-                        {item.product_name}
-                      </div>
-                      <div className="text-xs text-slate-500 font-mono">
-                        {item.product_code}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium text-slate-700">
-                      {Number(item.quantity).toFixed(2)} <span className="text-xs text-slate-400">{item.unit}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <input
-                        type="number"
-                        className="input w-32 text-right py-1 px-2 text-sm"
-                        placeholder="0.00"
-                        value={item.quoted_rate}
-                        onChange={(e) => handleRateChange(idx, e.target.value)}
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-right font-bold text-slate-800">
-                      {currency === "USD" ? "$" : "₹"} {(Number(item.quoted_rate || 0) * Number(item.quantity || 0)).toFixed(2)}
-                    </td>
-                    {currency === "USD" && (
-                      <td className="px-4 py-3 text-right font-bold text-blue-600">
-                        ₹ {(Number(item.quoted_rate || 0) * Number(item.quantity || 0) * exchangeRate).toFixed(2)}
-                      </td>
-                    )}
-                  </tr>
-                ))}
-                {items.length === 0 && !loading && (
-                  <tr>
-                    <td colSpan="4" className="px-4 py-8 text-center text-slate-500">
-                      No assigned items found for this vendor/requisition.
-                    </td>
-                  </tr>
+                {currency === "USD" && (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Box sx={{ bgcolor: "#dbeafe", border: "1px solid #bfdbfe", p: 1.5, borderRadius: 1 }}>
+                      <Typography sx={{ fontSize: "10px", fontWeight: 700, color: "#1e40af", textTransform: "uppercase" }}>Exchange Rate</Typography>
+                      <Typography sx={{ fontSize: "14px", fontWeight: 900, color: "#0c4a6e" }}>1 USD = ₹{Number(exchangeRate).toFixed(2)}</Typography>
+                    </Box>
+                    <IconButton onClick={loadExchangeRate} disabled={rateLoading} sx={{ color: "#0ea5e9" }}>
+                      <RefreshIcon sx={{ animation: rateLoading ? "spin 1s linear infinite" : "none" }} />
+                    </IconButton>
+                  </Box>
                 )}
-              </tbody>
-            </table>
-          )}
-        </div>
+              </Box>
+            </Paper>
 
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center gap-3">
-          <div className="flex flex-col">
-            <div className="text-lg font-bold text-slate-900">
-              Total: {currency === "USD" ? "$" : "₹"} {totalAmountOriginal.toFixed(2)}
-            </div>
-            {currency === "USD" && (
-              <div className="text-sm font-semibold text-blue-600">
-                (Approx ₹ {totalAmountINR.toFixed(2)})
-              </div>
+            {/* Items Table */}
+            {loading ? (
+              <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", py: 6, gap: 2 }}>
+                <CircularProgress size={40} sx={{ color: "#0ea5e9" }} />
+                <Typography sx={{ fontSize: "12px", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Loading items...</Typography>
+              </Box>
+            ) : items.length > 0 ? (
+              <Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, pb: 2, borderBottom: "1px solid #e2e8f0" }}>
+                  <InfoIcon sx={{ fontSize: 18, color: "#0ea5e9" }} />
+                  <Typography sx={{ fontSize: "11px", fontWeight: 900, color: "#1e293b", textTransform: "uppercase" }}>Enter Rates for Items</Typography>
+                  <Box sx={{ ml: "auto", bgcolor: "#e0f2fe", color: "#0c4a6e", px: 1.5, py: 0.5, borderRadius: 1, fontSize: "11px", fontWeight: 900 }}>{items.length} ITEMS</Box>
+                </Box>
+
+                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, border: "1px solid #e2e8f0" }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: "#f1f5f9", borderBottom: "2px solid #e2e8f0" }}>
+                        <TableCell sx={{ fontWeight: 900, color: "#64748b", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Product</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 900, color: "#64748b", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Qty</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 900, color: "#64748b", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Rate ({currency})</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 900, color: "#64748b", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Amount ({currency})</TableCell>
+                        {currency === "USD" && <TableCell align="right" sx={{ fontWeight: 900, color: "#64748b", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Amount (INR)</TableCell>}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody sx={{ "& .MuiTableRow-root:hover": { bgcolor: "#f8fafc" } }}>
+                      {items.map((item, idx) => (
+                        <TableRow key={idx} sx={{ borderBottom: "1px solid #e2e8f0", bgcolor: idx % 2 === 0 ? "white" : "#f9fafb" }}>
+                          <TableCell sx={{ py: 1.5 }}>
+                            <Typography sx={{ fontWeight: 700, color: "#1e293b", fontSize: "13px" }}>{item.product_name}</Typography>
+                            <Typography sx={{ fontSize: "10px", fontFamily: "monospace", color: "#64748b" }}>{item.product_code}</Typography>
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 600, color: "#475569", fontSize: "12px" }}>
+                            {Number(item.quantity).toFixed(2)} <span style={{ fontSize: "10px", color: "#94a3b8" }}>{item.unit}</span>
+                          </TableCell>
+                          <TableCell align="right" sx={{ py: 1.5 }}>
+                            <TextField type="number" size="small" placeholder="0.00" value={item.quoted_rate} onChange={(e) => handleRateChange(idx, e.target.value)} sx={{ width: "110px", "& .MuiOutlinedInput-root": { borderRadius: 1, bgcolor: "white", fontSize: "0.875rem", "& fieldset": { borderColor: "#e2e8f0" } } }} />
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 900, color: "#0ea5e9", fontSize: "13px" }}>
+                            {currency === "USD" ? "$" : "₹"} {(Number(item.quoted_rate || 0) * Number(item.quantity || 0)).toFixed(2)}
+                          </TableCell>
+                          {currency === "USD" && <TableCell align="right" sx={{ fontWeight: 700, color: "#059669", fontSize: "12px" }}>₹ {(Number(item.quoted_rate || 0) * Number(item.quantity || 0) * exchangeRate).toFixed(2)}</TableCell>}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: "#f1f5f9", borderTop: "2px solid #e2e8f0" }}>
+                        <TableCell colSpan={3} align="right" sx={{ fontWeight: 900, color: "#64748b", fontSize: "11px", textTransform: "uppercase", py: 1.5 }}>Total Amount:</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 900, color: "#0ea5e9", fontSize: "14px", py: 1.5 }}>
+                          {currency === "USD" ? "$" : "₹"} {totalAmountOriginal.toFixed(2)}
+                        </TableCell>
+                        {currency === "USD" && <TableCell align="right" sx={{ fontWeight: 700, color: "#059669", fontSize: "12px", py: 1.5 }}>₹ {totalAmountINR.toFixed(2)}</TableCell>}
+                      </TableRow>
+                    </TableHead>
+                  </Table>
+                </TableContainer>
+              </Box>
+            ) : (
+              <Box sx={{ textAlign: "center", py: 6 }}>
+                <Typography sx={{ color: "#94a3b8", fontStyle: "italic" }}>No items found</Typography>
+              </Box>
             )}
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={onClose}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              className="btn-primary"
-              disabled={submitting || loading || items.length === 0}
-            >
-              {submitting ? "Submitting..." : "Submit Quotation"}
-            </button>
-          </div>
-        </div>
-        <AlertToast
-          open={toast.open}
-          type={toast.type}
-          message={toast.message}
-          onClose={() => setToast({ ...toast, open: false })}
-        />
-      </div>
-    </div>
+          </Box>
+        </DialogContent>
+
+        {/* FOOTER */}
+        <DialogActions sx={{ bgcolor: "#ffffff", px: 3, py: 2, borderTop: "1px solid #e2e8f0", gap: 2 }}>
+          <Button onClick={onClose} disabled={submitting}>Cancel</Button>
+          <Button onClick={handleSubmit} variant="contained" disabled={submitting || loading || items.length === 0} startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : undefined} sx={{ bgcolor: "#0ea5e9", textTransform: "uppercase", fontWeight: 900 }}>
+            {submitting ? "Submitting..." : "Submit Quotation"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <AlertToast open={toast.open} type={toast.type} message={toast.message} onClose={() => setToast({ ...toast, open: false })} />
+    </>
   );
 };
 

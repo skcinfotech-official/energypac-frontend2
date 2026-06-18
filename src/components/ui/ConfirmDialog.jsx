@@ -1,57 +1,62 @@
-import { FaExclamationTriangle } from "react-icons/fa";
+import {
+    Dialog, DialogTitle, DialogContent, DialogContentText,
+    DialogActions, Button, Avatar, CircularProgress
+} from "@mui/material";
+import { Warning as WarningIcon } from "@mui/icons-material";
 
 export default function ConfirmDialog({
-  open,
-  title = "Confirm Action",
-  message = "Are you sure?",
-  confirmText = "Confirm",
-  cancelText = "Cancel",
-  loading = false,
-  onConfirm,
-  onCancel,
-  icon: Icon = FaExclamationTriangle, // Renamed to PascalCase for component usage
-  confirmButtonClass = "bg-red-600 hover:bg-red-500", // Default dangerous style
-  iconBgClass = "bg-red-100 text-red-600" // Default dangerous style
+    open,
+    title = "Confirm Action",
+    message = "Are you sure?",
+    confirmText = "Confirm",
+    cancelText = "Cancel",
+    loading = false,
+    onConfirm,
+    onCancel,
+    icon: Icon,
+    confirmButtonClass,
+    iconBgClass,
 }) {
-  if (!open) return null;
+    const isDestructive = confirmButtonClass?.includes?.('red') || confirmButtonClass?.includes?.('error');
+    const isSuccess = confirmButtonClass?.includes?.('emerald') || confirmButtonClass?.includes?.('green');
+    const isInfo = confirmButtonClass?.includes?.('blue') || confirmButtonClass?.includes?.('info');
 
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" onClick={onCancel}></div>
-      <div className="relative bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+    const getColor = () => {
+        if (isSuccess) return 'success';
+        if (isInfo) return 'primary';
+        return 'error';
+    };
 
-        {/* HEADER */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center gap-3">
-          <div className={`p-2 rounded-full ${iconBgClass}`}>
-            <Icon />
-          </div>
-          <h3 className="font-bold text-slate-800">{title}</h3>
-        </div>
+    const color = getColor();
 
-        {/* BODY */}
-        <div className="px-6 py-4 text-sm text-slate-600">
-          {message}
-        </div>
-
-        {/* ACTIONS */}
-        <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
-          <button
-            onClick={onCancel}
-            disabled={loading}
-            className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            {cancelText}
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className={`px-5 py-2.5 text-white text-sm font-semibold rounded-lg disabled:opacity-60 transition-all active:scale-95 flex items-center gap-2 ${confirmButtonClass}`}
-          >
-            {loading && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>}
-            {loading ? "Processing..." : confirmText}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+    return (
+        <Dialog open={!!open} onClose={loading ? undefined : onCancel} maxWidth="xs" fullWidth>
+            <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Avatar sx={{ bgcolor: `${color}.light`, color: `${color}.dark`, width: 36, height: 36 }}>
+                    {Icon ? <Icon /> : <WarningIcon sx={{ fontSize: '1.1rem' }} />}
+                </Avatar>
+                {title}
+            </DialogTitle>
+            <DialogContent>
+                <DialogContentText sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
+                    {message}
+                </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={onCancel} disabled={loading} color="inherit" sx={{ fontWeight: 600 }}>
+                    {cancelText}
+                </Button>
+                <Button
+                    onClick={onConfirm}
+                    disabled={loading}
+                    variant="contained"
+                    color={color}
+                    startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
+                    sx={{ fontWeight: 600 }}
+                >
+                    {loading ? "Processing..." : confirmText}
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
 }

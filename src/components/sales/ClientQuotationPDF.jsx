@@ -32,7 +32,7 @@ const EnergypacLogo = () => (
     <Image src={`${window.location.origin}/logo.jpeg`} style={{ width: 180, height: 25, marginBottom: 5 }} />
 );
 
-const ClientQuotationPDF = ({ quotation }) => {
+const ClientQuotationPDF = ({ quotation, verification }) => {
     if (!quotation) return null;
 
     const curr = quotation.currency || 'USD';
@@ -45,6 +45,13 @@ const ClientQuotationPDF = ({ quotation }) => {
         return new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.');
     };
 
+    // Extract verified user from verification data
+    const getVerifiedUser = () => {
+        if (!verification || !verification.verifiers) return null;
+        return verification.verifiers.find(v => v.role === 'AUTHORIZED_SIGNATORY');
+    };
+    const signatory = getVerifiedUser();
+
     const items = quotation.items || [];
     const subtotal = items.reduce((s, i) => s + (Number(i.quantity || 0) * Number(i.unit_price || 0)), 0);
     const grandTotal = Number(quotation.grand_total || subtotal);
@@ -53,9 +60,9 @@ const ClientQuotationPDF = ({ quotation }) => {
     const terms = termsRaw.map((t, i) => {
         if (typeof t === 'string') {
             const idx = t.indexOf(':');
-            return idx !== -1 ? { label: t.substring(0, idx).trim(), value: t.substring(idx + 1).trim() } : { label: `Term ${i + 1}`, value: t };
+            return idx !== -1 ? { label: t.substring(0, idx).trim(), value: t.substring(idx + 1).trim(), bold: false } : { label: `Term ${i + 1}`, value: t, bold: false };
         }
-        if (t && typeof t === 'object') return { label: t.key || t.label || `Term ${i + 1}`, value: t.value || '' };
+        if (t && typeof t === 'object') return { label: t.key || t.label || `Term ${i + 1}`, value: t.value || '', bold: !!t.bold };
         return null;
     }).filter(Boolean);
 
@@ -223,8 +230,8 @@ const ClientQuotationPDF = ({ quotation }) => {
                                     <View key={idx} style={{ flexDirection: 'row', marginBottom: 2 }}>
                                         <Text style={{ width: 12, fontSize: 7.5, fontWeight: 'bold' }}>{idx + 1}</Text>
                                         <Text style={{ width: 80, fontSize: 7.5, fontWeight: 'bold' }}>{term.label}</Text>
-                                        <Text style={{ width: 8, fontSize: 7.5 }}>:</Text>
-                                        <Text style={{ flex: 1, fontSize: 7.5, lineHeight: 1.1 }}>{term.value}</Text>
+                                        <Text style={{ width: 8, fontSize: 7.5, fontWeight: term.bold ? 'bold' : 'normal' }}>:</Text>
+                                        <Text style={{ flex: 1, fontSize: 7.5, lineHeight: 1.1, fontWeight: term.bold ? 'bold' : 'normal' }}>{term.value}</Text>
                                     </View>
                                 ))}
                             </View>
@@ -249,8 +256,20 @@ const ClientQuotationPDF = ({ quotation }) => {
                     <View style={{ width: '45%', alignItems: 'center' }}>
                         <Text style={{ fontSize: 7.5, marginBottom: 2 }}>Yours faithfully,</Text>
                         <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: '#333' }}>For Energypac Engineering Limited.</Text>
-                        <View style={{ marginTop: 30, width: 120, borderTopWidth: 1, borderTopColor: '#000', paddingTop: 3, alignItems: 'center' }}>
-                            <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>Authorized Signatory</Text>
+                        <View style={{ marginTop: 16, width: 120, alignItems: 'center' }}>
+                            {signatory && signatory.status === 'VERIFIED' && signatory.signature_base64 ? (
+                                <Image src={signatory.signature_base64} style={{ width: 95, height: 34, objectFit: 'contain', marginBottom: 2 }} />
+                            ) : (
+                                <View style={{ height: 34 }} />
+                            )}
+                            <View style={{ width: '100%', borderTopWidth: 1, borderTopColor: '#000', paddingTop: 3, alignItems: 'center' }}>
+                                {signatory && signatory.status === 'VERIFIED' && (
+                                    <Text style={{ fontSize: 8, fontWeight: 'bold', color: '#10b981' }}>
+                                        ✓ {signatory.full_name}
+                                    </Text>
+                                )}
+                                <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>Authorized Signatory</Text>
+                            </View>
                         </View>
                     </View>
                 </View>

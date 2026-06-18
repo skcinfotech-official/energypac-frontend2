@@ -1,22 +1,50 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
-import { 
-    getProformaInvoices, 
-    getProformaInvoiceById, 
-    lockProformaInvoice, 
-    unlockProformaInvoice,
+import { useSearchParams, useNavigate } from "react-router-dom";
+import {
+    getProformaInvoices,
+    getProformaInvoiceById,
     sendProformaInvoice,
     acceptProformaInvoice,
     cancelProformaInvoice
 } from "../services/salesService";
-import { FaPlus, FaSearch, FaEye, FaEdit, FaPaperPlane, FaCheck, FaBan, FaTimes, FaBoxOpen } from "react-icons/fa";
-import ClientQuotationModal from "../components/sales/ClientQuotationModal";
+import { verificationService } from "../services/verificationService";
+import {
+    Box, Card, Typography, Button, TextField, Table, TableBody,
+    TableCell, TableContainer, TableHead, TableRow, IconButton,
+    Tooltip, CircularProgress, Chip, InputAdornment,
+    Menu, MenuItem, ListItemIcon, ListItemText
+} from "@mui/material";
+import {
+    Add as AddIcon,
+    Search as SearchIcon,
+    Visibility as ViewIcon,
+    Edit as EditIcon,
+    Send as SendIcon,
+    Check as CheckIcon,
+    Cancel as CancelIcon,
+    Close as CloseIcon,
+    Inventory2 as StockIcon,
+    Bolt as BoltIcon,
+    ReceiptLong as CommercialIcon,
+    ChevronLeft as PrevIcon,
+    ChevronRight as NextIcon,
+    MoreVert as MoreVertIcon,
+    CheckCircle,
+    Schedule,
+    Error
+} from "@mui/icons-material";
 import ClientQuotationDetailsModal from "../components/sales/ClientQuotationDetailsModal";
+import CommercialInvoiceModal from "../components/commercial/CommercialInvoiceModal";
+import PackingListModal from "../components/commercial/PackingListModal";
+import { getCommercialInvoices } from "../services/commercialService";
+import TaxInvoiceModal from "../components/domestic/TaxInvoiceModal";
+import { getTaxInvoices } from "../services/domesticService";
 import AlertToast from "../components/ui/AlertToast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import PasswordConfirmModal from "../components/ui/PasswordConfirmModal";
 
 const ClientQuotation = () => {
+    const navigate = useNavigate();
     const [searchText, setSearchText] = useState("");
     const [invoices, setInvoices] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -24,11 +52,59 @@ const ClientQuotation = () => {
     const [nextPage, setNextPage] = useState(null);
     const [prevPage, setPrevPage] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState(null);
+    const [verificationStatuses, setVerificationStatuses] = useState({});
 
     // View Modal State
     const [viewModalOpen, setViewModalOpen] = useState(false);
+
+    // Row action menu (kebab)
+    const [actionMenu, setActionMenu] = useState({ anchorEl: null, item: null });
+    const openActionMenu = (e, item) => { e.stopPropagation(); setActionMenu({ anchorEl: e.currentTarget, item }); };
+    const closeActionMenu = () => setActionMenu({ anchorEl: null, item: null });
+    const runAction = (fn) => () => { const item = actionMenu.item; closeActionMenu(); fn(item); };
+
+    // Commercial Invoice / Packing List modal state
+    const [ciModal, setCiModal] = useState({ open: false, piId: null, ciId: null });
+    const [plModal, setPlModal] = useState({ open: false, ciId: null, plId: null });
+
+    const openCommercialInvoice = async (item) => {
+        // If a Commercial Invoice already exists for this PI, open it for edit
+        // instead of creating a duplicate.
+        try {
+            const data = await getCommercialInvoices({ proforma_invoice: item.id });
+            const list = data?.results || data || [];
+            const existing = list.find(ci => ci.status !== "CANCELLED");
+            if (existing) {
+                setCiModal({ open: true, piId: item.id, ciId: existing.id });
+                return;
+            }
+        } catch (err) {
+            console.error("Failed to check existing CI", err);
+        }
+        setCiModal({ open: true, piId: item.id, ciId: null });
+    };
+    const openPackingListForCI = (ci) => {
+        setCiModal({ open: false, piId: null, ciId: null });
+        setPlModal({ open: true, ciId: ci.id, plId: null });
+    };
+
+    // Domestic Tax Invoice
+    const [tiModal, setTiModal] = useState({ open: false, piId: null, tiId: null });
+    const openTaxInvoice = async (item) => {
+        try {
+            const data = await getTaxInvoices({ proforma_invoice: item.id });
+            const list = data?.results || data || [];
+            const existing = list.find(ti => ti.status !== "CANCELLED");
+            if (existing) {
+                setTiModal({ open: true, piId: item.id, tiId: existing.id });
+                return;
+            }
+        } catch (err) {
+            console.error("Failed to check existing tax invoice", err);
+        }
+        setTiModal({ open: true, piId: item.id, tiId: null });
+    };
 
     // Alert State
     const [alert, setAlert] = useState({ open: false, type: "success", message: "" });
@@ -41,29 +117,61 @@ const ClientQuotation = () => {
         confirmText: "Confirm",
         cancelText: "Cancel",
         loading: false,
-        confirmButtonClass: "bg-red-600 hover:bg-red-500",
-        iconBgClass: "bg-red-100 text-red-600",
+        confirmButtonClass: "error",
+        iconBgClass: "error",
         icon: undefined,
         action: null
     });
-    const [passwordModal, setPasswordModal] = useState({ 
-        open: false, 
-        onConfirm: null, 
-        title: "", 
-        message: "", 
-        loading: false 
+    const [passwordModal, setPasswordModal] = useState({
+        open: false,
+        onConfirm: null,
+        title: "",
+        message: "",
+        loading: false
     });
 
     const [searchParams] = useSearchParams();
 
-    const getStatusStyle = (status) => {
+    const getStatusChipProps = (status) => {
         switch (status) {
-            case 'DRAFT': return 'bg-slate-100 text-slate-600 border-slate-200';
-            case 'SENT': return 'bg-blue-50 text-blue-600 border-blue-100';
-            case 'ACCEPTED': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
-            case 'CANCELLED': return 'bg-rose-50 text-rose-600 border-rose-100';
-            default: return 'bg-slate-50 text-slate-500 border-slate-200';
+            case 'DRAFT': return { color: 'default', variant: 'outlined' };
+            case 'SENT': return { color: 'info', variant: 'outlined' };
+            case 'ACCEPTED': return { color: 'success', variant: 'outlined' };
+            case 'CANCELLED': return { color: 'error', variant: 'outlined' };
+            default: return { color: 'default', variant: 'outlined' };
         }
+    };
+
+    const getVerificationStatusChip = (piId) => {
+        let verStatus = verificationStatuses[piId]?.status || 'NOT_SENT';
+        // Normalize NOT_STARTED to NOT_SENT
+        if (verStatus === 'NOT_STARTED') verStatus = 'NOT_SENT';
+
+        let label, color, icon;
+
+        switch (verStatus) {
+            case 'VERIFIED':
+                label = 'Verified';
+                color = 'success';
+                icon = <CheckCircle sx={{ mr: 0.5, fontSize: 16 }} />;
+                break;
+            case 'PENDING':
+                label = 'Pending';
+                color = 'warning';
+                icon = <Schedule sx={{ mr: 0.5, fontSize: 16 }} />;
+                break;
+            case 'REJECTED':
+                label = 'Rejected';
+                color = 'error';
+                icon = <Error sx={{ mr: 0.5, fontSize: 16 }} />;
+                break;
+            default:
+                label = 'Not Sent';
+                color = 'default';
+                icon = null;
+        }
+
+        return <Chip icon={icon} label={label} color={color} size="small" variant="outlined" />;
     };
 
     const handleSendInvoice = (id) => {
@@ -72,9 +180,9 @@ const ClientQuotation = () => {
             title: "Send Proforma Invoice?",
             message: "Are you sure you want to send this proforma invoice? This will move its status from DRAFT to SENT.",
             confirmText: "Send",
-            confirmButtonClass: "bg-blue-600 hover:bg-blue-500",
-            iconBgClass: "bg-blue-100 text-blue-600",
-            icon: FaPaperPlane,
+            confirmButtonClass: "info",
+            iconBgClass: "info",
+            icon: SendIcon,
             action: async () => {
                 setConfirm(prev => ({ ...prev, loading: true }));
                 try {
@@ -98,9 +206,9 @@ const ClientQuotation = () => {
             title: "Accept Proforma Invoice?",
             message: "Are you sure you want to accept this proforma invoice? This will move its status from SENT to ACCEPTED and lock all further editing.",
             confirmText: "Accept",
-            confirmButtonClass: "bg-emerald-600 hover:bg-emerald-500",
-            iconBgClass: "bg-emerald-100 text-emerald-600",
-            icon: FaCheck,
+            confirmButtonClass: "green",
+            iconBgClass: "green",
+            icon: CheckIcon,
             action: async () => {
                 setConfirm(prev => ({ ...prev, loading: true }));
                 try {
@@ -131,9 +239,9 @@ const ClientQuotation = () => {
             title: "Cancel Proforma Invoice?",
             message: "Are you sure you want to cancel this proforma invoice? This action cannot be undone and requires password authentication.",
             confirmText: "Proceed",
-            confirmButtonClass: "bg-red-600 hover:bg-red-500",
-            iconBgClass: "bg-red-100 text-red-600",
-            icon: FaTimes,
+            confirmButtonClass: "error",
+            iconBgClass: "error",
+            icon: CloseIcon,
             action: () => {
                 setConfirm(prev => ({ ...prev, open: false }));
                 setPasswordModal({
@@ -178,6 +286,15 @@ const ClientQuotation = () => {
         }
     }, [searchParams]);
 
+    const fetchVerificationStatusesForPIs = async (pis) => {
+        const statuses = {};
+        for (const pi of pis) {
+            const status = await verificationService.getPIVerificationStatus(pi.id);
+            statuses[pi.id] = status;
+        }
+        setVerificationStatuses(statuses);
+    };
+
     const fetchInvoices = async (page = 1, search = "") => {
         setLoading(true);
         try {
@@ -186,6 +303,9 @@ const ClientQuotation = () => {
             setTotalCount(data.count || 0);
             setNextPage(data.next);
             setPrevPage(data.previous);
+
+            // Fetch verification status for each PI
+            fetchVerificationStatusesForPIs(data.results || []);
         } catch (error) {
             console.error("Failed to fetch proforma invoices", error);
         } finally {
@@ -213,264 +333,332 @@ const ClientQuotation = () => {
         if (prevPage) setCurrentPage((prev) => prev - 1);
     };
 
-    const handleEdit = async (item) => {
-        try {
-            await lockProformaInvoice(item.id);
-            setSelectedInvoice(item);
-            setIsModalOpen(true);
-        } catch (error) {
-            console.error("Failed to lock proforma invoice", error);
-            setAlert({
-                open: true,
-                type: "error",
-                message: "Failed to acquire lock. The invoice may be currently edited by another user."
-            });
-        }
+    const handleEdit = (item) => {
+        // Lock is acquired by the form page itself.
+        navigate(`/sales/proforma-invoice/${item.id}/edit`);
     };
-
-    const handleModalClose = async () => {
-        if (selectedInvoice) {
-            try {
-                await unlockProformaInvoice(selectedInvoice.id);
-            } catch (error) {
-                console.error("Failed to release lock", error);
-            }
-        }
-        setIsModalOpen(false);
-        setSelectedInvoice(null);
-    };
-
 
     return (
-        <div className="p-1 sm:p-2 space-y-4">
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <Box sx={{ p: { xs: 0.5, sm: 1 } }}>
+            <Card>
                 {/* HEADER */}
-                <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                        <h3 className="text-xl font-bold text-slate-800 tracking-tight">Proforma Invoices</h3>
-                        <span className="text-sm text-slate-500 font-semibold mt-1 block">
+                <Box sx={{
+                    px: 2.5, py: 2,
+                    borderBottom: '1px solid', borderColor: 'divider',
+                    display: 'flex', alignItems: { xs: 'flex-start', sm: 'center' },
+                    justifyContent: 'space-between',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    gap: 1.5
+                }}>
+                    <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                            Proforma Invoices
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
                             Total Records: {totalCount}
-                        </span>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => setIsModalOpen(true)}
-                            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-500 hover:shadow-md hover:shadow-blue-200/50 transition-all active:scale-[0.98]"
+                        </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                            size="small"
+                            variant="contained"
+                            startIcon={<AddIcon />}
+                            onClick={() => navigate('/sales/proforma-invoice/create')}
+                            sx={{ bgcolor: '#1565C0', '&:hover': { bgcolor: '#0D47A1' }, fontWeight: 700 }}
                         >
-                            <FaPlus className="text-xs" />
                             New Proforma Invoice
-                        </button>
-                    </div>
-                </div>
+                        </Button>
+                    </Box>
+                </Box>
 
                 {/* SEARCH BAR */}
-                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                    <div className="max-w-md">
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-0.5">
+                <Box sx={{
+                    px: 2.5, py: 2,
+                    borderBottom: '1px solid', borderColor: 'divider',
+                    bgcolor: '#FAFBFC'
+                }}>
+                    <Box sx={{ maxWidth: 400 }}>
+                        <Typography variant="caption" sx={{
+                            fontWeight: 700, color: 'text.secondary',
+                            textTransform: 'uppercase', letterSpacing: '0.05em',
+                            mb: 0.5, display: 'block'
+                        }}>
                             Search Invoices
-                        </label>
-                        <div className="relative">
-                            <input
-                                value={searchText}
-                                onChange={handleSearch}
-                                placeholder="Search by exporter, consignee, applicant..."
-                                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-                            />
-                            <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                        </div>
-                    </div>
-                </div>
+                        </Typography>
+                        <TextField
+                            size="small"
+                            fullWidth
+                            value={searchText}
+                            onChange={handleSearch}
+                            placeholder="Search by exporter, consignee, applicant..."
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon sx={{ fontSize: '1.1rem', color: 'text.secondary' }} />
+                                    </InputAdornment>
+                                )
+                            }}
+                        />
+                    </Box>
+                </Box>
 
                 {/* TABLE LIST */}
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-slate-50 border-b border-slate-100 text-slate-700 uppercase text-[10px] font-bold tracking-widest">
-                                <th className="px-4 py-3 text-xs font-bold text-slate-600">PI Number / Ref</th>
-                                <th className="px-4 py-3 text-xs font-bold text-slate-600">PI Date</th>
-                                <th className="px-4 py-3 text-xs font-bold text-slate-600">Applicant Importer</th>
-                                <th className="px-4 py-3 text-xs font-bold text-slate-600 text-right">Total Amount</th>
-                                <th className="px-4 py-3 text-xs font-bold text-slate-600 text-center">Status</th>
-                                <th className="px-4 py-3 text-xs font-bold text-slate-600 text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
+                <TableContainer>
+                    <Table size="small" sx={{ "& .MuiTableCell-root": { fontSize: "0.74rem" } }}>
+                        <TableHead>
+                            <TableRow sx={{ bgcolor: '#F8FAFC' }}>
+                                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    PI Number / Ref
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    PI Date
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Applicant Importer
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>
+                                    Total Amount
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>
+                                    PI Status
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>
+                                    Verification
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>
+                                    Actions
+                                </TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
                             {loading ? (
-                                <tr>
-                                    <td colSpan="6" className="px-4 py-12 text-center text-slate-400 font-semibold">
-                                        <div className="flex flex-col items-center justify-center space-y-2">
-                                            <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-blue-600"></div>
-                                            <span>Loading proforma invoices...</span>
-                                        </div>
-                                    </td>
-                                </tr>
+                                <TableRow>
+                                    <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                                            <CircularProgress size={28} />
+                                            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                                                Loading proforma invoices...
+                                            </Typography>
+                                        </Box>
+                                    </TableCell>
+                                </TableRow>
                             ) : invoices.length > 0 ? (
                                 invoices.map((item) => {
                                     const status = (item.status || "DRAFT").toUpperCase();
                                     return (
-                                        <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                                            <td className="px-4 py-3 text-xs font-bold whitespace-nowrap">
-                                                <span className="font-mono text-blue-600 block">
+                                        <TableRow key={item.id} hover>
+                                            <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                                <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 700, color: '#1565C0' }}>
                                                     {item.pi_number || `#${item.id?.substring(0, 8) || "N/A"}`}
-                                                </span>
-                                                {item.is_stock_sale ? (
-                                                    <span className="inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.5 bg-amber-50 text-amber-700 text-[9px] font-bold rounded-md border border-amber-200">
-                                                        <FaBoxOpen size={8} /> STOCK SALE
-                                                    </span>
+                                                </Typography>
+                                                {item.source === "STOCK_SALE" || (item.source === undefined && item.is_stock_sale) ? (
+                                                    <Chip
+                                                        icon={<StockIcon sx={{ fontSize: '0.7rem' }} />}
+                                                        label="STOCK SALE"
+                                                        size="small"
+                                                        sx={{
+                                                            mt: 0.5,
+                                                            height: 18,
+                                                            fontSize: '0.6rem',
+                                                            fontWeight: 700,
+                                                            bgcolor: '#FFF8E1',
+                                                            color: '#F57F17',
+                                                            border: '1px solid #FFE082',
+                                                            '& .MuiChip-icon': { color: '#F57F17', fontSize: '0.7rem' }
+                                                        }}
+                                                    />
+                                                ) : item.source === "DIRECT" ? (
+                                                    <Chip
+                                                        icon={<BoltIcon sx={{ fontSize: '0.7rem' }} />}
+                                                        label="DIRECT PI"
+                                                        size="small"
+                                                        sx={{
+                                                            mt: 0.5,
+                                                            height: 18,
+                                                            fontSize: '0.6rem',
+                                                            fontWeight: 700,
+                                                            bgcolor: '#F5F3FF',
+                                                            color: '#6D28D9',
+                                                            border: '1px solid #DDD6FE',
+                                                            '& .MuiChip-icon': { color: '#6D28D9', fontSize: '0.7rem' }
+                                                        }}
+                                                    />
                                                 ) : item.requisition_number ? (
-                                                    <span className="block text-[10px] text-slate-400 font-mono mt-0.5">
+                                                    <Typography variant="caption" sx={{ display: 'block', mt: 0.25, fontFamily: 'monospace', color: 'text.disabled', fontSize: '0.65rem' }}>
                                                         Req: {item.requisition_number}
-                                                    </span>
+                                                    </Typography>
                                                 ) : null}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap font-medium">
-                                                {item.pi_date}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-slate-600 max-w-[200px] truncate font-medium">
-                                                {item.applicant_importer}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-right font-bold text-slate-800 font-mono whitespace-nowrap">
-                                                <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold mr-1.5">{item.currency}</span>
-                                                {Number(item.grand_total || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                            </td>
-                                            <td className="px-4 py-3 text-center whitespace-nowrap">
-                                                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${getStatusStyle(status)}`}>
-                                                    {status}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-center">
-                                                <div className="flex justify-center gap-2">
-                                                    <button
-                                                        onClick={() => {
-                                                            setSelectedInvoice(item);
-                                                            setViewModalOpen(true);
-                                                        }}
-                                                        className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                                                        title="View Details"
-                                                    >
-                                                        <FaEye size={16} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            if (status === 'ACCEPTED' || status === 'CANCELLED') return;
-                                                            handleEdit(item);
-                                                        }}
-                                                        disabled={status === 'ACCEPTED' || status === 'CANCELLED'}
-                                                        className={`p-2 rounded-xl transition-all ${
-                                                            status === 'ACCEPTED' || status === 'CANCELLED'
-                                                                ? "text-slate-300 cursor-not-allowed opacity-40"
-                                                                : "text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                                                        }`}
-                                                        title={
-                                                            status === 'ACCEPTED' ? "Cannot edit accepted proforma invoice" :
-                                                            status === 'CANCELLED' ? "Cannot edit cancelled proforma invoice" :
-                                                            "Edit Proforma Invoice"
-                                                        }
-                                                    >
-                                                        <FaEdit size={16} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            if (status !== 'DRAFT') return;
-                                                            handleSendInvoice(item.id);
-                                                        }}
-                                                        disabled={status !== 'DRAFT'}
-                                                        className={`p-2 rounded-xl transition-all ${
-                                                            status === 'DRAFT'
-                                                                ? "text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
-                                                                : "text-slate-300 cursor-not-allowed opacity-40"
-                                                        }`}
-                                                        title={status === 'DRAFT' ? "Send Proforma Invoice" : "Invoice already sent"}
-                                                    >
-                                                        <FaPaperPlane size={14} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            if (status !== 'SENT') return;
-                                                            handleAcceptInvoice(item.id);
-                                                        }}
-                                                        disabled={status !== 'SENT'}
-                                                        className={`p-2 rounded-xl transition-all ${
-                                                            status === 'SENT'
-                                                                ? "text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50"
-                                                                : "text-slate-300 cursor-not-allowed opacity-40"
-                                                        }`}
-                                                        title={
-                                                            status === 'SENT' ? "Accept Proforma Invoice" :
-                                                            status === 'ACCEPTED' ? "Invoice already accepted" :
-                                                            "Cannot accept invoice in current state"
-                                                        }
-                                                    >
-                                                        <FaCheck size={14} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            if (status !== 'SENT') return;
-                                                            handleCancelInvoice(item.id);
-                                                        }}
-                                                        disabled={status !== 'SENT'}
-                                                        className={`p-2 rounded-xl transition-all ${
-                                                            status === 'SENT'
-                                                                ? "text-rose-600 hover:text-rose-800 hover:bg-rose-50"
-                                                                : "text-slate-300 cursor-not-allowed opacity-40"
-                                                        }`}
-                                                        title={
-                                                            status === 'SENT' ? "Cancel Proforma Invoice" :
-                                                            status === 'CANCELLED' ? "Invoice already cancelled" :
-                                                            "Cannot cancel invoice in current state"
-                                                        }
-                                                    >
-                                                        <FaTimes size={16} />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                                    {item.pi_date}
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell sx={{ maxWidth: 200 }}>
+                                                <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {item.applicant_importer}
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell align="right">
+                                                <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', whiteSpace: 'nowrap' }}>
+                                                    <Typography variant="caption" sx={{ color: 'text.disabled', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, mr: 0.75 }}>
+                                                        {item.currency}
+                                                    </Typography>
+                                                    <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 700 }}>
+                                                        {Number(item.grand_total || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </Typography>
+                                                </Box>
+                                            </TableCell>
+                                            <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
+                                                <Chip
+                                                    size="small"
+                                                    label={status}
+                                                    {...getStatusChipProps(status)}
+                                                    sx={{ fontWeight: 700, fontSize: '0.75rem' }}
+                                                />
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                {getVerificationStatusChip(item.id)}
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                                                    <Tooltip title="Actions">
+                                                        <IconButton size="small" onClick={(e) => openActionMenu(e, item)}>
+                                                            <MoreVertIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </Box>
+                                            </TableCell>
+                                        </TableRow>
                                     );
                                 })
                             ) : (
-                                <tr>
-                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-400 font-semibold italic">
-                                        No proforma invoices found
-                                    </td>
-                                </tr>
+                                <TableRow>
+                                    <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, fontStyle: 'italic' }}>
+                                            No proforma invoices found
+                                        </Typography>
+                                    </TableCell>
+                                </TableRow>
                             )}
-                        </tbody>
-                    </table>
-                </div>
+                        </TableBody>
+                    </Table>
+                </TableContainer>
 
                 {/* PAGINATION */}
-                <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
-                    <button
-                        onClick={handlePrev}
+                <Box sx={{
+                    px: 2.5, py: 1.5,
+                    borderTop: '1px solid', borderColor: 'divider',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                }}>
+                    <Button
+                        size="small"
+                        startIcon={<PrevIcon />}
                         disabled={!prevPage}
-                        className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40 disabled:hover:text-slate-600 cursor-pointer disabled:cursor-not-allowed transition-colors"
+                        onClick={handlePrev}
+                        sx={{ fontWeight: 600 }}
                     >
-                        ← Previous
-                    </button>
-
-                    <span className="text-xs font-bold text-slate-400">Page {currentPage}</span>
-
-                    <button
-                        onClick={handleNext}
+                        Previous
+                    </Button>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                        Page {currentPage}
+                    </Typography>
+                    <Button
+                        size="small"
+                        endIcon={<NextIcon />}
                         disabled={!nextPage}
-                        className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-blue-600 disabled:opacity-40 disabled:hover:text-slate-600 cursor-pointer disabled:cursor-not-allowed transition-colors"
+                        onClick={handleNext}
+                        sx={{ fontWeight: 600 }}
                     >
-                        Next →
-                    </button>
-                </div>
-            </div>
+                        Next
+                    </Button>
+                </Box>
+            </Card>
+
+            {/* Row action menu */}
+            <Menu
+                anchorEl={actionMenu.anchorEl}
+                open={Boolean(actionMenu.anchorEl)}
+                onClose={closeActionMenu}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                PaperProps={{ sx: { borderRadius: 2, minWidth: 230, boxShadow: '0 8px 24px rgba(0,0,0,0.12)' } }}
+            >
+                {(() => {
+                    const it = actionMenu.item;
+                    if (!it) return null;
+                    const st = it.status;
+                    return [
+                        <MenuItem key="view" onClick={runAction((x) => { setSelectedInvoice(x); setViewModalOpen(true); })}>
+                            <ListItemIcon><ViewIcon fontSize="small" /></ListItemIcon>
+                            <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}>View Details</ListItemText>
+                        </MenuItem>,
+                        <MenuItem key="edit" disabled={st === 'ACCEPTED' || st === 'CANCELLED'} onClick={runAction((x) => handleEdit(x))}>
+                            <ListItemIcon><EditIcon fontSize="small" color="primary" /></ListItemIcon>
+                            <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}>Edit Proforma Invoice</ListItemText>
+                        </MenuItem>,
+                        <MenuItem key="send" disabled={st !== 'DRAFT'} onClick={runAction((x) => handleSendInvoice(x.id))}>
+                            <ListItemIcon><SendIcon sx={{ fontSize: '1rem', color: '#3949AB' }} /></ListItemIcon>
+                            <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}>Send Proforma Invoice</ListItemText>
+                        </MenuItem>,
+                        <MenuItem key="accept" disabled={st !== 'SENT'} onClick={runAction((x) => handleAcceptInvoice(x.id))}>
+                            <ListItemIcon><CheckIcon sx={{ fontSize: '1rem' }} color="success" /></ListItemIcon>
+                            <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}>Accept Proforma Invoice</ListItemText>
+                        </MenuItem>,
+                        <MenuItem key="cancel" disabled={st !== 'SENT'} onClick={runAction((x) => handleCancelInvoice(x.id))}>
+                            <ListItemIcon><CancelIcon fontSize="small" color="error" /></ListItemIcon>
+                            <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600, color: st === 'SENT' ? 'error.main' : undefined }}>Cancel Proforma Invoice</ListItemText>
+                        </MenuItem>,
+                        it.trade_type === 'INTERNATIONAL' && (
+                            <MenuItem key="ci" onClick={runAction((x) => openCommercialInvoice(x))}>
+                                <ListItemIcon><CommercialIcon fontSize="small" sx={{ color: '#0E7490' }} /></ListItemIcon>
+                                <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}>Commercial Invoice &amp; Packing List</ListItemText>
+                            </MenuItem>
+                        ),
+                        it.trade_type === 'DOMESTIC' && (
+                            <MenuItem key="ti" onClick={runAction((x) => openTaxInvoice(x))}>
+                                <ListItemIcon><CommercialIcon fontSize="small" sx={{ color: '#1565C0' }} /></ListItemIcon>
+                                <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}>Tax Invoice (GST)</ListItemText>
+                            </MenuItem>
+                        ),
+                    ];
+                })()}
+            </Menu>
 
             {/* CREATE / EDIT MODAL */}
-            <ClientQuotationModal
-                isOpen={isModalOpen}
-                onClose={handleModalClose}
-                onSuccess={(msg) => {
-                    fetchInvoices(currentPage, searchText);
-                    setAlert({ open: true, type: "success", message: msg || "Invoice operation successful" });
-                }}
-                invoice={selectedInvoice}
-            />
+            {/* COMMERCIAL INVOICE MODAL (International PI) */}
+            {ciModal.open && (
+                <CommercialInvoiceModal
+                    isOpen={ciModal.open}
+                    onClose={() => setCiModal({ open: false, piId: null, ciId: null })}
+                    proformaInvoiceId={ciModal.piId}
+                    ciId={ciModal.ciId}
+                    onGeneratePackingList={openPackingListForCI}
+                    onSuccess={() => setAlert({ open: true, type: "success", message: "Commercial Invoice saved" })}
+                />
+            )}
+
+            {/* PACKING LIST MODAL */}
+            {plModal.open && (
+                <PackingListModal
+                    isOpen={plModal.open}
+                    onClose={() => setPlModal({ open: false, ciId: null, plId: null })}
+                    commercialInvoiceId={plModal.ciId}
+                    plId={plModal.plId}
+                    onSuccess={() => setAlert({ open: true, type: "success", message: "Packing List saved" })}
+                />
+            )}
+
+            {/* TAX INVOICE MODAL (Domestic PI) */}
+            {tiModal.open && (
+                <TaxInvoiceModal
+                    isOpen={tiModal.open}
+                    onClose={() => setTiModal({ open: false, piId: null, tiId: null })}
+                    proformaInvoiceId={tiModal.piId}
+                    tiId={tiModal.tiId}
+                    onSuccess={() => setAlert({ open: true, type: "success", message: "Tax Invoice saved" })}
+                />
+            )}
 
             {/* DETAILS MODAL */}
             <ClientQuotationDetailsModal
@@ -514,7 +702,7 @@ const ClientQuotation = () => {
                 message={alert.message}
                 onClose={() => setAlert({ ...alert, open: false })}
             />
-        </div>
+        </Box>
     );
 };
 

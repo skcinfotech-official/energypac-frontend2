@@ -1,13 +1,61 @@
 import { useState, useEffect } from "react";
-import { FaTimes, FaFileInvoiceDollar, FaGlobe, FaAnchor, FaListUl, FaStickyNote, FaPrint, FaBoxOpen } from "react-icons/fa";
+import {
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Button,
+    Box,
+    Paper,
+    Grid,
+    Card,
+    CardContent,
+    Typography,
+    Chip,
+    Table,
+    TableContainer,
+    TableHead,
+    TableBody,
+    TableFooter,
+    TableRow,
+    TableCell,
+    CircularProgress,
+    Stack,
+    Divider,
+} from "@mui/material";
+import {
+    Close as CloseIcon,
+    Description as InvoiceIcon,
+    Public as GlobeIcon,
+    Anchor as AnchorIcon,
+    Notes as NotesIcon,
+    Print as PrintIcon,
+    Inventory as InventoryIcon,
+    CheckCircle as VerifyIcon,
+} from "@mui/icons-material";
 import { getProformaInvoiceById } from "../../services/salesService";
+import { apiGet } from "../../services/api";
 import { pdf } from "@react-pdf/renderer";
 import ClientQuotationPDF from "./ClientQuotationPDF";
+import PIVerificationModal from "../signature/PIVerificationModal";
 
 const ClientQuotationDetailsModal = ({ isOpen, onClose, invoice }) => {
     const [details, setDetails] = useState(null);
     const [loading, setLoading] = useState(false);
     const [generatingPdf, setGeneratingPdf] = useState(false);
+    const [verificationModalOpen, setVerificationModalOpen] = useState(false);
+    const [verifStatus, setVerifStatus] = useState(null);
+
+    const loadVerifStatus = async (id) => {
+        try {
+            const vs = await apiGet(`/api/pi/${id}/verification-status/`);
+            setVerifStatus(vs?.current_status || 'NOT_STARTED');
+        } catch {
+            setVerifStatus('NOT_STARTED');
+        }
+    };
+    // Verification already in-flight or done -> hide the "Send for Verification" button.
+    const verificationLocked = verifStatus === 'PENDING' || verifStatus === 'VERIFIED';
 
     const lcNumber = details?.lc_number || details?.lc || "";
     const requisitionNumber = details?.requisition_number || details?.requisition || details?.requisition_no || "";
@@ -27,8 +75,10 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, invoice }) => {
                 }
             };
             fetchDetails();
+            loadVerifStatus(invoice.id);
         } else {
             setDetails(null);
+            setVerifStatus(null);
         }
     }, [isOpen, invoice]);
 
@@ -36,7 +86,15 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, invoice }) => {
         if (!details) return;
         setGeneratingPdf(true);
         try {
-            const blob = await pdf(<ClientQuotationPDF quotation={details} />).toBlob();
+            // Fetch verification data (with signatures) if available
+            let verificationData = null;
+            try {
+                verificationData = await apiGet(`/api/pi/${details.id}/verification-status/`);
+            } catch (err) {
+                // Verification data not available, continue without it
+            }
+
+            const blob = await pdf(<ClientQuotationPDF quotation={details} verification={verificationData} />).toBlob();
             const url = URL.createObjectURL(blob);
             window.open(url, "_blank");
         } catch (err) {
@@ -47,296 +105,422 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, invoice }) => {
         }
     };
 
-    if (!isOpen) return null;
+    const getStatusColor = (status) => {
+        const s = (status || "DRAFT").toUpperCase();
+        switch (s) {
+            case "DRAFT":
+                return "default";
+            case "SENT":
+                return "primary";
+            case "ACCEPTED":
+                return "success";
+            case "CANCELLED":
+                return "error";
+            default:
+                return "default";
+        }
+    };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
-            <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                {/* Header */}
-                <div className="px-6 py-4.5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                    <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                        <FaFileInvoiceDollar className="text-blue-600" />
-                        Proforma Invoice Details
-                    </h2>
-                    <div className="flex items-center gap-2">
-                        {details && (
-                            <button
-                                onClick={handlePrint}
+        <Dialog open={isOpen} onClose={onClose} maxWidth="lg" fullWidth PaperProps={{ sx: { maxHeight: "90vh" } }}>
+            <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 2 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <InvoiceIcon sx={{ color: "primary.main" }} />
+                    <Typography variant="h6">Proforma Invoice Details</Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    {details && details.status !== "CANCELLED" && (
+                        verificationLocked ? (
+                            <Chip
+                                icon={<VerifyIcon sx={{ fontSize: 16 }} />}
+                                label={verifStatus === 'VERIFIED' ? 'Verified' : 'Sent for Verification'}
+                                size="small"
+                                color={verifStatus === 'VERIFIED' ? 'success' : 'warning'}
+                                variant="outlined"
+                                sx={{ fontWeight: 600 }}
+                            />
+                        ) : (
+                            <Button
+                                startIcon={<VerifyIcon />}
+                                onClick={() => setVerificationModalOpen(true)}
                                 disabled={generatingPdf}
-                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/10 active:scale-95 disabled:opacity-50"
+                                variant="outlined"
+                                size="small"
+                                sx={{ color: "#10b981", borderColor: "#10b981", "&:hover": { bgcolor: "#D1FAE5" } }}
                             >
-                                {generatingPdf ? (
-                                    <>
-                                        <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent"></div>
-                                        Generating PDF...
-                                    </>
-                                ) : (
-                                    <>
-                                        <FaPrint size={13} />
-                                        Print Invoice
-                                    </>
-                                )}
-                            </button>
-                        )}
-                        <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-all">
-                            <FaTimes size={16} />
-                        </button>
-                    </div>
-                </div>
+                                Send for Verification
+                            </Button>
+                        )
+                    )}
+                    {details && (
+                        <Button
+                            startIcon={<PrintIcon />}
+                            onClick={handlePrint}
+                            disabled={generatingPdf}
+                            variant="contained"
+                            size="small"
+                        >
+                            {generatingPdf ? "Generating PDF..." : "Print Invoice"}
+                        </Button>
+                    )}
+                </Box>
+            </DialogTitle>
 
-                {/* Body */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                    {loading ? (
-                        <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-3"></div>
-                            <span className="font-semibold text-sm">Fetching detailed invoice sheet...</span>
-                        </div>
-                    ) : details ? (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                            
-                            {/* TOP IDENTIFIERS */}
-                            <div className="flex flex-col sm:flex-row sm:justify-between items-start border-b border-slate-100 pb-5 gap-4">
-                                <div>
-                                    <div className="flex items-center gap-2.5 flex-wrap">
-                                        <h1 className="text-xl font-bold text-slate-800 font-mono">
-                                            {details.pi_number || `#${details.id?.substring(0, 8) || "N/A"}`}
-                                        </h1>
-                                        
-                                        {lcNumber && (
-                                            <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-md text-[10px] font-bold border border-blue-100 font-mono">
-                                                L/C: {lcNumber}
-                                            </span>
+            <DialogContent dividers sx={{ overflow: "auto", maxHeight: "calc(90vh - 120px)" }}>
+                {loading ? (
+                    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", py: 8 }}>
+                        <CircularProgress />
+                        <Typography sx={{ mt: 2, color: "text.secondary" }}>Fetching detailed invoice sheet...</Typography>
+                    </Box>
+                ) : details ? (
+                    <Stack spacing={3}>
+                        {/* TOP IDENTIFIERS */}
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", pb: 2, borderBottom: "1px solid #e0e0e0", gap: 2 }}>
+                            <Box>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", mb: 1 }}>
+                                    <Typography variant="h6" sx={{ fontFamily: "monospace" }}>
+                                        {details.pi_number || `#${details.id?.substring(0, 8) || "N/A"}`}
+                                    </Typography>
+                                    {lcNumber && <Chip label={`L/C: ${lcNumber}`} variant="outlined" color="primary" size="small" />}
+                                    <Chip label={`STATUS: ${(details.status || "DRAFT").toUpperCase()}`} color={getStatusColor(details.status)} size="small" />
+                                </Box>
+                                {details.is_stock_sale ? (
+                                    <Chip icon={<InventoryIcon />} label="STOCK SALE (Direct)" variant="outlined" color="warning" size="small" />
+                                ) : requisitionNumber ? (
+                                    <Chip label={`REQ: ${requisitionNumber}`} variant="outlined" size="small" />
+                                ) : null}
+                            </Box>
+                            <Box sx={{ textAlign: "right" }}>
+                                <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", fontWeight: "bold" }}>
+                                    PI Issued Date
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontWeight: "bold", mb: 1 }}>
+                                    {details.pi_date}
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", fontWeight: "bold", display: "block" }}>
+                                    Payment Due
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                                    {details.payment_due_date || "N/A"}
+                                </Typography>
+                            </Box>
+                        </Box>
+
+                        {/* PARTIES CARDS */}
+                        <Grid container spacing={2}>
+                            <Grid item xs={12} md={4}>
+                                <Card variant="outlined">
+                                    <CardContent>
+                                        <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", fontWeight: "bold", display: "block", mb: 0.5 }}>
+                                            Exporter Beneficiary
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ fontWeight: "bold", mb: 1 }}>
+                                            {details.exporter_beneficiary}
+                                        </Typography>
+                                        {details.exporter_reference && (
+                                            <Typography variant="caption" sx={{ fontFamily: "monospace", display: "block" }}>
+                                                Ref: {details.exporter_reference}
+                                            </Typography>
                                         )}
-                                        <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold border ${
-                                            (details.status || "DRAFT").toUpperCase() === 'DRAFT' ? 'bg-slate-100 text-slate-600 border-slate-200' :
-                                            (details.status || "DRAFT").toUpperCase() === 'SENT' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                            (details.status || "DRAFT").toUpperCase() === 'ACCEPTED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                            (details.status || "DRAFT").toUpperCase() === 'CANCELLED' ? 'bg-rose-50 text-rose-600 border-rose-100' :
-                                            'bg-slate-50 text-slate-500 border-slate-200'
-                                        }`}>
-                                            STATUS: {(details.status || "DRAFT").toUpperCase()}
-                                        </span>
-                                    </div>
-                                    {details.is_stock_sale ? (
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-50 text-amber-700 rounded-md text-[11px] font-bold border border-amber-200">
-                                                <FaBoxOpen size={10} /> STOCK SALE (Direct)
-                                            </span>
-                                        ) : requisitionNumber ? (
-                                            <span className="px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[13px] font-bold border border-slate-200 font-mono">
-                                                REQ: {requisitionNumber}
-                                            </span>
-                                        ) : null}
-                                </div>
-                                <div className="text-left sm:text-right">
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">PI Issued Date</p>
-                                    <p className="text-sm font-bold text-slate-700 mt-0.5">{details.pi_date}</p>
-                                    <p className="text-xs text-slate-400 mt-2 font-bold uppercase tracking-wider">Payment Due</p>
-                                    <p className="text-sm font-bold text-slate-700 mt-0.5">{details.payment_due_date || "N/A"}</p>
-                                </div>
-                            </div>
-
-                            {/* PARTIES CARDS */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-1.5">
-                                    <div>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Exporter Beneficiary</p>
-                                        <p className="text-sm font-bold text-slate-800 leading-snug">{details.exporter_beneficiary}</p>
-                                    </div>
-                                    {details.exporter_reference && (
-                                        <p className="text-[10px] font-bold text-slate-500 font-mono">Ref: {details.exporter_reference}</p>
-                                    )}
-                                    {details.gst_number && (
-                                        <p className="text-[10px] font-bold text-slate-500 font-mono">GSTIN: {details.gst_number}</p>
-                                    )}
-                                </div>
-                                <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Consignee</p>
-                                    <p className="text-sm font-bold text-slate-800 leading-snug">{details.consignee}</p>
-                                </div>
-                                <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Applicant Importer</p>
-                                    <p className="text-sm font-bold text-slate-800 leading-snug">{details.applicant_importer}</p>
-                                </div>
-                            </div>
-
-                            {/* PORT & LOGISTICS */}
-                            <div className="p-4 bg-blue-50/30 border border-blue-100/50 rounded-2xl space-y-4">
-                                <div className="flex items-center gap-2 border-b border-blue-100/30 pb-2">  
-                                    <FaAnchor className="text-blue-500" size={13} />
-                                    <h3 className="text-xs font-bold text-blue-700 uppercase tracking-wider">Logistics & Shipping</h3>
-                                </div>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Port of Loading</p>
-                                        <p className="text-xs font-semibold text-slate-700 mt-1">{details.port_of_loading || "N/A"}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Port of Discharge</p>
-                                        <p className="text-xs font-semibold text-slate-700 mt-1">{details.port_of_discharge || "N/A"}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pre-carriage By</p>
-                                        <p className="text-xs font-semibold text-slate-700 mt-1">{details.pre_carriage_by || "N/A"}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Place of Receipt</p>
-                                        <p className="text-xs font-semibold text-slate-700 mt-1">{details.place_of_receipt || "N/A"}</p>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 border-t border-blue-100/30 pt-3">
-                                    <div>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Country of Origin</p>
-                                        <p className="text-xs font-semibold text-slate-700 mt-1">{details.country_of_origin || "N/A"}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Final Destination</p>
-                                        <p className="text-xs font-semibold text-slate-700 mt-1">{details.final_destination || "N/A"}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Terms of Delivery</p>
-                                        <p className="text-xs font-semibold text-slate-700 mt-1">{details.terms_of_delivery || "N/A"}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Terms of Payment</p>
-                                        <p className="text-xs font-semibold text-slate-700 mt-1">{details.terms_of_payment || "N/A"}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* CURRENCY INFO */}
-                            <div className="flex items-center gap-2 p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl">
-                                <FaGlobe className="text-emerald-600" size={14} />
-                                <div className="text-xs text-emerald-800 font-semibold flex flex-wrap gap-x-4">
-                                    <span>Currency: <strong className="font-bold">{details.currency}</strong></span>
-                                    <span>Conversion Rate: <strong className="font-bold">1 {details.currency} = {details.conversion_rate} INR</strong></span>
-                                </div>
-                            </div>
-
-                            {/* ITEMS TABLE */}
-                            <div>
-                                <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-2.5 ml-0.5">Item Breakdown</h3>
-                                <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
-                                    <table className="w-full text-left text-xs border-collapse">
-                                        <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-100">
-                                            <tr>
-                                                <th className="px-4 py-3.5 w-12 text-center">#</th>
-                                                <th className="px-4 py-3.5">Product</th>
-                                                <th className="px-4 py-3.5 w-32 text-center">HSN Code</th>
-                                                <th className="px-4 py-3.5 w-24 text-right">Quantity</th>
-                                                <th className="px-4 py-3.5 w-36 text-right">Unit Price ({details.currency})</th>
-                                                <th className="px-4 py-3.5 w-36 text-right">Total ({details.currency})</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100 bg-white">
-                                            {details.items?.map((item, idx) => (
-                                                <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                                                    <td className="px-4 py-3 text-center font-semibold text-slate-400">{idx + 1}</td>
-                                                    <td className="px-4 py-3 font-semibold text-slate-800">
-                                                        <div>{item.product_name || item.item_name || "Product"}</div>
-                                                        <div className="text-[10px] text-slate-400 font-mono mt-0.5">{item.product}</div>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-center font-mono font-bold text-slate-500">{item.hsn_code}</td>
-                                                    <td className="px-4 py-3 text-right font-medium text-slate-700">{Number(item.quantity || 0).toFixed(2)}</td>
-                                                    <td className="px-4 py-3 text-right font-semibold text-slate-600">{Number(item.unit_price || 0).toFixed(2)}</td>
-                                                    <td className="px-4 py-3 text-right font-bold text-slate-800">{Number(item.amount || (Number(item.quantity || 0) * Number(item.unit_price || 0))).toFixed(2)}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                        {details.items && details.items.length > 0 && (
-                                            <tfoot className="bg-slate-50/80 font-bold text-slate-700 border-t border-slate-100 text-xs">
-                                                <tr>
-                                                    <td colSpan="5" className="px-4 py-2 text-right">Subtotal Amount:</td>
-                                                    <td className="px-4 py-2 text-right text-blue-600 font-black">
-                                                        {details.currency} {details.items.reduce((sum, item) => sum + (Number(item.quantity || 0) * Number(item.unit_price || 0)), 0).toFixed(2)}
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td colSpan="5" className="px-4 py-2 text-right">Grand Total:</td>
-                                                    <td className="px-4 py-2 text-right text-blue-700 font-black">
-                                                        {details.currency} {Number(details.grand_total || 0).toFixed(2)}
-                                                    </td>
-                                                </tr>
-                                                {Number(details.amount_received || 0) > 0 && (
-                                                    <tr>
-                                                        <td colSpan="5" className="px-4 py-2 text-right">Amount Received:</td>
-                                                        <td className="px-4 py-2 text-right text-emerald-600 font-black">
-                                                            {details.currency} {Number(details.amount_received || 0).toFixed(2)}
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                                {Number(details.balance || 0) > 0 && (
-                                                    <tr>
-                                                        <td colSpan="5" className="px-4 py-2 text-right">Balance Due:</td>
-                                                        <td className="px-4 py-2 text-right text-rose-600 font-black">
-                                                            {details.currency} {Number(details.balance || 0).toFixed(2)}
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                            </tfoot>
+                                        {details.gst_number && (
+                                            <Typography variant="caption" sx={{ fontFamily: "monospace", display: "block" }}>
+                                                GSTIN: {details.gst_number}
+                                            </Typography>
                                         )}
-                                    </table>
-                                </div>
-                            </div>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                                <Card variant="outlined">
+                                    <CardContent>
+                                        <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", fontWeight: "bold", display: "block", mb: 1 }}>
+                                            Consignee
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                                            {details.consignee}
+                                        </Typography>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                                <Card variant="outlined">
+                                    <CardContent>
+                                        <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", fontWeight: "bold", display: "block", mb: 1 }}>
+                                            Applicant Importer
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                                            {details.applicant_importer}
+                                        </Typography>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                        </Grid>
 
-                            {/* TERMS & NOTES */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                                {/* Terms & Conditions */}
-                                <div className="space-y-2.5">
-                                    <div className="flex items-center gap-1.5">
-                                        <FaListUl className="text-slate-400" size={13} />
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Terms & Conditions</h4>
-                                    </div>
-                                    <ul className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
+                        {/* PORT & LOGISTICS */}
+                        <Paper sx={{ p: 3, backgroundColor: "#f0f4ff", border: "1px solid #e3f2fd" }}>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, pb: 1, borderBottom: "1px solid #e3f2fd" }}>
+                                <AnchorIcon sx={{ color: "primary.main" }} fontSize="small" />
+                                <Typography variant="subtitle2" sx={{ textTransform: "uppercase", fontWeight: "bold", color: "primary.main" }}>
+                                    Logistics & Shipping
+                                </Typography>
+                            </Box>
+                            <Grid container spacing={2} sx={{ mb: 2 }}>
+                                <Grid item xs={6} sm={3}>
+                                    <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", fontWeight: "bold", display: "block" }}>
+                                        Port of Loading
+                                    </Typography>
+                                    <Typography variant="body2">{details.port_of_loading || "N/A"}</Typography>
+                                </Grid>
+                                <Grid item xs={6} sm={3}>
+                                    <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", fontWeight: "bold", display: "block" }}>
+                                        Port of Discharge
+                                    </Typography>
+                                    <Typography variant="body2">{details.port_of_discharge || "N/A"}</Typography>
+                                </Grid>
+                                <Grid item xs={6} sm={3}>
+                                    <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", fontWeight: "bold", display: "block" }}>
+                                        Pre-carriage By
+                                    </Typography>
+                                    <Typography variant="body2">{details.pre_carriage_by || "N/A"}</Typography>
+                                </Grid>
+                                <Grid item xs={6} sm={3}>
+                                    <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", fontWeight: "bold", display: "block" }}>
+                                        Place of Receipt
+                                    </Typography>
+                                    <Typography variant="body2">{details.place_of_receipt || "N/A"}</Typography>
+                                </Grid>
+                            </Grid>
+                            <Divider sx={{ my: 2 }} />
+                            <Grid container spacing={2}>
+                                <Grid item xs={6} sm={3}>
+                                    <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", fontWeight: "bold", display: "block" }}>
+                                        Country of Origin
+                                    </Typography>
+                                    <Typography variant="body2">{details.country_of_origin || "N/A"}</Typography>
+                                </Grid>
+                                <Grid item xs={6} sm={3}>
+                                    <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", fontWeight: "bold", display: "block" }}>
+                                        Final Destination
+                                    </Typography>
+                                    <Typography variant="body2">{details.final_destination || "N/A"}</Typography>
+                                </Grid>
+                                <Grid item xs={6} sm={3}>
+                                    <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", fontWeight: "bold", display: "block" }}>
+                                        Terms of Delivery
+                                    </Typography>
+                                    <Typography variant="body2">{details.terms_of_delivery || "N/A"}</Typography>
+                                </Grid>
+                                <Grid item xs={6} sm={3}>
+                                    <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "uppercase", fontWeight: "bold", display: "block" }}>
+                                        Terms of Payment
+                                    </Typography>
+                                    <Typography variant="body2">{details.terms_of_payment || "N/A"}</Typography>
+                                </Grid>
+                            </Grid>
+                        </Paper>
+
+                        {/* CURRENCY INFO */}
+                        <Paper sx={{ p: 2, backgroundColor: "#ecf5e9", border: "1px solid #c8e6c9", display: "flex", alignItems: "center", gap: 1 }}>
+                            <GlobeIcon sx={{ color: "success.main" }} />
+                            <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                                Currency: <strong>{details.currency}</strong> | Conversion Rate: <strong>1 {details.currency} = {details.conversion_rate} INR</strong>
+                            </Typography>
+                        </Paper>
+
+                        {/* ITEMS TABLE */}
+                        <Box>
+                            <Typography variant="subtitle2" sx={{ textTransform: "uppercase", fontWeight: "bold", mb: 2 }}>
+                                Item Breakdown
+                            </Typography>
+                            <TableContainer component={Paper}>
+                                <Table size="small">
+                                    <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
+                                        <TableRow>
+                                            <TableCell align="center" width="5%">
+                                                #
+                                            </TableCell>
+                                            <TableCell>Product</TableCell>
+                                            <TableCell align="center" width="15%">
+                                                HSN Code
+                                            </TableCell>
+                                            <TableCell align="right" width="12%">
+                                                Quantity
+                                            </TableCell>
+                                            <TableCell align="right" width="15%">
+                                                Unit Price ({details.currency})
+                                            </TableCell>
+                                            <TableCell align="right" width="15%">
+                                                Total ({details.currency})
+                                            </TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {details.items?.map((item, idx) => (
+                                            <TableRow key={idx}>
+                                                <TableCell align="center">{idx + 1}</TableCell>
+                                                <TableCell>
+                                                    <Box>
+                                                        <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                                                            {item.product_name || item.item_name || "Product"}
+                                                        </Typography>
+                                                        <Typography variant="caption" sx={{ fontFamily: "monospace" }}>
+                                                            {item.product}
+                                                        </Typography>
+                                                    </Box>
+                                                </TableCell>
+                                                <TableCell align="center" sx={{ fontFamily: "monospace" }}>
+                                                    {item.hsn_code}
+                                                </TableCell>
+                                                <TableCell align="right">{Number(item.quantity || 0).toFixed(2)}</TableCell>
+                                                <TableCell align="right">{Number(item.unit_price || 0).toFixed(2)}</TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: "bold" }}>
+                                                    {Number(item.amount || Number(item.quantity || 0) * Number(item.unit_price || 0)).toFixed(2)}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                    {details.items && details.items.length > 0 && (
+                                        <TableFooter sx={{ backgroundColor: "#f5f5f5" }}>
+                                            <TableRow>
+                                                <TableCell colSpan={5} align="right" sx={{ fontWeight: "bold" }}>
+                                                    Subtotal Amount:
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: "bold", color: "primary.main" }}>
+                                                    {details.currency}{" "}
+                                                    {details.items.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_price || 0), 0).toFixed(2)}
+                                                </TableCell>
+                                            </TableRow>
+                                            <TableRow>
+                                                <TableCell colSpan={5} align="right" sx={{ fontWeight: "bold" }}>
+                                                    Grand Total:
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: "bold", color: "primary.main" }}>
+                                                    {details.currency} {Number(details.grand_total || 0).toFixed(2)}
+                                                </TableCell>
+                                            </TableRow>
+                                            {Number(details.amount_received || 0) > 0 && (
+                                                <TableRow>
+                                                    <TableCell colSpan={5} align="right" sx={{ fontWeight: "bold" }}>
+                                                        Amount Received:
+                                                    </TableCell>
+                                                    <TableCell align="right" sx={{ fontWeight: "bold", color: "success.main" }}>
+                                                        {details.currency} {Number(details.amount_received || 0).toFixed(2)}
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                            {Number(details.balance || 0) > 0 && (
+                                                <TableRow>
+                                                    <TableCell colSpan={5} align="right" sx={{ fontWeight: "bold" }}>
+                                                        Balance Due:
+                                                    </TableCell>
+                                                    <TableCell align="right" sx={{ fontWeight: "bold", color: "error.main" }}>
+                                                        {details.currency} {Number(details.balance || 0).toFixed(2)}
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableFooter>
+                                    )}
+                                </Table>
+                            </TableContainer>
+                        </Box>
+
+                        {/* TERMS & NOTES */}
+                        <Grid container spacing={3}>
+                            {/* Terms & Conditions */}
+                            <Grid item xs={12} md={6}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+                                    <NotesIcon fontSize="small" sx={{ color: "text.secondary" }} />
+                                    <Typography variant="subtitle2" sx={{ textTransform: "uppercase", fontWeight: "bold" }}>
+                                        Terms & Conditions
+                                    </Typography>
+                                </Box>
+                                <Paper variant="outlined" sx={{ overflow: "hidden" }}>
+                                    <Box sx={{ backgroundColor: "#fafafa" }}>
                                         {details.terms_and_conditions && details.terms_and_conditions.length > 0 ? (
-                                            details.terms_and_conditions.map((termStr, index) => {
-                                                const colonIdx = termStr.indexOf(":");
+                                            details.terms_and_conditions.map((term, index) => {
                                                 let key = "";
-                                                let value = termStr;
-                                                if (colonIdx !== -1) {
-                                                    key = termStr.substring(0, colonIdx).trim();
-                                                    value = termStr.substring(colonIdx + 1).trim();
+                                                let value = "";
+                                                let bold = false;
+                                                if (term && typeof term === "object") {
+                                                    key = term.key || "";
+                                                    value = term.value || "";
+                                                    bold = !!term.bold;
+                                                } else {
+                                                    const termStr = String(term);
+                                                    const colonIdx = termStr.indexOf(":");
+                                                    value = termStr;
+                                                    if (colonIdx !== -1) {
+                                                        key = termStr.substring(0, colonIdx).trim();
+                                                        value = termStr.substring(colonIdx + 1).trim();
+                                                    }
                                                 }
                                                 return (
-                                                    <li key={index} className="px-4 py-2.5 text-xs font-semibold text-slate-700 flex items-start justify-between gap-4">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-blue-500 font-bold">•</span>
-                                                            {key ? (
-                                                                <span className="font-bold text-slate-800">{key}:</span>
-                                                            ) : (
-                                                                <span className="font-medium text-slate-400">Term #{index + 1}:</span>
-                                                            )}
-                                                        </div>
-                                                        <div className="text-right text-slate-600 font-semibold">{value}</div>
-                                                    </li>
+                                                    <Box key={index} sx={{ px: 2, py: 1.5, borderBottom: "1px solid #e0e0e0", "&:last-child": { borderBottom: "none" } }}>
+                                                        <Typography variant="caption" sx={{ display: "flex", justifyContent: "space-between", fontWeight: bold ? 700 : 400 }}>
+                                                            <span>
+                                                                {key ? <strong>{key}:</strong> : <span>Term #{index + 1}:</span>}
+                                                            </span>
+                                                            <span style={{ textAlign: "right", fontWeight: bold ? 700 : 400 }}>{value}</span>
+                                                        </Typography>
+                                                    </Box>
                                                 );
                                             })
                                         ) : (
-                                            <li className="px-4 py-3 text-slate-400 italic text-xs">No specific terms and conditions declared</li>
+                                            <Box sx={{ px: 2, py: 2 }}>
+                                                <Typography variant="caption" sx={{ fontStyle: "italic", color: "text.secondary" }}>
+                                                    No specific terms and conditions declared
+                                                </Typography>
+                                            </Box>
                                         )}
-                                    </ul>
-                                </div>
+                                    </Box>
+                                </Paper>
+                            </Grid>
 
-                                {/* Handling Notes */}
-                                <div className="space-y-2.5">
-                                    <div className="flex items-center gap-1.5">
-                                        <FaStickyNote className="text-slate-400" size={13} />
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Handling Notes</h4>
-                                    </div>
-                                    <div className="p-4 bg-slate-50/50 border border-slate-100 rounded-2xl text-xs font-semibold text-slate-600 leading-relaxed min-h-[80px]">
-                                        {handlingNotes || <span className="text-slate-400 italic font-normal">No additional handling notes provided.</span>}
-                                    </div>
-                                </div>
-                            </div>
+                            {/* Handling Notes */}
+                            <Grid item xs={12} md={6}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+                                    <NotesIcon fontSize="small" sx={{ color: "text.secondary" }} />
+                                    <Typography variant="subtitle2" sx={{ textTransform: "uppercase", fontWeight: "bold" }}>
+                                        Handling Notes
+                                    </Typography>
+                                </Box>
+                                <Paper variant="outlined" sx={{ p: 2, minHeight: "120px", backgroundColor: "#fafafa" }}>
+                                    <Typography variant="body2">
+                                        {handlingNotes || (
+                                            <span style={{ fontStyle: "italic", color: "#999" }}>No additional handling notes provided.</span>
+                                        )}
+                                    </Typography>
+                                </Paper>
+                            </Grid>
+                        </Grid>
+                    </Stack>
+                ) : (
+                    <Typography sx={{ textAlign: "center", py: 4, color: "text.secondary" }}>
+                        Failed to display invoice details sheet
+                    </Typography>
+                )}
+            </DialogContent>
 
-                        </div>
-                    ) : (
-                        <div className="text-center py-12 text-slate-400 font-semibold italic">
-                            Failed to display invoice details sheet
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
+            <DialogActions sx={{ p: 2 }}>
+                <Button onClick={onClose} color="inherit">
+                    Close
+                </Button>
+            </DialogActions>
+
+            {details && (
+                <PIVerificationModal
+                    open={verificationModalOpen}
+                    onClose={() => setVerificationModalOpen(false)}
+                    piId={details.id}
+                    piNumber={details.pi_number}
+                    onSuccess={() => {
+                        setVerificationModalOpen(false);
+                        // Refresh status so the button flips to a "Sent" chip
+                        loadVerifStatus(details.id);
+                    }}
+                />
+            )}
+        </Dialog>
     );
 };
 

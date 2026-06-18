@@ -1,10 +1,15 @@
-import { useRef, useEffect } from "react";
-import { FaTimes, FaUserTie, FaEnvelope, FaPhone, FaMapMarkerAlt, FaUniversity, FaIdCard, FaClock, FaCheckCircle, FaGlobe } from "react-icons/fa";
+import { useEffect } from "react";
+import {
+    Dialog, DialogTitle, DialogContent, DialogActions, Button, Box,
+    Grid, Typography, CircularProgress, Chip, Paper, IconButton, Divider
+} from "@mui/material";
+import {
+    Close as CloseIcon, Business as BusinessIcon, Email as EmailIcon,
+    Phone as PhoneIcon, LocationOn as LocationIcon, AccountBalance as BankIcon,
+    Badge as IdCardIcon, AccessTime as ClockIcon
+} from "@mui/icons-material";
 
 const VendorViewModal = ({ open, onClose, data, loading }) => {
-    const modalRef = useRef(null);
-
-    // Close on escape key
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.key === "Escape") onClose();
@@ -16,143 +21,144 @@ const VendorViewModal = ({ open, onClose, data, loading }) => {
         return () => document.removeEventListener("keydown", handleKeyDown);
     }, [open, onClose]);
 
-    // Close on click outside
-    const handleBackdropClick = (e) => {
-        if (modalRef.current && !modalRef.current.contains(e.target)) {
-            onClose();
-        }
-    };
-
-    if (!open) return null;
-
     return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity"
-            onClick={handleBackdropClick}
-        >
-            <div
-                ref={modalRef}
-                className="bg-white w-full max-w-3xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
-            >
-                {/* HEADER */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-blue-100 text-blue-600 p-2 rounded-lg">
-                            <FaUserTie className="text-xl" />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-slate-800">Vendor Details</h3>
-                            {data && <p className="text-sm text-slate-500 font-mono">{data.vendor_code}</p>}
-                        </div>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
-                    >
-                        <FaTimes />
-                    </button>
-                </div>
+        <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box sx={{ bgcolor: 'primary.lighter', color: 'primary.main', p: 1, borderRadius: 1 }}>
+                        <BusinessIcon />
+                    </Box>
+                    <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 700 }}>Vendor Details</Typography>
+                        {data && <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>{data.vendor_code}</Typography>}
+                    </Box>
+                </Box>
+                <IconButton onClick={onClose} size="small">
+                    <CloseIcon />
+                </IconButton>
+            </DialogTitle>
 
-                {/* CONTENT */}
-                <div className="flex-1 overflow-y-auto p-6">
-                    {loading ? (
-                        <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                            <p className="text-slate-500 font-medium">Loading details...</p>
-                        </div>
-                    ) : data ? (
-                        <div className="space-y-6">
+            <DialogContent>
+                {loading ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 6, gap: 2 }}>
+                        <CircularProgress />
+                        <Typography variant="body2" color="text.secondary">Loading details...</Typography>
+                    </Box>
+                ) : data ? (
+                    <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
 
-                            {/* BASIC INFO */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-4">
-                                    <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b pb-2">
-                                        <FaUserTie /> Basic Info
-                                    </h4>
-                                    <div className="space-y-3 pl-2">
-                                        <DetailItem label="Vendor Name" value={data.vendor_name} fullWidth />
-                                        <DetailItem label="Contact Person" value={data.contact_person} />
-                                        <DetailItem label="Email" value={data.email} icon={<FaEnvelope className="text-slate-400" />} />
-                                        <DetailItem label="Phone" value={data.phone} icon={<FaPhone className="text-slate-400" />} />
-                                    </div>
-                                </div>
+                        {/* BASIC INFO */}
+                        <Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pb: 1, borderBottom: '1px solid', borderColor: 'divider', mb: 2 }}>
+                                <BusinessIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                                <Typography variant="subtitle2" sx={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem' }}>
+                                    Basic Information
+                                </Typography>
+                            </Box>
+                            <Grid container spacing={2}>
+                                <Grid item xs={12}>
+                                    <DetailItem label="Vendor Name" value={data.vendor_name} />
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <DetailItem label="Contact Person" value={data.contact_person} />
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <DetailItem label="Email" value={data.email} icon={<EmailIcon />} />
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <DetailItem label="Phone" value={data.phone} icon={<PhoneIcon />} />
+                                </Grid>
+                            </Grid>
+                        </Box>
 
-                                <div className="space-y-4">
-                                    <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b pb-2">
-                                        <FaUniversity /> Bank & Tax Details
-                                    </h4>
-                                    <div className="space-y-3 pl-2">
-                                        <DetailItem label="GST Number" value={data.gst_number} />
-                                        <DetailItem label="PAN Number" value={data.pan_number} icon={<FaIdCard className="text-slate-400" />} />
-                                        <div className="pt-2">
-                                            <p className="text-xs font-semibold text-slate-500 mb-1">Bank Account</p>
-                                            <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm space-y-1">
-                                                <p><span className="text-slate-500 text-xs inline-block w-14">Bank:</span> <span className="font-medium text-slate-800">{data.bank_name || "-"}</span></p>
-                                                <p><span className="text-slate-500 text-xs inline-block w-14">Name:</span> <span className="font-medium text-slate-800">{data.account_name || "-"}</span></p>
-                                                <p><span className="text-slate-500 text-xs inline-block w-14">A/C:</span> <span className="font-mono text-slate-800">{data.bank_account_number || "-"}</span></p>
-                                                <p><span className="text-slate-500 text-xs inline-block w-14">IFSC:</span> <span className="font-mono text-slate-800">{data.ifsc_code || "-"}</span></p>
-                                                <p><span className="text-slate-500 text-xs inline-block w-14">SWIFT:</span> <span className="font-mono text-slate-800">{data.swift_code || "-"}</span></p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        {/* TAX & ID */}
+                        <Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pb: 1, borderBottom: '1px solid', borderColor: 'divider', mb: 2 }}>
+                                <IdCardIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                                <Typography variant="subtitle2" sx={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem' }}>
+                                    Tax & ID Numbers
+                                </Typography>
+                            </Box>
+                            <Grid container spacing={2}>
+                                <Grid item xs={12} sm={6}>
+                                    <DetailItem label="GST Number" value={data.gst_number} />
+                                </Grid>
+                                <Grid item xs={12} sm={6}>
+                                    <DetailItem label="PAN Number" value={data.pan_number} />
+                                </Grid>
+                            </Grid>
+                        </Box>
 
-                            {/* ADDRESS */}
-                            <div className="space-y-2">
-                                <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2 border-b pb-2">
-                                    <FaMapMarkerAlt /> Address
-                                </h4>
-                                <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 text-slate-700 text-sm leading-relaxed">
-                                    {data.address || <span className="text-slate-400 italic">No address provided</span>}
-                                </div>
-                            </div>
+                        {/* BANK DETAILS */}
+                        <Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pb: 1, borderBottom: '1px solid', borderColor: 'divider', mb: 2 }}>
+                                <BankIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                                <Typography variant="subtitle2" sx={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem' }}>
+                                    Bank Details
+                                </Typography>
+                            </Box>
+                            <Paper sx={{ p: 2, bgcolor: 'background.default', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                <DetailItem label="Bank Name" value={data.bank_name} fullWidth />
+                                <DetailItem label="Account Holder" value={data.account_name} fullWidth />
+                                <DetailItem label="Account Number" value={data.bank_account_number} fullWidth />
+                                <DetailItem label="IFSC Code" value={data.ifsc_code} fullWidth />
+                                <DetailItem label="SWIFT Code" value={data.swift_code} fullWidth />
+                            </Paper>
+                        </Box>
 
-                            {/* META DATA */}
-                            <div className="flex flex-wrap gap-4 pt-4 border-t border-slate-100">
-                                <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-full border border-slate-200">
-                                    <span className={`w-2 h-2 rounded-full ${data.is_active ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                                    <span className="text-xs font-semibold text-slate-600">
-                                        {data.is_active ? 'Active' : 'Inactive'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-xs text-slate-400">
-                                    <FaClock />
-                                    <span>Created: {new Date(data.created_at).toLocaleDateString()}</span>
-                                </div>
-                            </div>
+                        {/* ADDRESS */}
+                        <Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pb: 1, borderBottom: '1px solid', borderColor: 'divider', mb: 2 }}>
+                                <LocationIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
+                                <Typography variant="subtitle2" sx={{ fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem' }}>
+                                    Address
+                                </Typography>
+                            </Box>
+                            <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
+                                <Typography variant="body2" sx={{ color: data.address ? 'text.primary' : 'text.secondary', fontStyle: data.address ? 'normal' : 'italic' }}>
+                                    {data.address || 'No address provided'}
+                                </Typography>
+                            </Paper>
+                        </Box>
 
-                        </div>
-                    ) : (
-                        <div className="py-12 text-center text-slate-500">
-                            Failed to load vendor details.
-                        </div>
-                    )}
-                </div>
+                        {/* META */}
+                        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                            <Chip
+                                label={data.is_active ? 'Active' : 'Inactive'}
+                                color={data.is_active ? 'success' : 'error'}
+                                variant="outlined"
+                                size="small"
+                            />
+                            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <ClockIcon sx={{ fontSize: 14 }} />
+                                Created: {new Date(data.created_at).toLocaleDateString()}
+                            </Typography>
+                        </Box>
 
-                {/* FOOTER */}
-                <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-colors"
-                    >
-                        Close
-                    </button>
-                </div>
-            </div>
-        </div>
+                    </Box>
+                ) : (
+                    <Box sx={{ textAlign: 'center', py: 4 }}>
+                        <Typography color="text.secondary">Failed to load vendor details.</Typography>
+                    </Box>
+                )}
+            </DialogContent>
+
+            <DialogActions sx={{ p: 2 }}>
+                <Button onClick={onClose} variant="contained">Close</Button>
+            </DialogActions>
+        </Dialog>
     );
 };
 
 const DetailItem = ({ label, value, icon, fullWidth }) => (
-    <div className={`flex flex-col ${fullWidth ? 'w-full' : ''}`}>
-        <span className="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1">
+    <Box sx={{ display: 'flex', flexDirection: 'column', width: fullWidth ? '100%' : 'auto' }}>
+        <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', fontSize: '0.65rem', mb: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
             {icon} {label}
-        </span>
-        <span className="text-sm font-medium text-slate-800 break-words">
-            {value || "-"}
-        </span>
-    </div>
+        </Typography>
+        <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+            {value || '-'}
+        </Typography>
+    </Box>
 );
 
 export default VendorViewModal;

@@ -1,22 +1,38 @@
 import React, { useState, useEffect } from "react";
-import { 
-    FaSearch, 
-    FaFilter, 
-    FaPlus, 
-    FaTimes, 
-    FaCalendarAlt, 
-    FaMoneyBillWave, 
-    FaUserTie, 
-    FaExchangeAlt, 
-    FaHistory, 
-    FaCheckCircle, 
-    FaFileInvoiceDollar, 
-    FaCoins, 
-    FaInfoCircle, 
-    FaDollarSign 
-} from "react-icons/fa";
+import {
+    Box, Card, Typography, Button, TextField, Table, TableBody, TableCell,
+    TableContainer, TableHead, TableRow, IconButton, Tooltip, Dialog,
+    DialogTitle, DialogContent, DialogActions, CircularProgress, Chip,
+    InputAdornment, Select, MenuItem, FormControl, InputLabel, Grid,
+    ToggleButton, ToggleButtonGroup,
+} from "@mui/material";
+import PublicIcon from "@mui/icons-material/Public";
+import HomeWorkIcon from "@mui/icons-material/HomeWork";
+
+const SOURCES = [
+    { value: "", label: "All Sources" },
+    { value: "REQUISITION", label: "Requisition" },
+    { value: "STOCK_SALE", label: "Stock" },
+    { value: "DIRECT", label: "Direct" },
+];
+import {
+    Search as SearchIcon,
+    FilterList as FilterIcon,
+    Add as AddIcon,
+    Close as CloseIcon,
+    CalendarToday as CalendarIcon,
+    AttachMoney as MoneyIcon,
+    Person as PersonIcon,
+    SwapHoriz as SwapIcon,
+    History as HistoryIcon,
+    CheckCircle as CheckCircleIcon,
+    ReceiptLong as InvoiceIcon,
+    Toll as CoinsIcon,
+    Info as InfoIcon,
+    Paid as PaidIcon,
+} from "@mui/icons-material";
 import { getAdvancePayments, createAdvancePayment, adjustAdvancePayment } from "../services/salesService";
-import WorkOrderSelector from "../components/common/WorkOrderSelector";
+import PISelector from "../components/common/PISelector";
 import AlertToast from "../components/ui/AlertToast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 
@@ -31,6 +47,8 @@ const PiAdvance = () => {
     const [filterStatus, setFilterStatus] = useState("ACTIVE");
     const [filterPI, setFilterPI] = useState("");
     const [filterCurrency, setFilterCurrency] = useState("");
+    const [tab, setTab] = useState("DOMESTIC");        // DOMESTIC | INTERNATIONAL
+    const [sourceFilter, setSourceFilter] = useState(""); // "" = all PI sources
 
     // Create Modal State
     const [createModal, setCreateModal] = useState({
@@ -65,6 +83,8 @@ const PiAdvance = () => {
         setLoading(true);
         try {
             const params = {
+                'proforma_invoice__trade_type': tab,
+                ...(sourceFilter && { 'proforma_invoice__source': sourceFilter }),
                 ...(filterStatus && { status: filterStatus }),
                 ...(filterPI && { search: filterPI }),
                 ...(filterCurrency && { currency: filterCurrency })
@@ -81,7 +101,13 @@ const PiAdvance = () => {
 
     useEffect(() => {
         fetchAdvances();
-    }, [filterStatus, filterPI, filterCurrency]);
+    }, [filterStatus, filterPI, filterCurrency, tab, sourceFilter]);
+
+    const handleTabChange = (_, newTab) => {
+        if (!newTab || newTab === tab) return;
+        setTab(newTab);
+        setSourceFilter("");
+    };
 
     // Handle Create Advance Payment
     const handleCreateSubmit = async (e) => {
@@ -191,12 +217,12 @@ const PiAdvance = () => {
         return `${sym} ${Number(amount || 0).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
-    const getStatusStyle = (status) => {
+    const getStatusChipProps = (status) => {
         switch (status) {
-            case 'ACTIVE': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-            case 'ADJUSTED': return 'bg-blue-100 text-blue-700 border-blue-200';
-            case 'USED': return 'bg-slate-100 text-slate-700 border-slate-200';
-            default: return 'bg-slate-100 text-slate-700 border-slate-200';
+            case 'ACTIVE': return { color: "success", variant: "outlined" };
+            case 'ADJUSTED': return { color: "primary", variant: "outlined" };
+            case 'USED': return { color: "default", variant: "outlined" };
+            default: return { color: "default", variant: "outlined" };
         }
     };
 
@@ -205,418 +231,703 @@ const PiAdvance = () => {
     const totalRemainingAmount = advances.reduce((sum, item) => sum + parseFloat((item.remaining * (item.conversion_rate || 1)) || item.remaining || 0), 0);
     const totalUsedAmount = totalAdvanceAmount - totalRemainingAmount;
 
+    const labelSx = {
+        fontSize: "10px",
+        fontWeight: 800,
+        color: "text.secondary",
+        textTransform: "uppercase",
+        letterSpacing: "0.1em",
+        mb: 1,
+    };
+
     return (
         <>
-            <div className="max-w-7xl mx-auto space-y-6 animate-fade-in py-1">
+            <Box sx={{ maxWidth: 1200, mx: "auto", py: 1, display: "flex", flexDirection: "column", gap: 3 }}>
                 {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <div>
-                        <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
-                            <FaCoins className="text-amber-500" />
+                <Card
+                    variant="outlined"
+                    sx={{
+                        p: 3,
+                        borderRadius: 3,
+                        display: "flex",
+                        flexDirection: { xs: "column", md: "row" },
+                        alignItems: { md: "center" },
+                        justifyContent: "space-between",
+                        gap: 2,
+                        bgcolor: "#fff",
+                    }}
+                >
+                    <Box>
+                        <Typography variant="h5" sx={{ fontWeight: 800, color: "text.primary", display: "flex", alignItems: "center", gap: 1.5 }}>
+                            <CoinsIcon sx={{ color: "#f59e0b" }} />
                             PI Advance Payments
-                        </h1>
-                        <p className="text-slate-500 mt-1 font-medium">Record, track, and adjust client advance payments received against proforma invoices</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <button
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5, fontWeight: 500 }}>
+                            Record, track, and adjust client advance payments received against proforma invoices
+                        </Typography>
+                    </Box>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                        <Button
+                            variant="contained"
+                            startIcon={<AddIcon />}
                             onClick={() => setCreateModal(prev => ({ ...prev, open: true }))}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-black rounded-xl hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 active:scale-95"
+                            sx={{
+                                bgcolor: "#1565C0",
+                                fontWeight: 900,
+                                fontSize: "0.8rem",
+                                borderRadius: 2.5,
+                                textTransform: "uppercase",
+                                px: 3,
+                                py: 1.2,
+                                boxShadow: "0 4px 14px rgba(21,101,192,0.25)",
+                                "&:hover": { bgcolor: "#1256a3" },
+                            }}
                         >
-                            <FaPlus className="text-xs" />
-                            RECORD ADVANCE
-                        </button>
-                    </div>
-                </div>
+                            Record Advance
+                        </Button>
+                    </Box>
+                </Card>
+
+                {/* Domestic / International tabs + PI source filter */}
+                <Card variant="outlined" sx={{ p: 2.5, borderRadius: 3, bgcolor: "#fff", display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+                    <ToggleButtonGroup
+                        exclusive
+                        value={tab}
+                        onChange={handleTabChange}
+                        sx={{
+                            bgcolor: "#f1f5f9", borderRadius: 2.5, p: 0.5,
+                            "& .MuiToggleButton-root": {
+                                textTransform: "none", fontWeight: 800, fontSize: "0.8rem", px: 2.5, py: 0.7, gap: 0.75,
+                                border: "none", borderRadius: "9px !important", color: "#64748b",
+                                "&.Mui-selected": {
+                                    bgcolor: "#fff", color: "#1565C0", boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
+                                    "&:hover": { bgcolor: "#fff" },
+                                },
+                            },
+                        }}
+                    >
+                        <ToggleButton value="DOMESTIC"><HomeWorkIcon sx={{ fontSize: 18 }} />Domestic</ToggleButton>
+                        <ToggleButton value="INTERNATIONAL"><PublicIcon sx={{ fontSize: 18 }} />International</ToggleButton>
+                    </ToggleButtonGroup>
+
+                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                        {SOURCES.map((s) => {
+                            const active = sourceFilter === s.value;
+                            return (
+                                <Chip
+                                    key={s.value || "all"}
+                                    label={s.label}
+                                    clickable
+                                    onClick={() => setSourceFilter(s.value)}
+                                    sx={{
+                                        fontWeight: 800, fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.05em",
+                                        borderRadius: 2, height: 30,
+                                        bgcolor: active ? "#1565C0" : "#fff",
+                                        color: active ? "#fff" : "#475569",
+                                        border: "1px solid", borderColor: active ? "#1565C0" : "#e2e8f0",
+                                        "&:hover": { bgcolor: active ? "#1256a3" : "#f1f5f9" },
+                                    }}
+                                />
+                            );
+                        })}
+                    </Box>
+                </Card>
 
                 {/* Statistics Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-                        <p className="text-[10px] text-slate-400 uppercase font-black tracking-wider mb-1">Total Advances Received</p>
-                        <p className="text-2xl font-black text-slate-800">{formatCurrency(totalAdvanceAmount, 'INR')}</p>
-                        <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase">INR Valuation</p>
-                    </div>
-                    <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100 shadow-sm hover:shadow-md transition-all">
-                        <p className="text-[10px] text-emerald-600 uppercase font-black tracking-wider mb-1">Total Remaining Balance</p>
-                        <p className="text-2xl font-black text-emerald-700">{formatCurrency(totalRemainingAmount, 'INR')}</p>
-                        <p className="text-[10px] text-emerald-500 font-bold mt-1 uppercase">Available to adjust</p>
-                    </div>
-                    <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 shadow-sm hover:shadow-md transition-all">
-                        <p className="text-[10px] text-blue-600 uppercase font-black tracking-wider mb-1">Total Used / Adjusted</p>
-                        <p className="text-2xl font-black text-blue-700">{formatCurrency(totalUsedAmount, 'INR')}</p>
-                        <p className="text-[10px] text-blue-500 font-bold mt-1 uppercase">Injected into bills</p>
-                    </div>
-                    <div className="bg-amber-50 p-6 rounded-2xl border border-amber-100 shadow-sm hover:shadow-md transition-all">
-                        <p className="text-[10px] text-amber-600 uppercase font-black tracking-wider mb-1">Total Active Payments</p>
-                        <p className="text-2xl font-black text-amber-700">{advances.length}</p>
-                        <p className="text-[10px] text-amber-500 font-bold mt-1 uppercase">Tracking records</p>
-                    </div>
-                </div>
+                <Grid container spacing={3}>
+                    <Grid item xs={12} sm={6} lg={3}>
+                        <Card variant="outlined" sx={{ p: 3, borderRadius: 3, bgcolor: "#fff", "&:hover": { boxShadow: 2 }, transition: "box-shadow 0.2s" }}>
+                            <Typography sx={{ fontSize: "10px", color: "text.secondary", textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.1em", mb: 0.5 }}>
+                                Total Advances Received
+                            </Typography>
+                            <Typography variant="h5" sx={{ fontWeight: 900, color: "text.primary" }}>
+                                {formatCurrency(totalAdvanceAmount, 'INR')}
+                            </Typography>
+                            <Typography sx={{ fontSize: "10px", color: "text.secondary", fontWeight: 700, mt: 0.5, textTransform: "uppercase" }}>
+                                INR Valuation
+                            </Typography>
+                        </Card>
+                    </Grid>
+                    <Grid item xs={12} sm={6} lg={3}>
+                        <Card variant="outlined" sx={{ p: 3, borderRadius: 3, bgcolor: "#ecfdf5", borderColor: "#d1fae5", "&:hover": { boxShadow: 2 }, transition: "box-shadow 0.2s" }}>
+                            <Typography sx={{ fontSize: "10px", color: "#059669", textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.1em", mb: 0.5 }}>
+                                Total Remaining Balance
+                            </Typography>
+                            <Typography variant="h5" sx={{ fontWeight: 900, color: "#047857" }}>
+                                {formatCurrency(totalRemainingAmount, 'INR')}
+                            </Typography>
+                            <Typography sx={{ fontSize: "10px", color: "#10b981", fontWeight: 700, mt: 0.5, textTransform: "uppercase" }}>
+                                Available to adjust
+                            </Typography>
+                        </Card>
+                    </Grid>
+                    <Grid item xs={12} sm={6} lg={3}>
+                        <Card variant="outlined" sx={{ p: 3, borderRadius: 3, bgcolor: "#eff6ff", borderColor: "#dbeafe", "&:hover": { boxShadow: 2 }, transition: "box-shadow 0.2s" }}>
+                            <Typography sx={{ fontSize: "10px", color: "#2563eb", textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.1em", mb: 0.5 }}>
+                                Total Used / Adjusted
+                            </Typography>
+                            <Typography variant="h5" sx={{ fontWeight: 900, color: "#1d4ed8" }}>
+                                {formatCurrency(totalUsedAmount, 'INR')}
+                            </Typography>
+                            <Typography sx={{ fontSize: "10px", color: "#3b82f6", fontWeight: 700, mt: 0.5, textTransform: "uppercase" }}>
+                                Injected into bills
+                            </Typography>
+                        </Card>
+                    </Grid>
+                    <Grid item xs={12} sm={6} lg={3}>
+                        <Card variant="outlined" sx={{ p: 3, borderRadius: 3, bgcolor: "#fffbeb", borderColor: "#fef3c7", "&:hover": { boxShadow: 2 }, transition: "box-shadow 0.2s" }}>
+                            <Typography sx={{ fontSize: "10px", color: "#d97706", textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.1em", mb: 0.5 }}>
+                                Total Active Payments
+                            </Typography>
+                            <Typography variant="h5" sx={{ fontWeight: 900, color: "#b45309" }}>
+                                {advances.length}
+                            </Typography>
+                            <Typography sx={{ fontSize: "10px", color: "#f59e0b", fontWeight: 700, mt: 0.5, textTransform: "uppercase" }}>
+                                Tracking records
+                            </Typography>
+                        </Card>
+                    </Grid>
+                </Grid>
 
                 {/* Filters */}
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Status Filter */}
-                        <div>
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2">Filter by Status</label>
-                            <select
-                                value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-semibold"
-                            >
-                                <option value="">All Statuses</option>
-                                <option value="ACTIVE">ACTIVE</option>
-                                <option value="ADJUSTED">ADJUSTED</option>
-                                <option value="USED">USED</option>
-                            </select>
-                        </div>
-
-                        {/* Currency Filter */}
-                        <div>
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2">Filter by Currency</label>
-                            <select
-                                value={filterCurrency}
-                                onChange={(e) => setFilterCurrency(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-semibold"
-                            >
-                                <option value="">All Currencies</option>
-                                <option value="INR">INR</option>
-                                <option value="USD">USD</option>
-                                <option value="EUR">EUR</option>
-                            </select>
-                        </div>
-
-                        {/* Proforma Invoice Filter */}
-                        <div>
-                            <div className="flex items-end justify-between mb-2">
-                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest">Filter by Proforma Invoice</label>
+                <Card variant="outlined" sx={{ p: 3, borderRadius: 3, bgcolor: "#fff" }}>
+                    <Grid container spacing={3}>
+                        <Grid item xs={12} md={4}>
+                            <Typography sx={labelSx}>Filter by Status</Typography>
+                            <FormControl fullWidth size="small">
+                                <Select
+                                    value={filterStatus}
+                                    onChange={(e) => setFilterStatus(e.target.value)}
+                                    displayEmpty
+                                    sx={{ borderRadius: 2.5, bgcolor: "#FAFBFC", fontWeight: 600, fontSize: "0.875rem" }}
+                                >
+                                    <MenuItem value="">All Statuses</MenuItem>
+                                    <MenuItem value="ACTIVE">ACTIVE</MenuItem>
+                                    <MenuItem value="ADJUSTED">ADJUSTED</MenuItem>
+                                    <MenuItem value="USED">USED</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                            <Typography sx={labelSx}>Filter by Currency</Typography>
+                            <FormControl fullWidth size="small">
+                                <Select
+                                    value={filterCurrency}
+                                    onChange={(e) => setFilterCurrency(e.target.value)}
+                                    displayEmpty
+                                    sx={{ borderRadius: 2.5, bgcolor: "#FAFBFC", fontWeight: 600, fontSize: "0.875rem" }}
+                                >
+                                    <MenuItem value="">All Currencies</MenuItem>
+                                    <MenuItem value="INR">INR</MenuItem>
+                                    <MenuItem value="USD">USD</MenuItem>
+                                    <MenuItem value="EUR">EUR</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", mb: 1 }}>
+                                <Typography sx={{ ...labelSx, mb: 0 }}>Filter by Proforma Invoice</Typography>
                                 {(filterPI || filterStatus || filterCurrency) && (
-                                    <button
-                                        onClick={() => {setFilterPI(""); setFilterStatus("ACTIVE"); setFilterCurrency("");}}
-                                        className="text-[10px] font-black text-red-500 hover:text-red-600 uppercase tracking-widest flex items-center gap-1"
+                                    <Button
+                                        size="small"
+                                        color="error"
+                                        onClick={() => { setFilterPI(""); setFilterStatus("ACTIVE"); setFilterCurrency(""); }}
+                                        startIcon={<CloseIcon sx={{ fontSize: 12 }} />}
+                                        sx={{ fontSize: "10px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", minWidth: "auto", p: 0 }}
                                     >
-                                        <FaTimes size={10} /> Clear Filters
-                                    </button>
+                                        Clear Filters
+                                    </Button>
                                 )}
-                            </div>
-                            <input
-                                type="text"
+                            </Box>
+                            <TextField
+                                fullWidth
+                                size="small"
                                 value={filterPI}
                                 onChange={(e) => setFilterPI(e.target.value)}
                                 placeholder="Search by PI Number or Client..."
-                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <SearchIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+                                        </InputAdornment>
+                                    ),
+                                    sx: { borderRadius: 2.5, bgcolor: "#FAFBFC", fontWeight: 500, fontSize: "0.875rem" },
+                                }}
                             />
-                        </div>
-                    </div>
-                </div>
+                        </Grid>
+                    </Grid>
+                </Card>
 
                 {/* Table */}
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full border-collapse text-left">
-                            <thead>
-                                <tr className="bg-slate-50/80 border-b border-slate-200">
-                                    <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Advance Ref</th>
-                                    <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Proforma Invoice</th>
-                                    <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Client Info</th>
-                                    <th className="px-6 py-4 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Advance</th>
-                                    <th className="px-6 py-4 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Used & Remaining</th>
-                                    <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">Payment Info</th>
-                                    <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-4 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
+                <Card variant="outlined" sx={{ borderRadius: 3, overflow: "hidden", bgcolor: "#fff" }}>
+                    <TableContainer>
+                        <Table sx={{
+                            "& .MuiTableCell-root": { fontSize: "0.78rem" },
+                            "& .MuiTypography-body2": { fontSize: "0.78rem" },
+                            "& .MuiTypography-caption": { fontSize: "0.66rem" },
+                        }}>
+                            <TableHead>
+                                <TableRow sx={{ bgcolor: "#FAFBFC" }}>
+                                    <TableCell sx={{ fontWeight: 700, fontSize: "11px", color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em" }}>Advance Ref</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, fontSize: "11px", color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em" }}>Proforma Invoice</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, fontSize: "11px", color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em" }}>Client Info</TableCell>
+                                    <TableCell align="right" sx={{ fontWeight: 700, fontSize: "11px", color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total Advance</TableCell>
+                                    <TableCell align="right" sx={{ fontWeight: 700, fontSize: "11px", color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em" }}>Used & Remaining</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: 700, fontSize: "11px", color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em" }}>Payment Info</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: 700, fontSize: "11px", color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em" }}>Status</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: 700, fontSize: "11px", color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em" }}>Actions</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
                                 {loading && advances.length === 0 ? (
                                     Array(5).fill(0).map((_, i) => (
-                                        <tr key={i} className="animate-pulse">
-                                            <td colSpan="8" className="px-6 py-10"><div className="h-4 bg-slate-100 rounded w-full"></div></td>
-                                        </tr>
+                                        <TableRow key={i}>
+                                            <TableCell colSpan={8} sx={{ py: 4 }}>
+                                                <Box sx={{ height: 16, bgcolor: "#f1f5f9", borderRadius: 1, width: "100%", animation: "pulse 1.5s ease-in-out infinite", "@keyframes pulse": { "0%, 100%": { opacity: 1 }, "50%": { opacity: 0.5 } } }} />
+                                            </TableCell>
+                                        </TableRow>
                                     ))
                                 ) : advances.length > 0 ? (
                                     advances.map((item) => (
-                                        <tr key={item.id} className="group hover:bg-slate-50/50 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col">
-                                                    <span className="font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 self-start text-xs mb-1">
-                                                        {item.advance_number}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="font-mono font-semibold text-slate-700 text-xs">
+                                        <TableRow key={item.id} hover sx={{ "&:hover": { bgcolor: "#FAFBFC" } }}>
+                                            <TableCell>
+                                                <Chip
+                                                    label={item.advance_number}
+                                                    size="small"
+                                                    sx={{
+                                                        fontFamily: "monospace",
+                                                        fontWeight: 700,
+                                                        fontSize: "0.75rem",
+                                                        bgcolor: "#fffbeb",
+                                                        color: "#b45309",
+                                                        border: "1px solid #fef3c7",
+                                                    }}
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Typography sx={{ fontFamily: "monospace", fontWeight: 600, color: "text.primary", fontSize: "0.75rem" }}>
                                                     {item.pi_number}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-                                                        <FaUserTie size={12} className="text-slate-400" />
-                                                        {item.client_name}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="text-sm font-black text-slate-800">{formatCurrency(item.amount, item.currency)}</div>
-                                                {item.currency !== 'INR' && (
-                                                    <div className="text-[10px] text-blue-600 font-bold">
-                                                        {formatCurrency(item.amount_inr || (item.amount * (item.conversion_rate || 1)), 'INR')}
-                                                    </div>
+                                                </Typography>
+                                                {item.pi_source_display && (
+                                                    <Chip
+                                                        label={item.pi_source_display}
+                                                        size="small"
+                                                        sx={{ mt: 0.5, height: 18, fontSize: "9px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.04em", bgcolor: "#eef2ff", color: "#4338ca", border: "1px solid #c7d2fe" }}
+                                                    />
                                                 )}
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="text-xs font-bold text-emerald-600">
+                                            </TableCell>
+                                            <TableCell>
+                                                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                                    <PersonIcon sx={{ fontSize: 14, color: "text.disabled" }} />
+                                                    <Typography sx={{ fontSize: "0.875rem", fontWeight: 700, color: "text.primary" }}>
+                                                        {item.client_name}
+                                                    </Typography>
+                                                </Box>
+                                            </TableCell>
+                                            <TableCell align="right">
+                                                <Typography sx={{ fontSize: "0.875rem", fontWeight: 900, color: "text.primary" }}>
+                                                    {formatCurrency(item.amount, item.currency)}
+                                                </Typography>
+                                                {item.currency !== 'INR' && (
+                                                    <Typography sx={{ fontSize: "10px", color: "#2563eb", fontWeight: 700 }}>
+                                                        {formatCurrency(item.amount_inr || (item.amount * (item.conversion_rate || 1)), 'INR')}
+                                                    </Typography>
+                                                )}
+                                            </TableCell>
+                                            <TableCell align="right">
+                                                <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: "#059669" }}>
                                                     Rem: {formatCurrency(item.remaining, item.currency)}
-                                                </div>
-                                                <div className="text-[10px] text-slate-400 font-medium mt-0.5">
+                                                </Typography>
+                                                <Typography sx={{ fontSize: "10px", color: "text.disabled", fontWeight: 500, mt: 0.25 }}>
                                                     Used: {formatCurrency(item.amount_used || 0, item.currency)}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <div className="flex flex-col items-center justify-center">
-                                                    <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5 whitespace-nowrap">
-                                                        <FaCalendarAlt size={12} className="text-slate-300" />
-                                                        {item.payment_date}
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5 }}>
+                                                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                                                        <CalendarIcon sx={{ fontSize: 14, color: "text.disabled" }} />
+                                                        <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: "text.secondary", whiteSpace: "nowrap" }}>
+                                                            {item.payment_date}
+                                                        </Typography>
+                                                    </Box>
+                                                    <Chip
+                                                        label={item.payment_mode}
+                                                        size="small"
+                                                        variant="outlined"
+                                                        sx={{
+                                                            fontSize: "9px",
+                                                            fontWeight: 800,
+                                                            textTransform: "uppercase",
+                                                            letterSpacing: "0.1em",
+                                                            height: 20,
+                                                        }}
+                                                    />
+                                                </Box>
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                <Chip
+                                                    label={item.status}
+                                                    size="small"
+                                                    {...getStatusChipProps(item.status)}
+                                                    sx={{
+                                                        fontSize: "10px",
+                                                        fontWeight: 800,
+                                                        textTransform: "uppercase",
+                                                        letterSpacing: "0.1em",
+                                                    }}
+                                                />
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                <Tooltip title={parseFloat(item.remaining) <= 0 ? "Advance Fully Adjusted" : "Adjust / Use Advance"}>
+                                                    <span>
+                                                        <Button
+                                                            size="small"
+                                                            variant="outlined"
+                                                            startIcon={<SwapIcon sx={{ fontSize: 14 }} />}
+                                                            disabled={item.status === 'ADJUSTED' || item.status === 'USED' || parseFloat(item.remaining) <= 0}
+                                                            onClick={() => setAdjustModal({
+                                                                open: true,
+                                                                advanceId: item.id,
+                                                                advanceNumber: item.advance_number,
+                                                                clientName: item.client_name,
+                                                                piNumber: item.pi_number,
+                                                                remaining: item.remaining,
+                                                                amount: "",
+                                                                currency: item.currency || "INR"
+                                                            })}
+                                                            sx={{
+                                                                fontSize: "0.75rem",
+                                                                fontWeight: 700,
+                                                                borderRadius: 2,
+                                                                textTransform: "none",
+                                                                borderColor: "#1565C0",
+                                                                color: "#1565C0",
+                                                                "&:hover": { bgcolor: "#1565C0", color: "#fff", borderColor: "#1565C0" },
+                                                                "&.Mui-disabled": { borderColor: "#e2e8f0", color: "#cbd5e1" },
+                                                            }}
+                                                        >
+                                                            Adjust
+                                                        </Button>
                                                     </span>
-                                                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded border mt-1">
-                                                        {item.payment_mode}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusStyle(item.status)}`}>
-                                                    {item.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <button
-                                                    onClick={() => setAdjustModal({
-                                                        open: true,
-                                                        advanceId: item.id,
-                                                        advanceNumber: item.advance_number,
-                                                        clientName: item.client_name,
-                                                        piNumber: item.pi_number,
-                                                        remaining: item.remaining,
-                                                        amount: "",
-                                                        currency: item.currency || "INR"
-                                                    })}
-                                                    disabled={item.status === 'ADJUSTED' || item.status === 'USED' || parseFloat(item.remaining) <= 0}
-                                                    className={`p-2 rounded-lg transition-all shadow-sm active:scale-90 inline-flex items-center gap-1.5 text-xs font-bold ${
-                                                        item.status === 'ADJUSTED' || item.status === 'USED' || parseFloat(item.remaining) <= 0
-                                                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-50'
-                                                            : 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
-                                                    }`}
-                                                    title={parseFloat(item.remaining) <= 0 ? "Advance Fully Adjusted" : "Adjust / Use Advance"}
-                                                >
-                                                    <FaExchangeAlt size={12} />
-                                                    <span>Adjust</span>
-                                                </button>
-                                            </td>
-                                        </tr>
+                                                </Tooltip>
+                                            </TableCell>
+                                        </TableRow>
                                     ))
                                 ) : (
-                                    <tr>
-                                        <td colSpan="8" className="px-6 py-20 text-center">
-                                            <div className="flex flex-col items-center gap-3">
-                                                <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center text-slate-300">
-                                                    <FaSearch size={32} />
-                                                </div>
-                                                <p className="text-slate-500 font-black uppercase tracking-widest text-sm">No advance payments found</p>
-                                                <button onClick={() => {setFilterPI(""); setFilterStatus(""); setFilterCurrency("");}} className="text-blue-600 font-black hover:underline uppercase text-[10px] tracking-widest mt-2">SHOW ALL RECORDS</button>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                    <TableRow>
+                                        <TableCell colSpan={8} sx={{ py: 10 }}>
+                                            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1.5 }}>
+                                                <Box sx={{ width: 80, height: 80, bgcolor: "#f1f5f9", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                    <SearchIcon sx={{ fontSize: 36, color: "#cbd5e1" }} />
+                                                </Box>
+                                                <Typography sx={{ color: "text.secondary", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", fontSize: "0.875rem" }}>
+                                                    No advance payments found
+                                                </Typography>
+                                                <Button
+                                                    size="small"
+                                                    onClick={() => { setFilterPI(""); setFilterStatus(""); setFilterCurrency(""); }}
+                                                    sx={{ color: "#1565C0", fontWeight: 800, textTransform: "uppercase", fontSize: "10px", letterSpacing: "0.1em", mt: 1 }}
+                                                >
+                                                    Show All Records
+                                                </Button>
+                                            </Box>
+                                        </TableCell>
+                                    </TableRow>
                                 )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                </Card>
+            </Box>
 
             {/* Create Modal */}
-            {createModal.open && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setCreateModal(prev => ({ ...prev, open: false }))}></div>
-                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
-                        <div className="bg-slate-900 text-white p-6">
-                            <h3 className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
-                                <FaCoins className="text-amber-400" /> Record Advance Payment
-                            </h3>
-                            <p className="text-xs text-slate-400 font-bold mt-1 uppercase tracking-widest">Always created against a Proforma Invoice</p>
-                        </div>
-                        <form onSubmit={handleCreateSubmit} className="p-8 space-y-5 bg-slate-50 overflow-y-auto max-h-[70vh]">
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Select Proforma Invoice *</label>
-                                <WorkOrderSelector
-                                    value={createModal.proforma_invoice}
-                                    onChange={(id, selectedWO) => {
-                                        setCreateModal(prev => ({
-                                            ...prev,
-                                            proforma_invoice: id,
-                                            client_name: selectedWO ? selectedWO.client_name : prev.client_name,
-                                            piCurrency: selectedWO?.currency || "INR",
-                                            piConversionRate: selectedWO?.conversion_rate || 1
-                                        }));
+            <Dialog
+                open={createModal.open}
+                onClose={() => setCreateModal(prev => ({ ...prev, open: false }))}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3, overflow: "hidden" } }}
+            >
+                <DialogTitle
+                    sx={{
+                        bgcolor: "#0f172a",
+                        color: "#fff",
+                        display: "flex",
+                        flexDirection: "column",
+                        p: 3,
+                    }}
+                >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                        <CoinsIcon sx={{ color: "#fbbf24" }} />
+                        <Typography variant="h6" sx={{ fontWeight: 900, textTransform: "uppercase", letterSpacing: "-0.02em" }}>
+                            Record Advance Payment
+                        </Typography>
+                    </Box>
+                    <Typography sx={{ fontSize: "0.7rem", color: "#94a3b8", fontWeight: 700, mt: 0.5, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                        Always created against a Proforma Invoice
+                    </Typography>
+                </DialogTitle>
+                <form onSubmit={handleCreateSubmit}>
+                    <DialogContent sx={{ p: 4, bgcolor: "#FAFBFC", display: "flex", flexDirection: "column", gap: 2.5, maxHeight: "70vh", overflowY: "auto" }}>
+                        <Box>
+                            <Typography sx={labelSx}>Select Proforma Invoice *</Typography>
+                            <PISelector
+                                value={createModal.proforma_invoice}
+                                onChange={(id, selectedWO) => {
+                                    setCreateModal(prev => ({
+                                        ...prev,
+                                        proforma_invoice: id,
+                                        client_name: selectedWO ? selectedWO.client_name : prev.client_name,
+                                        piCurrency: selectedWO?.currency || "INR",
+                                        piConversionRate: selectedWO?.conversion_rate || 1
+                                    }));
+                                }}
+                                placeholder="Search PI by Number or Client..."
+                            />
+                        </Box>
+
+                        <Box>
+                            <Typography sx={labelSx}>Client Name *</Typography>
+                            <TextField
+                                fullWidth
+                                required
+                                size="small"
+                                value={createModal.client_name}
+                                onChange={(e) => setCreateModal(prev => ({ ...prev, client_name: e.target.value }))}
+                                placeholder="E.g. ABC International..."
+                                InputProps={{ sx: { borderRadius: 2.5, bgcolor: "#fff", fontWeight: 700, fontSize: "0.875rem" } }}
+                            />
+                        </Box>
+
+                        <Grid container spacing={2}>
+                            <Grid item xs={6}>
+                                <Typography sx={labelSx}>Amount ({createModal.piCurrency}) *</Typography>
+                                <TextField
+                                    fullWidth
+                                    required
+                                    size="small"
+                                    type="number"
+                                    inputProps={{ step: "0.01", min: "0" }}
+                                    value={createModal.amount}
+                                    onChange={(e) => setCreateModal(prev => ({ ...prev, amount: e.target.value }))}
+                                    placeholder="0.00"
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <Typography sx={{ fontWeight: 700, color: "text.secondary" }}>
+                                                    {getCurrencySymbol(createModal.piCurrency)}
+                                                </Typography>
+                                            </InputAdornment>
+                                        ),
+                                        sx: { borderRadius: 2.5, bgcolor: "#fff", fontWeight: 700, fontSize: "0.875rem" },
                                     }}
-                                    placeholder="Search PI by Number or Client..."
                                 />
-                            </div>
-
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Client Name *</label>
-                                <input
-                                    type="text" required
-                                    value={createModal.client_name}
-                                    onChange={(e) => setCreateModal(prev => ({ ...prev, client_name: e.target.value }))}
-                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none transition-all"
-                                    placeholder="E.g. ABC International..."
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Amount ({createModal.piCurrency}) *</label>
-                                    <div className="relative">
-                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
-                                            {getCurrencySymbol(createModal.piCurrency)}
-                                        </div>
-                                        <input
-                                            type="number" step="0.01" min="0" required
-                                            value={createModal.amount}
-                                            onChange={(e) => setCreateModal(prev => ({ ...prev, amount: e.target.value }))}
-                                            className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none transition-all"
-                                            placeholder="0.00"
-                                        />
-                                    </div>
-                                    {createModal.piCurrency !== 'INR' && parseFloat(createModal.piConversionRate) > 0 && createModal.amount && (
-                                        <p className="text-[10px] text-blue-600 font-bold mt-1 italic">
-                                            ≈ ₹{(parseFloat(createModal.amount || 0) * parseFloat(createModal.piConversionRate)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </p>
-                                    )}
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Payment Mode *</label>
-                                    <select
+                                {createModal.piCurrency !== 'INR' && parseFloat(createModal.piConversionRate) > 0 && createModal.amount && (
+                                    <Typography sx={{ fontSize: "10px", color: "#2563eb", fontWeight: 700, mt: 0.5, fontStyle: "italic" }}>
+                                        {"≈"} {"₹"}{(parseFloat(createModal.amount || 0) * parseFloat(createModal.piConversionRate)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </Typography>
+                                )}
+                            </Grid>
+                            <Grid item xs={6}>
+                                <Typography sx={labelSx}>Payment Mode *</Typography>
+                                <FormControl fullWidth size="small">
+                                    <Select
                                         value={createModal.payment_mode}
                                         onChange={(e) => setCreateModal(prev => ({ ...prev, payment_mode: e.target.value }))}
-                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none transition-all"
+                                        sx={{ borderRadius: 2.5, bgcolor: "#fff", fontWeight: 700, fontSize: "0.875rem" }}
                                     >
-                                        <option value="TT">TT</option>
-                                        <option value="CASH">CASH</option>
-                                        <option value="NEFT">NEFT</option>
-                                        <option value="CHEQUE">CHEQUE</option>
-                                        <option value="BANK_TRANSFER">BANK TRANSFER</option>
-                                    </select>
-                                </div>
-                            </div>
+                                        <MenuItem value="TT">TT</MenuItem>
+                                        <MenuItem value="CASH">CASH</MenuItem>
+                                        <MenuItem value="NEFT">NEFT</MenuItem>
+                                        <MenuItem value="CHEQUE">CHEQUE</MenuItem>
+                                        <MenuItem value="BANK_TRANSFER">BANK TRANSFER</MenuItem>
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                        </Grid>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Reference Number</label>
-                                    <input
-                                        type="text"
-                                        value={createModal.reference_number}
-                                        onChange={(e) => setCreateModal(prev => ({ ...prev, reference_number: e.target.value }))}
-                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none transition-all"
-                                        placeholder="E.g. TT-REF-001..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Payment Date *</label>
-                                    <input
-                                        type="date" required
-                                        value={createModal.payment_date}
-                                        onChange={(e) => setCreateModal(prev => ({ ...prev, payment_date: e.target.value }))}
-                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none transition-all"
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Remarks</label>
-                                <textarea
-                                    value={createModal.remarks}
-                                    onChange={(e) => setCreateModal(prev => ({ ...prev, remarks: e.target.value }))}
-                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none transition-all h-20 resize-none"
-                                    placeholder="Remarks or payment terms..."
+                        <Grid container spacing={2}>
+                            <Grid item xs={6}>
+                                <Typography sx={labelSx}>Reference Number</Typography>
+                                <TextField
+                                    fullWidth
+                                    size="small"
+                                    value={createModal.reference_number}
+                                    onChange={(e) => setCreateModal(prev => ({ ...prev, reference_number: e.target.value }))}
+                                    placeholder="E.g. TT-REF-001..."
+                                    InputProps={{ sx: { borderRadius: 2.5, bgcolor: "#fff", fontWeight: 700, fontSize: "0.875rem" } }}
                                 />
-                            </div>
+                            </Grid>
+                            <Grid item xs={6}>
+                                <Typography sx={labelSx}>Payment Date *</Typography>
+                                <TextField
+                                    fullWidth
+                                    required
+                                    size="small"
+                                    type="date"
+                                    value={createModal.payment_date}
+                                    onChange={(e) => setCreateModal(prev => ({ ...prev, payment_date: e.target.value }))}
+                                    InputProps={{ sx: { borderRadius: 2.5, bgcolor: "#fff", fontWeight: 700, fontSize: "0.875rem" } }}
+                                />
+                            </Grid>
+                        </Grid>
 
-                            <div className="flex gap-3 pt-4 border-t border-slate-200">
-                                <button
-                                    type="button"
-                                    onClick={() => setCreateModal(prev => ({ ...prev, open: false }))}
-                                    className="flex-1 py-3 text-xs font-black text-slate-500 uppercase tracking-widest hover:bg-slate-100 rounded-xl transition-all active:scale-95"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={createLoading}
-                                    className="flex-[2] py-3.5 bg-blue-600 text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
-                                >
-                                    {createLoading ? "RECORDING..." : "RECORD ADVANCE"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+                        <Box>
+                            <Typography sx={labelSx}>Remarks</Typography>
+                            <TextField
+                                fullWidth
+                                size="small"
+                                multiline
+                                rows={3}
+                                value={createModal.remarks}
+                                onChange={(e) => setCreateModal(prev => ({ ...prev, remarks: e.target.value }))}
+                                placeholder="Remarks or payment terms..."
+                                InputProps={{ sx: { borderRadius: 2.5, bgcolor: "#fff", fontWeight: 700, fontSize: "0.875rem" } }}
+                            />
+                        </Box>
+                    </DialogContent>
+                    <DialogActions sx={{ p: 3, borderTop: "1px solid #e2e8f0", gap: 1.5 }}>
+                        <Button
+                            onClick={() => setCreateModal(prev => ({ ...prev, open: false }))}
+                            sx={{
+                                flex: 1,
+                                fontWeight: 800,
+                                fontSize: "0.75rem",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.1em",
+                                color: "text.secondary",
+                                borderRadius: 2.5,
+                                py: 1.2,
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            variant="contained"
+                            disabled={createLoading}
+                            startIcon={createLoading ? <CircularProgress size={16} color="inherit" /> : null}
+                            sx={{
+                                flex: 2,
+                                bgcolor: "#1565C0",
+                                fontWeight: 800,
+                                fontSize: "0.75rem",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.1em",
+                                borderRadius: 2.5,
+                                py: 1.4,
+                                boxShadow: "0 4px 14px rgba(21,101,192,0.25)",
+                                "&:hover": { bgcolor: "#1256a3" },
+                            }}
+                        >
+                            {createLoading ? "Recording..." : "Record Advance"}
+                        </Button>
+                    </DialogActions>
+                </form>
+            </Dialog>
 
             {/* Adjust Modal */}
-            {adjustModal.open && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setAdjustModal(prev => ({ ...prev, open: false }))}></div>
-                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="bg-slate-900 text-white p-6">
-                            <h3 className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
-                                <FaExchangeAlt className="text-blue-400" /> Adjust Advance Payment
-                            </h3>
-                            <div className="mt-4 border-t border-white/10 pt-4 text-xs space-y-1.5 text-slate-300">
-                                <p>Advance Number: <span className="font-mono font-bold text-white">{adjustModal.advanceNumber}</span></p>
-                                <p>Client: <span className="font-bold text-white">{adjustModal.clientName}</span></p>
-                                <p>Proforma Invoice: <span className="font-mono font-bold text-white">{adjustModal.piNumber}</span></p>
-                            </div>
-                        </div>
-                        <form onSubmit={handleAdjustSubmit} className="p-8 space-y-6 bg-slate-50">
-                            <div>
-                                <div className="flex justify-between items-center mb-2">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Amount to Adjust ({adjustModal.currency}) *</label>
-                                    <span className="text-[10px] font-bold text-emerald-600 uppercase">Available: {formatCurrency(adjustModal.remaining, adjustModal.currency)}</span>
-                                </div>
-                                <div className="relative">
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-lg">
-                                        {getCurrencySymbol(adjustModal.currency)}
-                                    </div>
-                                    <input
-                                        type="number" step="0.01" min="0.01" max={adjustModal.remaining} required
-                                        value={adjustModal.amount}
-                                        onChange={(e) => setAdjustModal(prev => ({ ...prev, amount: e.target.value }))}
-                                        className="w-full pl-10 pr-4 py-3.5 bg-white border border-slate-200 rounded-xl text-xl font-black focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
-                                        placeholder="0.00"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="flex gap-3 pt-4 border-t border-slate-200">
-                                <button
-                                    type="button"
-                                    onClick={() => setAdjustModal(prev => ({ ...prev, open: false }))}
-                                    className="flex-1 py-3 text-xs font-black text-slate-500 uppercase tracking-widest hover:bg-slate-100 rounded-xl transition-all active:scale-95"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={adjustLoading}
-                                    className="flex-[2] py-3.5 bg-blue-600 text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
-                                >
-                                    {adjustLoading ? "ADJUSTING..." : "CONFIRM ADJUSTMENT"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+            <Dialog
+                open={adjustModal.open}
+                onClose={() => setAdjustModal(prev => ({ ...prev, open: false }))}
+                maxWidth="xs"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3, overflow: "hidden" } }}
+            >
+                <DialogTitle
+                    sx={{
+                        bgcolor: "#0f172a",
+                        color: "#fff",
+                        p: 3,
+                    }}
+                >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                        <SwapIcon sx={{ color: "#60a5fa" }} />
+                        <Typography variant="h6" sx={{ fontWeight: 900, textTransform: "uppercase", letterSpacing: "-0.02em" }}>
+                            Adjust Advance Payment
+                        </Typography>
+                    </Box>
+                    <Box sx={{ mt: 2, borderTop: "1px solid rgba(255,255,255,0.1)", pt: 2, display: "flex", flexDirection: "column", gap: 0.75 }}>
+                        <Typography sx={{ fontSize: "0.75rem", color: "#cbd5e1" }}>
+                            Advance Number: <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 700, color: "#fff" }}>{adjustModal.advanceNumber}</Box>
+                        </Typography>
+                        <Typography sx={{ fontSize: "0.75rem", color: "#cbd5e1" }}>
+                            Client: <Box component="span" sx={{ fontWeight: 700, color: "#fff" }}>{adjustModal.clientName}</Box>
+                        </Typography>
+                        <Typography sx={{ fontSize: "0.75rem", color: "#cbd5e1" }}>
+                            Proforma Invoice: <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 700, color: "#fff" }}>{adjustModal.piNumber}</Box>
+                        </Typography>
+                    </Box>
+                </DialogTitle>
+                <form onSubmit={handleAdjustSubmit}>
+                    <DialogContent sx={{ p: 4, bgcolor: "#FAFBFC", display: "flex", flexDirection: "column", gap: 2.5 }}>
+                        <Box>
+                            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+                                <Typography sx={labelSx}>Amount to Adjust ({adjustModal.currency}) *</Typography>
+                                <Typography sx={{ fontSize: "10px", fontWeight: 700, color: "#059669", textTransform: "uppercase" }}>
+                                    Available: {formatCurrency(adjustModal.remaining, adjustModal.currency)}
+                                </Typography>
+                            </Box>
+                            <TextField
+                                fullWidth
+                                required
+                                type="number"
+                                inputProps={{ step: "0.01", min: "0.01", max: adjustModal.remaining }}
+                                value={adjustModal.amount}
+                                onChange={(e) => setAdjustModal(prev => ({ ...prev, amount: e.target.value }))}
+                                placeholder="0.00"
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <Typography sx={{ fontWeight: 700, color: "text.secondary", fontSize: "1.1rem" }}>
+                                                {getCurrencySymbol(adjustModal.currency)}
+                                            </Typography>
+                                        </InputAdornment>
+                                    ),
+                                    sx: { borderRadius: 2.5, bgcolor: "#fff", fontWeight: 900, fontSize: "1.25rem" },
+                                }}
+                            />
+                        </Box>
+                    </DialogContent>
+                    <DialogActions sx={{ p: 3, borderTop: "1px solid #e2e8f0", gap: 1.5 }}>
+                        <Button
+                            onClick={() => setAdjustModal(prev => ({ ...prev, open: false }))}
+                            sx={{
+                                flex: 1,
+                                fontWeight: 800,
+                                fontSize: "0.75rem",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.1em",
+                                color: "text.secondary",
+                                borderRadius: 2.5,
+                                py: 1.2,
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            variant="contained"
+                            disabled={adjustLoading}
+                            startIcon={adjustLoading ? <CircularProgress size={16} color="inherit" /> : null}
+                            sx={{
+                                flex: 2,
+                                bgcolor: "#1565C0",
+                                fontWeight: 800,
+                                fontSize: "0.75rem",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.1em",
+                                borderRadius: 2.5,
+                                py: 1.4,
+                                boxShadow: "0 4px 14px rgba(21,101,192,0.25)",
+                                "&:hover": { bgcolor: "#1256a3" },
+                            }}
+                        >
+                            {adjustLoading ? "Adjusting..." : "Confirm Adjustment"}
+                        </Button>
+                    </DialogActions>
+                </form>
+            </Dialog>
 
             <AlertToast
                 open={alert.open}

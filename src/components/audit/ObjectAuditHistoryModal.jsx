@@ -1,7 +1,55 @@
 import React, { useEffect, useState } from "react";
-import { FaTimes, FaHistory, FaPlusCircle, FaEdit, FaTimesCircle, FaExchangeAlt, FaChevronDown, FaChevronUp, FaUser, FaClock } from "react-icons/fa";
+import {
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Box,
+    Card,
+    CardContent,
+    Typography,
+    Button,
+    Chip,
+    CircularProgress,
+    Grid,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableRow,
+    Paper,
+} from "@mui/material";
+import {
+    Close as CloseIcon,
+    History as HistoryIcon,
+    Person as PersonIcon,
+    Schedule as ClockIcon,
+    AddCircle as AddCircleIcon,
+    EditOutlined as EditIcon,
+    Delete as TrashAltIcon,
+    SwapHoriz as ExchangeAltIcon,
+    ExpandMore as ChevronDownIcon,
+} from "@mui/icons-material";
+import { styled } from "@mui/material/styles";
 import { getObjectAuditLogs } from "../../services/auditLogService";
 import AlertToast from "../ui/AlertToast";
+
+const StyledDialog = styled(Dialog)(({ theme }) => ({
+    "& .MuiDialog-paper": {
+        borderRadius: "16px",
+        maxWidth: "90vw",
+        width: "100%",
+    },
+}));
+
+const TimelineNodeCard = styled(Card)(({ theme }) => ({
+    border: "1px solid #e5e7eb",
+    "&:hover": {
+        borderColor: "#d1d5db",
+    },
+    transition: "border-color 0.15s",
+    cursor: "pointer",
+}));
 
 export default function ObjectAuditHistoryModal({ open, onClose, modelName, objectId }) {
     const [history, setHistory] = useState([]);
@@ -16,11 +64,9 @@ export default function ObjectAuditHistoryModal({ open, onClose, modelName, obje
             try {
                 const res = await getObjectAuditLogs(modelName, objectId);
                 const data = res.data || res || [];
-                // Sort by timestamp descending to show latest changes first
                 const sorted = [...data].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 setHistory(sorted);
-                
-                // Expand the latest log by default if any
+
                 if (sorted.length > 0) {
                     setExpandedNodeId(sorted[0].id);
                 }
@@ -29,7 +75,7 @@ export default function ObjectAuditHistoryModal({ open, onClose, modelName, obje
                 setToast({
                     open: true,
                     type: "error",
-                    message: "Failed to fetch object audit history from the server"
+                    message: "Failed to fetch object audit history from the server",
                 });
             } finally {
                 setLoading(false);
@@ -41,8 +87,6 @@ export default function ObjectAuditHistoryModal({ open, onClose, modelName, obje
         }
     }, [open, objectId, modelName]);
 
-    if (!open) return null;
-
     const formatTimestamp = (isoString) => {
         if (!isoString) return "-";
         const date = new Date(isoString);
@@ -52,7 +96,7 @@ export default function ObjectAuditHistoryModal({ open, onClose, modelName, obje
             year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
-            second: "2-digit"
+            second: "2-digit",
         });
     };
 
@@ -60,28 +104,32 @@ export default function ObjectAuditHistoryModal({ open, onClose, modelName, obje
         switch (action?.toUpperCase()) {
             case "CREATE":
                 return {
-                    icon: <FaPlusCircle className="text-emerald-500 text-lg" />,
-                    bg: "bg-emerald-50 border-emerald-100",
-                    badge: "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    icon: <AddCircleIcon sx={{ color: "#10b981", fontSize: 20 }} />,
+                    bg: "#ecfdf5",
+                    border: "#d1fae5",
+                    badge: "success",
                 };
             case "UPDATE":
                 return {
-                    icon: <FaEdit className="text-amber-500 text-lg" />,
-                    bg: "bg-amber-50 border-amber-100",
-                    badge: "bg-amber-50 text-amber-700 border-amber-200"
+                    icon: <EditIcon sx={{ color: "#f59e0b", fontSize: 20 }} />,
+                    bg: "#fffbeb",
+                    border: "#fef3c7",
+                    badge: "warning",
                 };
             case "DELETE":
             case "CANCEL":
                 return {
-                    icon: <FaTimesCircle className="text-rose-500 text-lg" />,
-                    bg: "bg-rose-50 border-rose-100",
-                    badge: "bg-rose-50 text-rose-700 border-rose-200"
+                    icon: <TrashAltIcon sx={{ color: "#ef4444", fontSize: 20 }} />,
+                    bg: "#fef2f2",
+                    border: "#fee2e2",
+                    badge: "error",
                 };
             default:
                 return {
-                    icon: <FaHistory className="text-slate-500 text-lg" />,
-                    bg: "bg-slate-50 border-slate-100",
-                    badge: "bg-slate-50 text-slate-700 border-slate-200"
+                    icon: <HistoryIcon sx={{ color: "#6b7280", fontSize: 20 }} />,
+                    bg: "#f9fafb",
+                    border: "#e5e7eb",
+                    badge: "default",
                 };
         }
     };
@@ -97,7 +145,6 @@ export default function ObjectAuditHistoryModal({ open, onClose, modelName, obje
         return String(val);
     };
 
-    // Render node details (diff or initial state)
     const renderNodeDetails = (log) => {
         const changes = log.changes || {};
         const action = log.action?.toUpperCase();
@@ -106,178 +153,300 @@ export default function ObjectAuditHistoryModal({ open, onClose, modelName, obje
             const oldData = changes.old || {};
             const newData = changes.new || {};
             const keys = Array.from(new Set([...Object.keys(oldData), ...Object.keys(newData)])).sort();
-            const changedKeys = keys.filter(k => formatValue(oldData[k]) !== formatValue(newData[k]));
+            const changedKeys = keys.filter((k) => formatValue(oldData[k]) !== formatValue(newData[k]));
 
             if (changedKeys.length === 0) {
-                return <p className="text-xs text-slate-400 italic">No value modifications recorded.</p>;
+                return (
+                    <Typography variant="caption" sx={{ fontStyle: "italic", color: "#9ca3af" }}>
+                        No value modifications recorded.
+                    </Typography>
+                );
             }
 
             return (
-                <div className="space-y-2.5 mt-2">
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, mt: 1 }}>
                     {changedKeys.map((key) => (
-                        <div key={key} className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden text-xs">
-                            <div className="bg-slate-100/50 px-3 py-1.5 border-b border-slate-200 flex justify-between font-bold text-slate-650">
-                                <span>{key.replace(/_/g, " ").toUpperCase()}</span>
-                                <span className="text-[10px] font-mono text-slate-400">{key}</span>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-9 divide-y md:divide-y-0 md:divide-x divide-slate-200 p-3 items-stretch gap-2.5 md:gap-0">
-                                <div className="md:col-span-4 pr-0 md:pr-3">
-                                    <span className="block text-[9px] font-bold text-rose-500 uppercase mb-1">Old Value</span>
-                                    <span className="font-mono text-slate-500 break-all line-through decoration-rose-350/50 block">
+                        <Card key={key} sx={{ border: "1px solid #e5e7eb", backgroundColor: "#f9fafb" }}>
+                            <Box
+                                sx={{
+                                    backgroundColor: "#f3f4f6",
+                                    px: 2,
+                                    py: 1,
+                                    borderBottom: "1px solid #e5e7eb",
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                }}
+                            >
+                                <Typography variant="caption" sx={{ fontWeight: 700, textTransform: "uppercase" }}>
+                                    {key.replace(/_/g, " ").toUpperCase()}
+                                </Typography>
+                                <Typography variant="caption" sx={{ fontFamily: "monospace", color: "#9ca3af" }}>
+                                    {key}
+                                </Typography>
+                            </Box>
+                            <Grid container sx={{ p: 1.5 }}>
+                                <Grid item xs={12} md={5} sx={{ pr: 1 }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 700, color: "#ef4444", textTransform: "uppercase", display: "block", mb: 0.5 }}>
+                                        Old Value
+                                    </Typography>
+                                    <Typography
+                                        sx={{
+                                            fontFamily: "monospace",
+                                            fontSize: "0.75rem",
+                                            color: "#6b7280",
+                                            wordBreak: "break-all",
+                                            textDecoration: "line-through",
+                                            decorationColor: "#fca5a5",
+                                        }}
+                                    >
                                         {formatValue(oldData[key])}
-                                    </span>
-                                </div>
-                                <div className="md:col-span-1 flex items-center justify-center text-slate-350">
-                                    <FaExchangeAlt className="rotate-90 md:rotate-0 text-[10px]" />
-                                </div>
-                                <div className="md:col-span-4 pl-0 md:pl-3 font-semibold">
-                                    <span className="block text-[9px] font-bold text-emerald-600 uppercase mb-1">New Value</span>
-                                    <span className="font-mono text-emerald-700 break-all block">
+                                    </Typography>
+                                </Grid>
+                                <Grid item xs={12} md={2} sx={{ display: "flex", alignItems: "center", justifyContent: "center", color: "#cbd5e1", fontSize: "0.75rem" }}>
+                                    <ExchangeAltIcon sx={{ fontSize: 14, transform: { xs: "rotate(90deg)", md: "rotate(0deg)" } }} />
+                                </Grid>
+                                <Grid item xs={12} md={5} sx={{ pl: 1, fontWeight: 700 }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 700, color: "#059669", textTransform: "uppercase", display: "block", mb: 0.5 }}>
+                                        New Value
+                                    </Typography>
+                                    <Typography
+                                        sx={{
+                                            fontFamily: "monospace",
+                                            fontSize: "0.75rem",
+                                            color: "#047857",
+                                            wordBreak: "break-all",
+                                        }}
+                                    >
                                         {formatValue(newData[key])}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
+                                    </Typography>
+                                </Grid>
+                            </Grid>
+                        </Card>
                     ))}
-                </div>
+                </Box>
             );
         } else {
-            // Flat object changes (CREATE, DELETE, CANCEL, custom action)
-            const keys = Object.keys(changes).filter(k => k !== "old" && k !== "new").sort();
+            const keys = Object.keys(changes)
+                .filter((k) => k !== "old" && k !== "new")
+                .sort();
             if (keys.length === 0) {
-                return <p className="text-xs text-slate-400 italic">No details recorded.</p>;
+                return (
+                    <Typography variant="caption" sx={{ fontStyle: "italic", color: "#9ca3af" }}>
+                        No details recorded.
+                    </Typography>
+                );
             }
 
             return (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                <Grid container spacing={1.5} sx={{ mt: 1 }}>
                     {keys.map((key) => (
-                        <div key={key} className="bg-slate-50 rounded-xl border border-slate-200 p-3 text-xs flex flex-col justify-between">
-                            <div>
-                                <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wide">
+                        <Grid item xs={12} sm={6} key={key}>
+                            <Card sx={{ p: 1.5, border: "1px solid #e5e7eb", backgroundColor: "#f9fafb" }}>
+                                <Typography variant="caption" sx={{ fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: 0.5, display: "block" }}>
                                     {key.replace(/_/g, " ").toUpperCase()}
-                                </span>
-                                <span className="text-[9px] font-mono text-slate-400 block mb-1">{key}</span>
-                            </div>
-                            <span className="font-mono font-bold text-slate-800 break-all p-1.5 rounded-lg bg-white border border-slate-100 block">
-                                {formatValue(changes[key])}
-                            </span>
-                        </div>
+                                </Typography>
+                                <Typography variant="caption" sx={{ fontFamily: "monospace", color: "#9ca3af", display: "block", mb: 0.5 }}>
+                                    {key}
+                                </Typography>
+                                <Paper
+                                    sx={{
+                                        p: 1,
+                                        backgroundColor: "#ffffff",
+                                        border: "1px solid #e5e7eb",
+                                        borderRadius: 1,
+                                        fontFamily: "monospace",
+                                        fontSize: "0.75rem",
+                                        fontWeight: 700,
+                                        color: "#1f2937",
+                                        wordBreak: "break-all",
+                                    }}
+                                >
+                                    {formatValue(changes[key])}
+                                </Paper>
+                            </Card>
+                        </Grid>
                     ))}
-                </div>
+                </Grid>
             );
         }
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-            <div className="relative w-full max-w-3xl bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-                
+        <>
+            <StyledDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
                 {/* HEADER */}
-                <div className="px-6 py-4.5 border-b border-slate-150 flex items-center justify-between bg-white shrink-0 shadow-sm">
-                    <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-lg shadow-sm">
-                            <FaHistory className="text-blue-600" />
-                        </div>
-                        <div>
-                            <h3 className="font-extrabold text-slate-800 text-[17px]">
+                <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                        <Box
+                            sx={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 2,
+                                backgroundColor: "#dbeafe",
+                                border: "1px solid #bfdbfe",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                color: "#2563eb",
+                            }}
+                        >
+                            <HistoryIcon />
+                        </Box>
+                        <Box>
+                            <Typography variant="h6" sx={{ fontWeight: 700 }}>
                                 Object Audit Trail History
-                            </h3>
-                            <span className="text-xs text-slate-500 font-semibold mt-0.5">
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: "#6b7280", fontWeight: 600 }}>
                                 Component: {modelName} | Object Reference: {objectId}
-                            </span>
-                        </div>
-                    </div>
+                            </Typography>
+                        </Box>
+                    </Box>
+                    <Button size="small" onClick={onClose} sx={{ minWidth: "auto" }}>
+                        <CloseIcon />
+                    </Button>
+                </DialogTitle>
 
-                    <button
-                        onClick={onClose}
-                        className="h-8 w-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-750 hover:bg-slate-100 transition duration-150"
-                    >
-                        <FaTimes className="text-base" />
-                    </button>
-                </div>
-
-                {/* TIMELINE CONTENT BODY */}
-                <div className="flex-1 overflow-y-auto p-6 bg-slate-50/30">
+                {/* CONTENT */}
+                <DialogContent dividers>
                     {loading ? (
-                        <div className="flex flex-col items-center justify-center py-20 gap-3">
-                            <div className="w-8 h-8 rounded-full border-4 border-slate-200 border-t-blue-600 animate-spin"></div>
-                            <span className="text-xs font-bold text-slate-400 animate-pulse uppercase tracking-wider">Loading history timeline...</span>
-                        </div>
+                        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", py: 8 }}>
+                            <CircularProgress size={32} sx={{ mb: 1.5 }} />
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                                Loading history timeline...
+                            </Typography>
+                        </Box>
                     ) : history.length === 0 ? (
-                        <div className="text-center py-20 text-slate-400 font-semibold max-w-md mx-auto space-y-2">
-                            <div className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100 mx-auto text-slate-400">
-                                <FaHistory />
-                            </div>
-                            <p>No audit trail recorded</p>
-                            <p className="text-xs text-slate-450 font-medium leading-relaxed">No revisions or data changes have been captured for this specific entry yet.</p>
-                        </div>
+                        <Box sx={{ textAlign: "center", py: 8 }}>
+                            <Box
+                                sx={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: "50%",
+                                    backgroundColor: "#f9fafb",
+                                    border: "1px solid #e5e7eb",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    mx: "auto",
+                                    mb: 2,
+                                    color: "#9ca3af",
+                                }}
+                            >
+                                <HistoryIcon />
+                            </Box>
+                            <Typography sx={{ color: "#6b7280", fontWeight: 600, mb: 1 }}>
+                                No audit trail recorded
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: "#9ca3af", fontWeight: 500 }}>
+                                No revisions or data changes have been captured for this specific entry yet.
+                            </Typography>
+                        </Box>
                     ) : (
-                        <div className="relative border-l-2 border-slate-200 pl-6 ml-4 space-y-6">
+                        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
                             {history.map((log, index) => {
                                 const isExpanded = expandedNodeId === log.id;
                                 const style = getNodeStyle(log.action);
 
                                 return (
-                                    <div key={log.id} className="relative animate-in fade-in duration-200">
-                                        
-                                        {/* Timeline Node dot */}
-                                        <div className={`absolute -left-[35px] top-0.5 h-7 w-7 rounded-full border-2 border-white shadow-sm flex items-center justify-center bg-white z-10`}>
+                                    <Box key={log.id} sx={{ position: "relative", pl: 3 }}>
+                                        {/* Timeline dot */}
+                                        <Box
+                                            sx={{
+                                                position: "absolute",
+                                                left: -12,
+                                                top: 0,
+                                                width: 28,
+                                                height: 28,
+                                                borderRadius: "50%",
+                                                backgroundColor: "#ffffff",
+                                                border: "2px solid #ffffff",
+                                                boxShadow: "0 0 0 2px #e5e7eb",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                zIndex: 10,
+                                            }}
+                                        >
                                             {style.icon}
-                                        </div>
+                                        </Box>
 
-                                        {/* Timeline Node Card */}
-                                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:border-slate-300 transition duration-150">
-                                            
-                                            {/* Summary Header */}
-                                            <div 
-                                                onClick={() => toggleNode(log.id)}
-                                                className="px-4 py-3 bg-white flex items-center justify-between cursor-pointer hover:bg-slate-50/50 select-none transition"
+                                        {/* Timeline card */}
+                                        <TimelineNodeCard
+                                            onClick={() => toggleNode(log.id)}
+                                            sx={{
+                                                backgroundColor: style.bg,
+                                                borderColor: style.border,
+                                            }}
+                                        >
+                                            <Box
+                                                sx={{
+                                                    px: 2,
+                                                    py: 1.5,
+                                                    backgroundColor: "#ffffff",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "space-between",
+                                                    gap: 1,
+                                                    flexWrap: "wrap",
+                                                }}
                                             >
-                                                <div className="flex flex-wrap items-center gap-3">
-                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase ${style.badge}`}>
-                                                        {log.action}
-                                                    </span>
-                                                    
-                                                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                                                        <FaUser className="text-slate-450 text-[10px]" />
-                                                        {log.user_name || "System"}
-                                                    </span>
+                                                <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+                                                    <Chip
+                                                        label={log.action}
+                                                        color={style.badge}
+                                                        size="small"
+                                                        variant="outlined"
+                                                    />
 
-                                                    <span className="text-[11px] text-slate-450 font-medium flex items-center gap-1.5">
-                                                        <FaClock className="text-slate-400 text-[10px]" />
-                                                        {formatTimestamp(log.timestamp)}
-                                                    </span>
-                                                </div>
+                                                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, fontSize: "0.875rem", fontWeight: 700 }}>
+                                                        <PersonIcon sx={{ fontSize: 14, color: "#9ca3af" }} />
+                                                        <span>{log.user_name || "System"}</span>
+                                                    </Box>
 
-                                                <div className="text-slate-400">
-                                                    {isExpanded ? <FaChevronUp /> : <FaChevronDown />}
-                                                </div>
-                                            </div>
+                                                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, fontSize: "0.75rem", color: "#9ca3af", fontWeight: 500 }}>
+                                                        <ClockIcon sx={{ fontSize: 14 }} />
+                                                        <span>{formatTimestamp(log.timestamp)}</span>
+                                                    </Box>
+                                                </Box>
+
+                                                <ChevronDownIcon
+                                                    sx={{
+                                                        fontSize: 20,
+                                                        color: "#9ca3af",
+                                                        transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                                                        transition: "transform 0.2s",
+                                                    }}
+                                                />
+                                            </Box>
 
                                             {/* Details Section */}
                                             {isExpanded && (
-                                                <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/30">
+                                                <Box
+                                                    sx={{
+                                                        px: 2,
+                                                        py: 2,
+                                                        borderTop: "1px solid #f3f4f6",
+                                                        backgroundColor: "#fafbfc",
+                                                    }}
+                                                >
                                                     {renderNodeDetails(log)}
-                                                </div>
+                                                </Box>
                                             )}
-                                        </div>
-                                    </div>
+                                        </TimelineNodeCard>
+                                    </Box>
                                 );
                             })}
-                        </div>
+                        </Box>
                     )}
-                </div>
+                </DialogContent>
 
                 {/* FOOTER */}
-                <div className="px-6 py-3 border-t border-slate-150 bg-slate-50 flex items-center justify-end shrink-0">
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 transition duration-150 text-xs shadow-sm"
-                    >
+                <DialogActions sx={{ p: 1.5, backgroundColor: "#f9fafb" }}>
+                    <Button onClick={onClose} variant="contained" sx={{ backgroundColor: "#1f2937" }}>
                         Close History
-                    </button>
-                </div>
-            </div>
+                    </Button>
+                </DialogActions>
+            </StyledDialog>
 
             {/* ALERT TOAST */}
             <AlertToast
@@ -286,6 +455,6 @@ export default function ObjectAuditHistoryModal({ open, onClose, modelName, obje
                 message={toast.message}
                 onClose={() => setToast({ ...toast, open: false })}
             />
-        </div>
+        </>
     );
 }

@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
+import {
+    Dialog, DialogTitle, DialogContent, DialogActions,
+    Box, Card, CardContent, Table, TableBody, TableCell, TableHead, TableRow,
+    Typography, Button, Alert, CircularProgress, Grid, Chip, TableContainer, Paper
+} from "@mui/material";
+import {
+    Close as CloseIcon, Info as InfoIcon, FilePresent as FileIcon
+} from "@mui/icons-material";
 import { getVendorQuotationById } from "../../services/vendorQuotationService";
-import { HiX, HiInformationCircle } from "react-icons/hi";
-import { FaFileInvoiceDollar, FaUserTie, FaBoxOpen, FaClipboardList, FaCalendarAlt } from "react-icons/fa";
 
 const getCurrencySymbol = (currencyCode) => {
     switch (currencyCode?.toString().toUpperCase()) {
@@ -10,8 +16,6 @@ const getCurrencySymbol = (currencyCode) => {
         case "EUR": return "€";
         case "GBP": return "£";
         case "JPY": return "¥";
-        case "CAD": return "C$";
-        case "AUD": return "A$";
         default: return currencyCode || "₹";
     }
 };
@@ -49,245 +53,256 @@ const VendorQuotationViewModal = ({ open, onClose, quotationId }) => {
         }
     };
 
-    if (!open) return null;
-
     return (
-        <div
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center  justify-center z-100 p-4 animate-in fade-in duration-300"
-            onClick={onClose}
+        <Dialog
+            open={open}
+            onClose={onClose}
+            maxWidth="lg"
+            fullWidth
+            sx={{ zIndex: 9999 }}
+            PaperProps={{ sx: { borderRadius: 3, maxHeight: "95vh", zIndex: 9999 } }}
+            BackdropProps={{ sx: { zIndex: 9998 } }}
         >
-            <div
-                className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300 overflow-visible"
-                onClick={(e) => e.stopPropagation()}
+            {/* HEADER */}
+            <DialogTitle
+                sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    bgcolor: "#1a1a2e",
+                    color: "white",
+                    py: 2.5,
+                    px: 3,
+                    fontWeight: 900,
+                }}
             >
-                {/* Header */}
-                <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-                    <div>
-                        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                            <FaFileInvoiceDollar className="text-blue-600" />
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                    <FileIcon sx={{ color: "#0ea5e9", fontSize: 28 }} />
+                    <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 900, textTransform: "uppercase" }}>
                             Quotation Details
-                        </h2>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="p-2 hover:bg-white rounded-full transition-colors text-slate-400 hover:text-slate-600 shadow-sm border border-transparent hover:border-slate-200"
-                    >
-                        <HiX size={20} />
-                    </button>
-                </div>
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "#cbd5e1", fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                            View quotation summary and items
+                        </Typography>
+                    </Box>
+                </Box>
+                <Button onClick={onClose} sx={{ minWidth: "auto", color: "#cbd5e1", "&:hover": { color: "white" } }}>
+                    <CloseIcon />
+                </Button>
+            </DialogTitle>
 
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                    {error && (
-                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-3">
-                            <HiInformationCircle className="text-xl shrink-0" />
-                            <p className="text-sm font-medium">{error}</p>
-                        </div>
-                    )}
+            {/* CONTENT */}
+            <DialogContent sx={{ bgcolor: "#f1f5f9", p: 3, overflowY: "auto" }}>
+                {error && (
+                    <Alert severity="error" icon={<InfoIcon />} sx={{ borderRadius: 2, mb: 2 }}>
+                        {error}
+                    </Alert>
+                )}
 
-                    {loading ? (
-                        <div className="text-center py-12 text-slate-500 animate-pulse">Loading details...</div>
-                    ) : data ? (
-                        <>
-                            {/* Top Card: Info */}
-                            <div className="bg-white border boundary-slate-200 rounded-xl p-5 shadow-sm space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {/* Column 1: General Info */}
-                                    <div className="space-y-2 text-sm">
-                                        
-                                        <div className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                            <FaFileInvoiceDollar className="text-blue-600" />
-                                            <span>{data.quotation_number || "Draft Quotation"}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                                <FaCalendarAlt className="text-slate-400 w-4" />
-                                                <span className="font-semibold text-slate-500">Quoted Date:</span>{" "}
-                                                <span className="text-slate-800">{data.quotation_date}</span>
-                                            </div>
-                                        <div className="space-y-1.5 text-slate-600">
-                                            <div>
-                                                <span className="font-semibold text-slate-500">Requisition:</span>{" "}
-                                                <span className="font-mono text-slate-800">{data.requisition_number}</span>
-                                            </div>
-                                            
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Currency:</span>
-                                                <span className="bg-blue-600 text-white text-xs font-black px-2 py-0.5 rounded">
-                                                    {data.currency} ({getCurrencySymbol(data.currency)})
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
+                {loading ? (
+                    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", py: 10, gap: 2 }}>
+                        <CircularProgress size={40} sx={{ color: "#0ea5e9" }} />
+                        <Typography sx={{ fontSize: "12px", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
+                            Loading quotation...
+                        </Typography>
+                    </Box>
+                ) : data ? (
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                        {/* General Info Card */}
+                        <Card sx={{ border: "1px solid #e2e8f0", bgcolor: "white" }}>
+                            <CardContent sx={{ p: 2.5 }}>
+                                <Typography sx={{ fontSize: "11px", fontWeight: 900, color: "#64748b", textTransform: "uppercase", mb: 2, pb: 2, borderBottom: "1px solid #e2e8f0" }}>
+                                    Quotation Info
+                                </Typography>
+                                <Grid container spacing={3}>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Typography sx={{ fontSize: "10px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", mb: 0.5 }}>
+                                            Quotation Number
+                                        </Typography>
+                                        <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#1e293b" }}>
+                                            {data.quotation_number || "Draft"}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Typography sx={{ fontSize: "10px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", mb: 0.5 }}>
+                                            Requisition
+                                        </Typography>
+                                        <Typography sx={{ fontSize: "13px", fontFamily: "monospace", fontWeight: 700, color: "#1e293b" }}>
+                                            {data.requisition_number}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Typography sx={{ fontSize: "10px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", mb: 0.5 }}>
+                                            Date
+                                        </Typography>
+                                        <Typography sx={{ fontSize: "13px", fontWeight: 600, color: "#1e293b" }}>
+                                            {data.quotation_date}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Typography sx={{ fontSize: "10px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", mb: 0.5 }}>
+                                            Currency
+                                        </Typography>
+                                        <Chip label={data.currency} size="small" color="primary" sx={{ fontWeight: 900 }} />
+                                    </Grid>
+                                </Grid>
+                            </CardContent>
+                        </Card>
 
-                                    {/* Column 2: Vendor Details */}
-                                    <div className="space-y-1.5 text-sm text-slate-600">
-                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                                            <FaUserTie /> Vendor Details
-                                        </h4>
-                                        <div>
-                                            <span className="font-semibold text-slate-500">Vendor:</span>{" "}
-                                            <span className="font-bold text-slate-800">{data.vendor_name}</span>
-                                        </div>
-                                        <div>
-                                            <span className="font-semibold text-slate-500">Code:</span>{" "}
-                                            <span className="font-mono text-slate-800">{data.vendor_code}</span>
-                                        </div>
-                                        <div className="flex flex-wrap gap-2 pt-1">
-                                            {(data.gst_number || data?.vendor?.gst_number) && (
-                                                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
-                                                    GST: {data.gst_number || data?.vendor?.gst_number}
-                                                </span>
-                                            )}
-                                            {(data.pan_number || data?.vendor?.pan_number) && (
-                                                <span className="text-[10px] font-bold text-slate-700 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
-                                                    PAN: {data.pan_number || data?.vendor?.pan_number}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
+                        {/* Vendor Info Card */}
+                        <Card sx={{ border: "1px solid #e2e8f0", bgcolor: "white" }}>
+                            <CardContent sx={{ p: 2.5 }}>
+                                <Typography sx={{ fontSize: "11px", fontWeight: 900, color: "#64748b", textTransform: "uppercase", mb: 2, pb: 2, borderBottom: "1px solid #e2e8f0" }}>
+                                    Vendor Details
+                                </Typography>
+                                <Grid container spacing={3}>
+                                    <Grid item xs={12} sm={6} md={4}>
+                                        <Typography sx={{ fontSize: "10px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", mb: 0.5 }}>
+                                            Vendor Name
+                                        </Typography>
+                                        <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#1e293b" }}>
+                                            {data.vendor_name}
+                                        </Typography>
+                                        <Typography sx={{ fontSize: "10px", fontFamily: "monospace", color: "#64748b", mt: 0.5 }}>
+                                            {data.vendor_code}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={4}>
+                                        <Typography sx={{ fontSize: "10px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", mb: 0.5 }}>
+                                            GST Number
+                                        </Typography>
+                                        <Typography sx={{ fontSize: "12px", fontFamily: "monospace", fontWeight: 700, color: "#1e293b" }}>
+                                            {data.gst_number || data?.vendor?.gst_number || "N/A"}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={4}>
+                                        <Typography sx={{ fontSize: "10px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", mb: 0.5 }}>
+                                            PAN Number
+                                        </Typography>
+                                        <Typography sx={{ fontSize: "12px", fontFamily: "monospace", fontWeight: 700, color: "#1e293b" }}>
+                                            {data.pan_number || data?.vendor?.pan_number || "N/A"}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={4}>
+                                        <Typography sx={{ fontSize: "10px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", mb: 0.5 }}>
+                                            Bank Name
+                                        </Typography>
+                                        <Typography sx={{ fontSize: "12px", fontWeight: 600, color: "#1e293b" }}>
+                                            {data.bank_name || data?.vendor?.bank_name || "N/A"}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={4}>
+                                        <Typography sx={{ fontSize: "10px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", mb: 0.5 }}>
+                                            Account Name
+                                        </Typography>
+                                        <Typography sx={{ fontSize: "12px", fontWeight: 600, color: "#1e293b" }}>
+                                            {data.account_name || data?.vendor?.account_name || "N/A"}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={4}>
+                                        <Typography sx={{ fontSize: "10px", fontWeight: 700, color: "#64748b", textTransform: "uppercase", mb: 0.5 }}>
+                                            Account Number
+                                        </Typography>
+                                        <Typography sx={{ fontSize: "11px", fontFamily: "monospace", fontWeight: 700, color: "#1e293b" }}>
+                                            {data.bank_account_number || data?.vendor?.bank_account_number || data?.account_number || "N/A"}
+                                        </Typography>
+                                    </Grid>
+                                </Grid>
+                            </CardContent>
+                        </Card>
 
-                                    {/* Column 3: Terms & Reference */}
-                                    <div className="space-y-1.5 text-sm text-slate-600">
-                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                                            <FaClipboardList /> Quotation Terms
-                                        </h4>
-                                        <div>
-                                            <span className="font-semibold text-slate-500">Ref No:</span>{" "}
-                                            <span className="text-slate-800 font-bold">{data.reference_number || "-"}</span>
-                                        </div>
-                                        <div>
-                                            <span className="font-semibold text-slate-500">Valid Until:</span>{" "}
-                                            <span className="text-slate-800">{data.validity_date || "-"}</span>
-                                        </div>
-                                        <div>
-                                            <span className="font-semibold text-slate-500">Payment:</span>{" "}
-                                            <span className="text-slate-800">{data.payment_terms || "-"}</span>
-                                        </div>
-                                        <div>
-                                            <span className="font-semibold text-slate-500">Delivery:</span>{" "}
-                                            <span className="text-slate-800">{data.delivery_terms || "-"}</span>
-                                        </div>
-                                    </div>
-                                </div>
+                        {/* Items Table */}
+                        <Box>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, pb: 2, borderBottom: "1px solid #e2e8f0" }}>
+                                <Typography variant="h6" sx={{ fontWeight: 900, color: "#1e293b", textTransform: "uppercase", fontSize: "14px" }}>
+                                    Quoted Items
+                                </Typography>
+                                <Box sx={{ ml: "auto", bgcolor: "#e0f2fe", color: "#0c4a6e", px: 1.5, py: 0.5, borderRadius: 1, fontSize: "11px", fontWeight: 900 }}>
+                                    {data.items?.length || 0} ITEMS
+                                </Box>
+                            </Box>
+                            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, border: "1px solid #e2e8f0", bgcolor: "white" }}>
+                                <Table size="small">
+                                    <TableHead>
+                                        <TableRow sx={{ bgcolor: "#f1f5f9", borderBottom: "2px solid #e2e8f0" }}>
+                                            <TableCell sx={{ fontWeight: 900, color: "#64748b", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Product</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 900, color: "#64748b", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Qty</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 900, color: "#64748b", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Rate</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 900, color: "#64748b", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Amount</TableCell>
+                                            <TableCell sx={{ fontWeight: 900, color: "#64748b", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Remarks</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody sx={{ "& .MuiTableRow-root:hover": { bgcolor: "#f8fafc" } }}>
+                                        {data.items && data.items.length > 0 ? (
+                                            data.items.map((item, idx) => (
+                                                <TableRow key={item.id || idx} sx={{ borderBottom: "1px solid #e2e8f0", bgcolor: idx % 2 === 0 ? "white" : "#f9fafb" }}>
+                                                    <TableCell sx={{ py: 1.5 }}>
+                                                        <Typography sx={{ fontWeight: 700, color: "#1e293b", fontSize: "13px" }}>{item.product_name}</Typography>
+                                                        <Typography sx={{ fontSize: "10px", fontFamily: "monospace", color: "#64748b" }}>{item.product_code}</Typography>
+                                                    </TableCell>
+                                                    <TableCell align="right" sx={{ fontWeight: 600, color: "#475569", fontSize: "12px" }}>
+                                                        {Number(item.quantity).toFixed(2)} <span style={{ fontSize: "10px", color: "#94a3b8" }}>{item.unit}</span>
+                                                    </TableCell>
+                                                    <TableCell align="right" sx={{ color: "#475569", fontWeight: 700, fontSize: "12px" }}>
+                                                        {parseFloat(item.quoted_rate) === 0 ? "N/A" : `${getCurrencySymbol(data.currency)} ${formatAmount(item.quoted_rate, data.currency)}`}
+                                                    </TableCell>
+                                                    <TableCell align="right" sx={{ fontWeight: 900, color: "#059669", fontSize: "13px" }}>
+                                                        {getCurrencySymbol(data.currency)} {formatAmount(item.amount, data.currency)}
+                                                    </TableCell>
+                                                    <TableCell sx={{ fontSize: "11px", color: "#64748b", fontStyle: "italic", maxWidth: "200px" }}>
+                                                        {item.remarks || "-"}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={5} align="center" sx={{ py: 4, color: "#94a3b8", fontStyle: "italic" }}>
+                                                    No items found in this quotation
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                    {data.items && data.items.length > 0 && (
+                                        <TableHead>
+                                            <TableRow sx={{ bgcolor: "#f1f5f9", borderTop: "2px solid #e2e8f0" }}>
+                                                <TableCell colSpan={3} align="right" sx={{ fontWeight: 900, color: "#64748b", fontSize: "11px", textTransform: "uppercase", py: 1.5 }}>
+                                                    Total Amount:
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 900, color: "#0ea5e9", fontSize: "14px", py: 1.5 }}>
+                                                    {getCurrencySymbol(data.currency)} {formatAmount(data.total_amount, data.currency)}
+                                                </TableCell>
+                                                <TableCell sx={{ py: 1.5 }}></TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                    )}
+                                </Table>
+                            </TableContainer>
+                        </Box>
 
-                                {data.remarks && (
-                                    <div className="pt-3 border-t border-slate-100 text-sm text-slate-600 italic bg-slate-50/50 p-2.5 rounded-lg">
-                                        <span className="font-bold not-italic text-slate-500 mr-1.5">Remarks:</span> {data.remarks}
-                                    </div>
-                                )}
-
-                                {/* Bank Details */}
-                                {(data.bank_name || data?.vendor?.bank_name || data.bank_account_number || data?.vendor?.bank_account_number || data?.account_number || data?.vendor?.account_number) && (
-                                    <div className="mt-4 pt-4 border-t border-slate-100">
-                                        <h4 className="text-sm font-bold text-slate-700 mb-3">
-                                            Bank Details
-                                        </h4>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                                            <div>
-                                                <span className="block text-slate-500 text-xs">Bank Name:</span>
-                                                <span className="font-medium text-slate-800">{data.bank_name || data?.vendor?.bank_name || "-"}</span>
-                                            </div>
-                                            <div>
-                                                <span className="block text-slate-500 text-xs">Account Name:</span>
-                                                <span className="font-medium text-slate-800">{data.account_name || data?.vendor?.account_name || "-"}</span>
-                                            </div>
-                                            <div>
-                                                <span className="block text-slate-500 text-xs">Account Number:</span>
-                                                <span className="font-medium text-slate-800">{data.bank_account_number || data?.vendor?.bank_account_number || data?.account_number || data?.vendor?.account_number || "-"}</span>
-                                            </div>
-                                            <div>
-                                                <span className="block text-slate-500 text-xs">IFSC Code:</span>
-                                                <span className="font-medium text-slate-800">{data.ifsc_code || data?.vendor?.ifsc_code || "-"}</span>
-                                            </div>
-                                            {(data.swift_code || data?.vendor?.swift_code) && (
-                                                <div>
-                                                    <span className="block text-slate-500 text-xs">Swift Code:</span>
-                                                    <span className="font-medium text-slate-800">{data.swift_code || data?.vendor?.swift_code}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Items Table */}
-                            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                                <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex justify-between items-center">
-                                    <h3 className="font-bold text-slate-700 flex items-center gap-2 text-sm uppercase tracking-wide">
-                                        <FaClipboardList /> Quoted Items
-                                    </h3>
-                                    <div className="text-sm font-bold text-slate-900">
-                                        Total Items: {data.total_items}
-                                    </div>
-                                </div>
-
-                                <table className="w-full text-sm text-left">
-                                    <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 text-xs uppercase">
-                                        <tr>
-                                            <th className="px-5 py-3">Product</th>
-                                            <th className="px-5 py-3 text-right">Quantity</th>
-                                            <th className="px-5 py-3 text-right">Rate ({data.currency})</th>
-                                            <th className="px-5 py-3 text-right">Amount ({data.currency})</th>
-                                            <th className="px-5 py-3">Remarks</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {data.items?.map((item) => (
-                                            <tr key={item.id} className="odd:bg-slate-100 even:bg-white hover:bg-slate-200   ">
-                                                <td className="px-5 py-3">
-                                                    <div className="font-medium text-slate-800">{item.product_name}</div>
-                                                    <div className="text-xs text-slate-400 font-mono">{item.product_code}</div>
-                                                </td>
-                                                <td className="px-5 py-3 text-right font-medium text-slate-700">
-                                                    {Number(item.quantity).toFixed(2)} <span className="text-xs text-slate-400">{item.unit}</span>
-                                                </td>
-                                                <td className="px-5 py-3 text-right text-slate-700">
-                                                    {parseFloat(item.quoted_rate) === 0 ? "N/A" : `${getCurrencySymbol(data.currency)} ${formatAmount(item.quoted_rate, data.currency)}`}
-                                                </td>
-                                                <td className="px-5 py-3 text-right font-bold text-slate-900">
-                                                    {getCurrencySymbol(data.currency)} {formatAmount(item.amount, data.currency)}
-                                                </td>
-                                                <td className="px-5 py-3 text-slate-500 italic max-w-xs truncate">
-                                                    {item.remarks || "-"}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                    {/* Table Footer Total */}
-                                    <tfoot className="bg-slate-50 font-bold text-slate-900">
-                                        <tr>
-                                            <td colSpan="3" className="px-5 py-3 text-right text-slate-600 uppercase text-xs tracking-wider border-t border-slate-200">Total Amount</td>
-                                            <td className="px-5 py-3 text-right text-base border-t border-slate-200 font-black">
-                                                {getCurrencySymbol(data.currency)} {formatAmount(data.total_amount, data.currency)}
-                                            </td>
-                                            <td></td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-
-                            {/* Meta Footer */}
-                            <div className="text-xs text-slate-400 text-right">
+                        {/* Meta Footer */}
+                        {data.created_by_name && (
+                            <Typography variant="caption" sx={{ textAlign: "right", color: "#64748b", fontStyle: "italic" }}>
                                 Created by {data.created_by_name} on {new Date(data.created_at).toLocaleString()}
-                            </div>
+                            </Typography>
+                        )}
+                    </Box>
+                ) : (
+                    <Box sx={{ textAlign: "center", py: 6 }}>
+                        <Typography sx={{ color: "#94a3b8", fontStyle: "italic" }}>
+                            No data found
+                        </Typography>
+                    </Box>
+                )}
+            </DialogContent>
 
-                        </>
-                    ) : (
-                        <div className="text-center py-12 text-slate-400">No data found</div>
-                    )}
-                </div>
-
-                {/* Footer Actions */}
-                <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end">
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
-                    >
-                        Close
-                    </button>
-                </div>
-            </div>
-        </div>
+            {/* FOOTER */}
+            <DialogActions sx={{ bgcolor: "#ffffff", px: 3, py: 2, borderTop: "1px solid #e2e8f0" }}>
+                <Button onClick={onClose} variant="contained">
+                    Close
+                </Button>
+            </DialogActions>
+        </Dialog>
     );
 };
 

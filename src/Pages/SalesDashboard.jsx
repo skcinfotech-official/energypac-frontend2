@@ -1,8 +1,32 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { FaUsers, FaFileAlt, FaChartLine, FaArrowUp, FaBox, FaShoppingBag, FaFileInvoiceDollar, FaRegListAlt, FaArrowRight, FaCommentDots, FaMoneyBillWave, FaPercentage } from "react-icons/fa";
-import { getSalesDashboardStats } from "../services/dashboardService";       
+import {
+    ReceiptLong as ReceiptLongIcon,
+    AttachMoney as AttachMoneyIcon,
+    ChatBubble as ChatBubbleIcon,
+    Percent as PercentIcon,
+    Description as DescriptionIcon,
+    ArrowForward as ArrowForwardIcon,
+} from "@mui/icons-material";
+import {
+    Box,
+    Card,
+    CardContent,
+    Typography,
+    CircularProgress,
+    Chip,
+    Avatar,
+    Grid,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Paper,
+} from "@mui/material";
+import { getSalesDashboardStats } from "../services/dashboardService";
 import { useAuth } from "../context/AuthContext";
 
 // Helper to fix API links to Client Routes if needed
@@ -15,7 +39,7 @@ const normalizeLink = (link) => {
     if (newLink.includes("/sales/quotations")) {
         newLink = newLink.replace("/sales/quotations", "/sales/proforma-invoice");
     } else if (newLink.includes("/sales/queries")) {
-        newLink = newLink.replace("/sales/queries", "/sales/client-query");      
+        newLink = newLink.replace("/sales/queries", "/sales/client-query");
     }
 
     // Convert UUID path params to query params if needed
@@ -51,181 +75,581 @@ export default function SalesDashboard() {
 
     if (loading) {
         return (
-            <div className="flex h-screen items-center justify-center">
-                <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-            </div>
+            <Box
+                sx={{
+                    display: "flex",
+                    height: "100vh",
+                    alignItems: "center",
+                    justifyContent: "center",
+                }}
+            >
+                <CircularProgress sx={{ color: "#1565C0" }} />
+            </Box>
         );
     }
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-700">
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
             {/* HEADER */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-2xl font-bold text-slate-800">Sales Overview</h2>
-                    <p className="text-slate-500 text-sm">Welcome back, {user?.full_name || "User"}. Here's your sales performance.</p>
-                </div>
+            <Box
+                sx={{
+                    display: "flex",
+                    flexDirection: { xs: "column", md: "row" },
+                    alignItems: { md: "center" },
+                    justifyContent: "space-between",
+                    gap: 2,
+                }}
+            >
+                <Box>
+                    <Typography
+                        variant="h5"
+                        sx={{ fontWeight: 700, color: "#1e293b" }}
+                    >
+                        Sales Overview
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: "#64748b" }}>
+                        Welcome back, {user?.full_name || "User"}. Here's your
+                        sales performance.
+                    </Typography>
+                </Box>
                 {stats?.generated_at && (
-                    <div className="text-xs text-slate-500 font-medium">     v     
-                        Updated : {new Date(stats.generated_at).toLocaleString()}                     
-                    </div>
+                    <Typography
+                        variant="caption"
+                        sx={{ color: "#64748b", fontWeight: 500 }}
+                    >
+                        Updated :{" "}
+                        {new Date(stats.generated_at).toLocaleString()}
+                    </Typography>
                 )}
-            </div>
+            </Box>
 
             {stats && (
                 <>
                     {/* STATS GRID */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <StatCard
-                            title="Total Quoted Value"
-                            value={stats.values?.total_quoted?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' }) || "₹0"}
-                            change={`${stats.quotations?.this_month || 0} Quotes this month`}
-                            icon={<FaFileInvoiceDollar />}
-                            color="blue"
-                        />
-                        <StatCard
-                            title="Accepted Value"
-                            value={stats.values?.accepted_value?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' }) || "₹0"}
-                            change={`${stats.metrics?.acceptance_rate || 0}% Acceptance Rate`}
-                            icon={<FaMoneyBillWave />}
-                            color="emerald"
-                        />
-                        <StatCard
-                            title="Pending Queries"
-                            value={stats.client_queries?.pending || 0}
-                            change={`Total: ${stats.client_queries?.total || 0}`}
-                            icon={<FaCommentDots />}
-                            color="orange"
-                        />
-                        <StatCard
-                            title="Conversion Rate"
-                            value={`${stats.metrics?.conversion_rate || 0}%`}
-                            change="Quotations to Orders"
-                            icon={<FaPercentage />}
-                            color="indigo"
-                        />
-                    </div>
+                    <Grid container spacing={3}>
+                        <Grid size={{ xs: 12, md: 6, lg: 3 }}>
+                            <StatCard
+                                title="Total Quoted Value"
+                                value={
+                                    stats.values?.total_quoted?.toLocaleString(
+                                        "en-IN",
+                                        {
+                                            style: "currency",
+                                            currency: "INR",
+                                        }
+                                    ) || "₹0"
+                                }
+                                change={`${stats.quotations?.this_month || 0} Quotes this month`}
+                                icon={<ReceiptLongIcon />}
+                                color="blue"
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 6, lg: 3 }}>
+                            <StatCard
+                                title="Accepted Value"
+                                value={
+                                    stats.values?.accepted_value?.toLocaleString(
+                                        "en-IN",
+                                        {
+                                            style: "currency",
+                                            currency: "INR",
+                                        }
+                                    ) || "₹0"
+                                }
+                                change={`${stats.metrics?.acceptance_rate || 0}% Acceptance Rate`}
+                                icon={<AttachMoneyIcon />}
+                                color="emerald"
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 6, lg: 3 }}>
+                            <StatCard
+                                title="Pending Queries"
+                                value={stats.client_queries?.pending || 0}
+                                change={`Total: ${stats.client_queries?.total || 0}`}
+                                icon={<ChatBubbleIcon />}
+                                color="orange"
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 6, lg: 3 }}>
+                            <StatCard
+                                title="Conversion Rate"
+                                value={`${stats.metrics?.conversion_rate || 0}%`}
+                                change="Quotations to Orders"
+                                icon={<PercentIcon />}
+                                color="indigo"
+                            />
+                        </Grid>
+                    </Grid>
 
                     {/* ALERTS SECTION */}
                     {stats.alerts && stats.alerts.length > 0 && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Grid container spacing={2}>
                             {stats.alerts.map((alert, idx) => (
-                                <div key={idx} className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-                                    <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
-                                        <FaFileAlt />
-                                    </div>
-                                    <div className="flex-1">
-                                        <h4 className="font-bold text-amber-900 text-sm">{alert.title}</h4>
-                                        <p className="text-amber-700 text-xs mt-1 mb-2">{alert.message}</p>
-                                        {alert.link && (
-                                            <Link to={normalizeLink(alert.link)} className="inline-flex items-center text-xs font-bold text-amber-600 hover:text-amber-800 hover:underline gap-1">
-                                                {alert.action || "View Details"} <FaArrowRight className="text-[10px]" />
-                                            </Link>
-                                        )}
-                                    </div>
-                                </div>
+                                <Grid size={{ xs: 12, md: 4 }} key={idx}>
+                                    <Box
+                                        sx={{
+                                            bgcolor: "#fffbeb",
+                                            border: "1px solid #fde68a",
+                                            borderRadius: 3,
+                                            p: 2,
+                                            display: "flex",
+                                            alignItems: "flex-start",
+                                            gap: 1.5,
+                                        }}
+                                    >
+                                        <Avatar
+                                            sx={{
+                                                bgcolor: "#fef3c7",
+                                                color: "#d97706",
+                                                width: 36,
+                                                height: 36,
+                                            }}
+                                            variant="rounded"
+                                        >
+                                            <DescriptionIcon
+                                                fontSize="small"
+                                            />
+                                        </Avatar>
+                                        <Box sx={{ flex: 1 }}>
+                                            <Typography
+                                                variant="body2"
+                                                sx={{
+                                                    fontWeight: 700,
+                                                    color: "#78350f",
+                                                }}
+                                            >
+                                                {alert.title}
+                                            </Typography>
+                                            <Typography
+                                                variant="caption"
+                                                sx={{
+                                                    color: "#b45309",
+                                                    display: "block",
+                                                    mt: 0.5,
+                                                    mb: 1,
+                                                }}
+                                            >
+                                                {alert.message}
+                                            </Typography>
+                                            {alert.link && (
+                                                <Typography
+                                                    component={Link}
+                                                    to={normalizeLink(
+                                                        alert.link
+                                                    )}
+                                                    variant="caption"
+                                                    sx={{
+                                                        fontWeight: 700,
+                                                        color: "#d97706",
+                                                        textDecoration: "none",
+                                                        display: "inline-flex",
+                                                        alignItems: "center",
+                                                        gap: 0.5,
+                                                        "&:hover": {
+                                                            color: "#92400e",
+                                                            textDecoration:
+                                                                "underline",
+                                                        },
+                                                    }}
+                                                >
+                                                    {alert.action ||
+                                                        "View Details"}
+                                                    <ArrowForwardIcon
+                                                        sx={{ fontSize: 12 }}
+                                                    />
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                    </Box>
+                                </Grid>
                             ))}
-                        </div>
+                        </Grid>
                     )}
 
-
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <Grid container spacing={4}>
                         {/* RECENT ACTIVITY SECTION */}
-                        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                                <h3 className="font-bold text-slate-800">Recent Activity</h3>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="odd:bg-slate-100 even:bg-white hover:bg-slate-200  text-slate-500 uppercase text-[10px] font-bold tracking-widest ">
-                                            <th className="px-6 py-4">Title</th>
-                                            <th className="px-6 py-4">Description</th>
-                                            <th className="px-6 py-4">Type</th>
-                                            <th className="px-6 py-4 text-right">Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {stats.recent_activities?.slice(0, 10).map((activity, index) => (
+                        <Grid size={{ xs: 12, lg: 8 }}>
+                            <Card
+                                sx={{
+                                    borderRadius: 4,
+                                    border: "1px solid #e2e8f0",
+                                    boxShadow:
+                                        "0 1px 3px 0 rgb(0 0 0 / 0.1)",
+                                    overflow: "hidden",
+                                }}
+                            >
+                                <Box
+                                    sx={{
+                                        px: 3,
+                                        py: 2,
+                                        borderBottom: "1px solid #f1f5f9",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "space-between",
+                                    }}
+                                >
+                                    <Typography
+                                        variant="subtitle1"
+                                        sx={{
+                                            fontWeight: 700,
+                                            color: "#1e293b",
+                                        }}
+                                    >
+                                        Recent Activity
+                                    </Typography>
+                                </Box>
+                                <TableContainer>
+                                    <Table>
+                                        <TableHead>
                                             <TableRow
-                                                key={index}
-                                                activity={activity}
-                                            />
-                                        ))}
-                                        {(!stats.recent_activities || stats.recent_activities.length === 0) && (
-                                            <tr><td colSpan="4" className="p-6 text-center text-slate-400">No recent activity</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                                                sx={{
+                                                    bgcolor: "#f1f5f9",
+                                                }}
+                                            >
+                                                <TableCell
+                                                    sx={{
+                                                        color: "#64748b",
+                                                        textTransform:
+                                                            "uppercase",
+                                                        fontSize: 10,
+                                                        fontWeight: 700,
+                                                        letterSpacing:
+                                                            "0.1em",
+                                                        py: 1.5,
+                                                    }}
+                                                >
+                                                    Title
+                                                </TableCell>
+                                                <TableCell
+                                                    sx={{
+                                                        color: "#64748b",
+                                                        textTransform:
+                                                            "uppercase",
+                                                        fontSize: 10,
+                                                        fontWeight: 700,
+                                                        letterSpacing:
+                                                            "0.1em",
+                                                        py: 1.5,
+                                                    }}
+                                                >
+                                                    Description
+                                                </TableCell>
+                                                <TableCell
+                                                    sx={{
+                                                        color: "#64748b",
+                                                        textTransform:
+                                                            "uppercase",
+                                                        fontSize: 10,
+                                                        fontWeight: 700,
+                                                        letterSpacing:
+                                                            "0.1em",
+                                                        py: 1.5,
+                                                    }}
+                                                >
+                                                    Type
+                                                </TableCell>
+                                                <TableCell
+                                                    align="right"
+                                                    sx={{
+                                                        color: "#64748b",
+                                                        textTransform:
+                                                            "uppercase",
+                                                        fontSize: 10,
+                                                        fontWeight: 700,
+                                                        letterSpacing:
+                                                            "0.1em",
+                                                        py: 1.5,
+                                                    }}
+                                                >
+                                                    Date
+                                                </TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {stats.recent_activities
+                                                ?.slice(0, 10)
+                                                .map((activity, index) => (
+                                                    <ActivityRow
+                                                        key={index}
+                                                        activity={activity}
+                                                        index={index}
+                                                    />
+                                                ))}
+                                            {(!stats.recent_activities ||
+                                                stats.recent_activities
+                                                    .length === 0) && (
+                                                <TableRow>
+                                                    <TableCell
+                                                        colSpan={4}
+                                                        sx={{
+                                                            textAlign:
+                                                                "center",
+                                                            py: 3,
+                                                            color: "#94a3b8",
+                                                        }}
+                                                    >
+                                                        No recent activity
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            </Card>
+                        </Grid>
 
-                        <div className="space-y-6">
-                            {/* TOP CLIENTS */}
-                            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-fit">
-                                <div className="px-6 py-4 border-b border-slate-100">
-                                    <h3 className="font-bold text-slate-800">Top Clients (This Month)</h3>
-                                </div>
-                                <div className="p-0">
-                                    {stats.top_clients_this_month?.slice(0, 5).map((client, idx) => (
-                                        <div key={idx} className="px-6 py-3 border-b border-slate-50 hover:bg-slate-50 flex items-center justify-between gap-4 last:border-0">
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-bold text-slate-800 text-sm truncate">{client.client_name}</p>
-                                                <p className="text-xs text-slate-500 font-mono">{client.quotations_count} Quotes</p>
-                                            </div>
-                                            <div className="text-right shrink-0">
-                                                <p className="font-bold text-blue-600 text-sm">
-                                                    {(client.total_value || 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
-                                                </p>
-                                                <p className="text-[10px] text-slate-400">Total Value</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {(!stats.top_clients_this_month || stats.top_clients_this_month.length === 0) && (
-                                        <div className="p-4 text-center text-slate-400 text-xs">No top clients data available.</div>
+                        {/* TOP CLIENTS */}
+                        <Grid size={{ xs: 12, lg: 4 }}>
+                            <Card
+                                sx={{
+                                    borderRadius: 4,
+                                    border: "1px solid #e2e8f0",
+                                    boxShadow:
+                                        "0 1px 3px 0 rgb(0 0 0 / 0.1)",
+                                    overflow: "hidden",
+                                }}
+                            >
+                                <Box
+                                    sx={{
+                                        px: 3,
+                                        py: 2,
+                                        borderBottom: "1px solid #f1f5f9",
+                                    }}
+                                >
+                                    <Typography
+                                        variant="subtitle1"
+                                        sx={{
+                                            fontWeight: 700,
+                                            color: "#1e293b",
+                                        }}
+                                    >
+                                        Top Clients (This Month)
+                                    </Typography>
+                                </Box>
+                                <Box>
+                                    {stats.top_clients_this_month
+                                        ?.slice(0, 5)
+                                        .map((client, idx) => (
+                                            <Box
+                                                key={idx}
+                                                sx={{
+                                                    px: 3,
+                                                    py: 1.5,
+                                                    borderBottom:
+                                                        idx <
+                                                        Math.min(
+                                                            (stats
+                                                                .top_clients_this_month
+                                                                ?.length ||
+                                                                0) - 1,
+                                                            4
+                                                        )
+                                                            ? "1px solid #f8fafc"
+                                                            : "none",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent:
+                                                        "space-between",
+                                                    gap: 2,
+                                                    "&:hover": {
+                                                        bgcolor: "#f8fafc",
+                                                    },
+                                                }}
+                                            >
+                                                <Box
+                                                    sx={{
+                                                        flex: 1,
+                                                        minWidth: 0,
+                                                    }}
+                                                >
+                                                    <Typography
+                                                        variant="body2"
+                                                        sx={{
+                                                            fontWeight: 700,
+                                                            color: "#1e293b",
+                                                            overflow:
+                                                                "hidden",
+                                                            textOverflow:
+                                                                "ellipsis",
+                                                            whiteSpace:
+                                                                "nowrap",
+                                                        }}
+                                                    >
+                                                        {client.client_name}
+                                                    </Typography>
+                                                    <Typography
+                                                        variant="caption"
+                                                        sx={{
+                                                            color: "#64748b",
+                                                            fontFamily:
+                                                                "monospace",
+                                                        }}
+                                                    >
+                                                        {
+                                                            client.quotations_count
+                                                        }{" "}
+                                                        Quotes
+                                                    </Typography>
+                                                </Box>
+                                                <Box
+                                                    sx={{
+                                                        textAlign: "right",
+                                                        flexShrink: 0,
+                                                    }}
+                                                >
+                                                    <Typography
+                                                        variant="body2"
+                                                        sx={{
+                                                            fontWeight: 700,
+                                                            color: "#1565C0",
+                                                        }}
+                                                    >
+                                                        {(
+                                                            client.total_value ||
+                                                            0
+                                                        ).toLocaleString(
+                                                            "en-IN",
+                                                            {
+                                                                style: "currency",
+                                                                currency:
+                                                                    "INR",
+                                                            }
+                                                        )}
+                                                    </Typography>
+                                                    <Typography
+                                                        sx={{
+                                                            fontSize: 10,
+                                                            color: "#94a3b8",
+                                                        }}
+                                                    >
+                                                        Total Value
+                                                    </Typography>
+                                                </Box>
+                                            </Box>
+                                        ))}
+                                    {(!stats.top_clients_this_month ||
+                                        stats.top_clients_this_month
+                                            .length === 0) && (
+                                        <Box
+                                            sx={{
+                                                p: 2,
+                                                textAlign: "center",
+                                            }}
+                                        >
+                                            <Typography
+                                                variant="caption"
+                                                sx={{ color: "#94a3b8" }}
+                                            >
+                                                No top clients data
+                                                available.
+                                            </Typography>
+                                        </Box>
                                     )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                                </Box>
+                            </Card>
+                        </Grid>
+                    </Grid>
                 </>
             )}
-        </div>
+        </Box>
     );
 }
 
 function StatCard({ title, value, change, icon, color }) {
-    const colors = {
-        blue: "bg-blue-100 text-blue-600",
-        indigo: "bg-indigo-100 text-indigo-600",
-        emerald: "bg-emerald-100 text-emerald-600",
-        orange: "bg-orange-100 text-orange-600",
+    const colorMap = {
+        blue: { bg: "#dbeafe", text: "#1565C0" },
+        indigo: { bg: "#e0e7ff", text: "#4338ca" },
+        emerald: { bg: "#d1fae5", text: "#059669" },
+        orange: { bg: "#ffedd5", text: "#ea580c" },
     };
 
+    const c = colorMap[color] || colorMap.blue;
+
     return (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-200 group">
-            <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-xl ${colors[color]} group-hover:scale-110 transition-transform duration-200`}>
+        <Card
+            sx={{
+                p: 3,
+                borderRadius: 4,
+                border: "1px solid #e2e8f0",
+                boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1)",
+                transition: "box-shadow 0.2s",
+                "&:hover": {
+                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                },
+                "&:hover .stat-avatar": {
+                    transform: "scale(1.1)",
+                },
+            }}
+        >
+            <Box
+                sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    mb: 2,
+                }}
+            >
+                <Avatar
+                    className="stat-avatar"
+                    variant="rounded"
+                    sx={{
+                        bgcolor: c.bg,
+                        color: c.text,
+                        width: 44,
+                        height: 44,
+                        borderRadius: 3,
+                        transition: "transform 0.2s",
+                    }}
+                >
                     {icon}
-                </div>
-                <span className={`text-xs font-bold px-2 py-1 rounded-full bg-slate-100 text-slate-600`}>
-                    {change}
-                </span>
-            </div>
-            <div>
-                <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">{title}</p>
-                <h4 className="text-xl sm:text-2xl font-bold text-slate-900 break-all leading-tight">{value}</h4>
-            </div>
-        </div>
+                </Avatar>
+                <Chip
+                    label={change}
+                    size="small"
+                    sx={{
+                        bgcolor: "#f1f5f9",
+                        color: "#475569",
+                        fontWeight: 700,
+                        fontSize: 11,
+                        height: 24,
+                    }}
+                />
+            </Box>
+            <Box>
+                <Typography
+                    variant="caption"
+                    sx={{
+                        color: "#64748b",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                    }}
+                >
+                    {title}
+                </Typography>
+                <Typography
+                    variant="h5"
+                    sx={{
+                        fontWeight: 700,
+                        color: "#0f172a",
+                        wordBreak: "break-all",
+                        lineHeight: 1.2,
+                        mt: 0.5,
+                    }}
+                >
+                    {value}
+                </Typography>
+            </Box>
+        </Card>
     );
 }
 
-function TableRow({ activity }) {
+function ActivityRow({ activity, index }) {
     const typeColors = {
-        quotation: "bg-blue-100 text-blue-700",
-        client_query: "bg-amber-100 text-amber-700",
-        order: "bg-emerald-100 text-emerald-700",
-        other: "bg-slate-100 text-slate-700"
+        quotation: { bg: "#dbeafe", text: "#1d4ed8" },
+        client_query: { bg: "#fef3c7", text: "#b45309" },
+        order: { bg: "#d1fae5", text: "#059669" },
+        other: { bg: "#f1f5f9", text: "#475569" },
     };
 
     const typeLabel = {
@@ -234,32 +658,70 @@ function TableRow({ activity }) {
         order: "Order",
     };
 
-    const typeKey = activity.type || 'other';
+    const typeKey = activity.type || "other";
+    const colors = typeColors[typeKey] || typeColors.other;
 
     return (
-        <tr className="odd:bg-slate-100 even:bg-white hover:bg-slate-200   transition-colors">
-            <td className="px-6 py-4">
-                <span className="font-semibold text-slate-700 text-sm tracking-wide block">
+        <TableRow
+            sx={{
+                bgcolor: index % 2 === 0 ? "#f8fafc" : "#ffffff",
+                "&:hover": { bgcolor: "#e2e8f0" },
+                transition: "background-color 0.15s",
+            }}
+        >
+            <TableCell sx={{ py: 2 }}>
+                <Typography
+                    variant="body2"
+                    sx={{
+                        fontWeight: 600,
+                        color: "#334155",
+                        letterSpacing: "0.025em",
+                    }}
+                >
                     {activity.link ? (
-                        <Link to={normalizeLink(activity.link)} className="hover:text-blue-600 hover:underline">
+                        <Typography
+                            component={Link}
+                            to={normalizeLink(activity.link)}
+                            sx={{
+                                color: "inherit",
+                                textDecoration: "none",
+                                "&:hover": {
+                                    color: "#1565C0",
+                                    textDecoration: "underline",
+                                },
+                            }}
+                        >
                             {activity.title}
-                        </Link>
+                        </Typography>
                     ) : (
                         activity.title
                     )}
-                </span>
-            </td>
-            <td className="px-6 py-4">
-                <span className="text-slate-500 text-xs">{activity.description}</span>
-            </td>
-            <td className="px-6 py-4">
-                <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase ${typeColors[typeKey] || typeColors.other}`}>
-                    {typeLabel[typeKey] || typeKey}
-                </span>
-            </td>
-            <td className="px-6 py-4 text-right text-slate-500 text-xs">
-                {new Date(activity.date).toLocaleDateString()}
-            </td>
-        </tr>
+                </Typography>
+            </TableCell>
+            <TableCell sx={{ py: 2 }}>
+                <Typography variant="caption" sx={{ color: "#64748b" }}>
+                    {activity.description}
+                </Typography>
+            </TableCell>
+            <TableCell sx={{ py: 2 }}>
+                <Chip
+                    label={typeLabel[typeKey] || typeKey}
+                    size="small"
+                    sx={{
+                        bgcolor: colors.bg,
+                        color: colors.text,
+                        fontWeight: 700,
+                        fontSize: 10,
+                        textTransform: "uppercase",
+                        height: 22,
+                    }}
+                />
+            </TableCell>
+            <TableCell align="right" sx={{ py: 2 }}>
+                <Typography variant="caption" sx={{ color: "#64748b" }}>
+                    {new Date(activity.date).toLocaleDateString()}
+                </Typography>
+            </TableCell>
+        </TableRow>
     );
 }

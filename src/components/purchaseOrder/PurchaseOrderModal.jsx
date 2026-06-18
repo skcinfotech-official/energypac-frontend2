@@ -1,12 +1,33 @@
 import { useRef, useEffect, useState } from "react";
-import { FaTimes, FaFileInvoice, FaBuilding, FaBoxOpen, FaCheckCircle, FaFileAlt, FaPrint, FaEdit, FaHistory, FaExclamationTriangle } from "react-icons/fa";
+import {
+    Dialog, DialogTitle, DialogContent, DialogActions,
+    Box, Typography, Button, IconButton, Grid, Chip,
+    Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableFooter,
+    Checkbox, Paper, CircularProgress, Divider
+} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import DescriptionIcon from "@mui/icons-material/Description";
+import BusinessIcon from "@mui/icons-material/Business";
+import InventoryIcon from "@mui/icons-material/Inventory";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ArticleIcon from "@mui/icons-material/Article";
+import PrintIcon from "@mui/icons-material/Print";
+import EditIcon from "@mui/icons-material/Edit";
+import HistoryIcon from "@mui/icons-material/History";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import VerifyIcon from "@mui/icons-material/CheckCircle";
 import { pdf } from "@react-pdf/renderer";
 import PurchaseOrderPDF from "./PurchaseOrderPDF";
 import { markItemPurchased, getPurchaseOrder, lockPurchaseOrder } from "../../services/purchaseOrderService";
 import AlertToast from "../ui/AlertToast";
+import { apiGet } from "../../services/api";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import EditPurchaseOrderModal from "./EditPurchaseOrderModal";
 import ObjectAuditHistoryModal from "../audit/ObjectAuditHistoryModal";
+import POVerificationModal from "./POVerificationModal";
+
+const PRIMARY = "#1565C0";
+const BG = "#FAFBFC";
 
 const getCurrencySymbol = (currencyCode) => {
     switch (currencyCode?.toString().toUpperCase()) {
@@ -27,35 +48,51 @@ const formatAmount = (amount, currencyCode) => {
     return num.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
+const labelSx = {
+    fontSize: "10px",
+    fontWeight: 700,
+    color: "grey.500",
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+    display: "block",
+    mb: 0.5,
+};
+
+const valueSx = {
+    fontSize: "0.875rem",
+    fontWeight: 700,
+    color: "grey.800",
+};
+
+const sectionBoxSx = {
+    bgcolor: "#F8FAFC",
+    p: 2.5,
+    borderRadius: 2,
+    border: "1px solid",
+    borderColor: "grey.200",
+};
+
 const PurchaseOrderModal = ({ open, onClose, data, onShowAlert, onUpdate }) => {
-    const modalRef = useRef(null);
-
-    // Close on escape key
-    useEffect(() => {
-        const handleKeyDown = (e) => {
-            if (e.key === "Escape") onClose();
-        };
-
-        if (open) {
-            document.addEventListener("keydown", handleKeyDown);
-        }
-        return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [open, onClose]);
-
     const [items, setItems] = useState([]);
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [processing, setProcessing] = useState(false);
-    const [generatingPdf, setGeneratingPdf] = useState(false);      
+    const [generatingPdf, setGeneratingPdf] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
     const [auditHistoryOpen, setAuditHistoryOpen] = useState(false);
-
-    // UI State
     const [showConfirm, setShowConfirm] = useState(false);
     const [showPaymentWarning, setShowPaymentWarning] = useState(false);
-
-    // ... imports
-
     const [poData, setPoData] = useState(null);
+    const [verificationModalOpen, setVerificationModalOpen] = useState(false);
+    const [verifStatus, setVerifStatus] = useState(null);
+
+    const loadVerifStatus = async (id) => {
+        try {
+            const vs = await apiGet(`/api/po/${id}/verification-status/`);
+            setVerifStatus(vs?.current_status || 'NOT_STARTED');
+        } catch {
+            setVerifStatus('NOT_STARTED');
+        }
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -66,10 +103,10 @@ const PurchaseOrderModal = ({ open, onClose, data, onShowAlert, onUpdate }) => {
                     setItems(fullData.items || []);
                 } catch (error) {
                     console.error("Failed to fetch PO details", error);
-                    // Fallback
                     setPoData(data);
                     setItems(data.items || []);
                 }
+                loadVerifStatus(data.id);
             } else if (data) {
                 setPoData(data);
                 setItems(data.items || []);
@@ -81,12 +118,8 @@ const PurchaseOrderModal = ({ open, onClose, data, onShowAlert, onUpdate }) => {
         }
     }, [data, open]);
 
-    // Close on click outside
-    const handleBackdropClick = (e) => {
-        if (modalRef.current && !modalRef.current.contains(e.target)) {
-            onClose();
-        }
-    };
+    // Verification already in-flight or done -> hide the "Send for Verification" button.
+    const verificationLocked = verifStatus === 'PENDING' || verifStatus === 'VERIFIED';
 
     const handleCheckboxChange = (itemId) => {
         const newSelected = new Set(selectedIds);
@@ -121,15 +154,11 @@ const PurchaseOrderModal = ({ open, onClose, data, onShowAlert, onUpdate }) => {
         let successCount = 0;
         let errors = 0;
 
-        // Clone items to update locally
         const newItems = [...items];
 
         for (const itemId of selectedIds) {
             try {
-                // Call API for each selected item as per previous instruction context
                 await markItemPurchased(data.id, itemId);
-
-                // Update local status
                 const idx = newItems.findIndex(i => i.id === itemId);
                 if (idx !== -1) {
                     newItems[idx] = { ...newItems[idx], is_received: true };
@@ -142,7 +171,7 @@ const PurchaseOrderModal = ({ open, onClose, data, onShowAlert, onUpdate }) => {
         }
 
         setItems(newItems);
-        setSelectedIds(new Set()); // Clear selections
+        setSelectedIds(new Set());
         setProcessing(false);
         setShowConfirm(false);
 
@@ -159,7 +188,15 @@ const PurchaseOrderModal = ({ open, onClose, data, onShowAlert, onUpdate }) => {
         if (!poData) return;
         setGeneratingPdf(true);
         try {
-            const blob = await pdf(<PurchaseOrderPDF details={poData} />).toBlob();
+            // Fetch verification data (with signatures) if available
+            let verificationData = null;
+            try {
+                verificationData = await apiGet(`/api/po/${poData.id}/verification-status/`);
+            } catch (err) {
+                // Verification data not available, continue without it
+            }
+
+            const blob = await pdf(<PurchaseOrderPDF details={poData} verification={verificationData} />).toBlob();
             const url = URL.createObjectURL(blob);
             window.open(url, '_blank');
         } catch (error) {
@@ -173,9 +210,7 @@ const PurchaseOrderModal = ({ open, onClose, data, onShowAlert, onUpdate }) => {
     const handleEditPO = async () => {
         setProcessing(true);
         try {
-            // Attempt to acquire edit lock
             await lockPurchaseOrder(poData.id);
-            // Lock succeeded! Open edit modal
             setEditOpen(true);
         } catch (err) {
             console.error("Failed to lock PO in detail modal:", err);
@@ -191,7 +226,7 @@ const PurchaseOrderModal = ({ open, onClose, data, onShowAlert, onUpdate }) => {
             const fullData = await getPurchaseOrder(poData.id);
             setPoData(fullData);
             setItems(fullData.items || []);
-            if (onUpdate) onUpdate(); // Update list in parent too
+            if (onUpdate) onUpdate();
         } catch (err) {
             console.error("Failed to refresh PO data:", err);
         }
@@ -199,428 +234,523 @@ const PurchaseOrderModal = ({ open, onClose, data, onShowAlert, onUpdate }) => {
 
     if (!open || !data) return null;
 
+    const getStatusChip = () => {
+        const allReceived = items && items.length > 0 && items.every(i => i.is_received);
+        const someReceived = items && items.length > 0 && items.some(i => i.is_received);
+
+        let displayStatus = poData?.status;
+        if (allReceived) displayStatus = 'COMPLETED';
+        else if (someReceived) displayStatus = 'PARTIALLY_RECEIVED';
+
+        let statusText = displayStatus;
+        if (displayStatus === 'PENDING') statusText = 'Pending';
+        else if (displayStatus === 'PARTIALLY_RECEIVED') statusText = 'Partially Received';
+        else if (displayStatus === 'COMPLETED') statusText = 'Completed';
+        else if (displayStatus === 'CANCELLED') statusText = 'Cancelled';
+
+        const colorMap = {
+            'PENDING': { bg: '#FEF9C3', color: '#854D0E', border: '#FDE68A' },
+            'PARTIALLY_RECEIVED': { bg: '#DBEAFE', color: '#1E40AF', border: '#BFDBFE' },
+            'COMPLETED': { bg: '#D1FAE5', color: '#065F46', border: '#A7F3D0' },
+            'CANCELLED': { bg: '#FEE2E2', color: '#991B1B', border: '#FECACA' },
+        };
+        const colors = colorMap[displayStatus] || { bg: '#F1F5F9', color: '#334155', border: '#E2E8F0' };
+
+        return (
+            <Chip
+                label={statusText}
+                size="small"
+                sx={{
+                    bgcolor: colors.bg,
+                    color: colors.color,
+                    border: `1px solid ${colors.border}`,
+                    fontWeight: 600,
+                    fontSize: "0.75rem",
+                }}
+            />
+        );
+    };
+
     return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity"
-            onClick={handleBackdropClick}
-        >
-            <div
-                ref={modalRef}
-                className="bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        <>
+            <Dialog
+                open={open}
+                onClose={onClose}
+                maxWidth="lg"
+                fullWidth
+                PaperProps={{
+                    sx: {
+                        borderRadius: 3,
+                        maxHeight: "90vh",
+                        overflow: "hidden",
+                    }
+                }}
             >
                 {/* HEADER */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-blue-100 text-blue-600 p-2 rounded-lg">
-                            <FaFileInvoice className="text-xl" />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-slate-800">Purchase Order Details</h3>
-                            <p className="text-sm text-slate-500 font-mono">{poData?.po_number || data?.po_number}</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-3">
+                <DialogTitle
+                    sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        bgcolor: "#F8FAFC",
+                        borderBottom: "1px solid",
+                        borderColor: "grey.200",
+                        py: 2,
+                        px: 3,
+                    }}
+                >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                        <Box sx={{ bgcolor: "#DBEAFE", color: PRIMARY, p: 1, borderRadius: 2, display: "flex" }}>
+                            <DescriptionIcon />
+                        </Box>
+                        <Box>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "grey.800" }}>
+                                Purchase Order Details
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: "grey.500", fontFamily: "monospace" }}>
+                                {poData?.po_number || data?.po_number}
+                            </Typography>
+                        </Box>
+                    </Box>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
                         {poData && poData.status !== 'CANCELLED' && (
-                            <button
-                                onClick={handleEditPO}
-                                disabled={processing}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 shadow-sm"
-                                title="Edit Purchase Order"
-                            >
-                                <FaEdit size={14} />
-                                <span>Edit PO</span>
-                            </button>
+                            <>
+                                {verificationLocked ? (
+                                    <Chip
+                                        icon={<VerifyIcon sx={{ fontSize: 16 }} />}
+                                        label={verifStatus === 'VERIFIED' ? 'Verified' : 'Sent for Verification'}
+                                        size="small"
+                                        color={verifStatus === 'VERIFIED' ? 'success' : 'warning'}
+                                        variant="outlined"
+                                        sx={{ fontWeight: 600 }}
+                                    />
+                                ) : (
+                                    <Button
+                                        onClick={() => setVerificationModalOpen(true)}
+                                        disabled={processing}
+                                        variant="outlined"
+                                        size="small"
+                                        startIcon={<VerifyIcon />}
+                                        sx={{
+                                            color: "#10b981",
+                                            borderColor: "#10b981",
+                                            "&:hover": { bgcolor: "#D1FAE5" },
+                                            textTransform: "none",
+                                            fontWeight: 600,
+                                            fontSize: "0.8rem",
+                                            borderRadius: 2,
+                                        }}
+                                    >
+                                        Send for Verification
+                                    </Button>
+                                )}
+                                <Button
+                                    onClick={handleEditPO}
+                                    disabled={processing}
+                                    variant="contained"
+                                    size="small"
+                                    startIcon={<EditIcon />}
+                                    sx={{
+                                        bgcolor: PRIMARY,
+                                        "&:hover": { bgcolor: "#0D47A1" },
+                                        textTransform: "none",
+                                        fontWeight: 600,
+                                        fontSize: "0.8rem",
+                                        borderRadius: 2,
+                                    }}
+                                >
+                                    Edit PO
+                                </Button>
+                            </>
                         )}
-                        <button
+                        <IconButton
                             onClick={handlePrint}
                             disabled={generatingPdf}
-                            className="flex items-center gap-2 px-3 py-1.5 text-slate-700 hover:text-blue-500 text-sm font-semibold rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50"
                             title="Print / Preview PDF"
+                            sx={{ color: "grey.600", "&:hover": { color: PRIMARY, bgcolor: "#E3F2FD" } }}
                         >
-                            {generatingPdf ? <div className="animate-spin h-4 w-4 border-2 border-blue-600 rounded-full border-t-transparent"></div> : <FaPrint size={20} />}
-
-                        </button>
-                        <button
+                            {generatingPdf ? <CircularProgress size={20} /> : <PrintIcon />}
+                        </IconButton>
+                        <IconButton
                             onClick={onClose}
-                            className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                            sx={{ color: "grey.500", "&:hover": { color: "error.main", bgcolor: "#FEE2E2" } }}
                         >
-                            <FaTimes />
-                        </button>
-                    </div>
-                </div>
+                            <CloseIcon />
+                        </IconButton>
+                    </Box>
+                </DialogTitle>
 
                 {/* SCROLLABLE CONTENT */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
-
-                    {(!poData) ? (
-                        <div className="text-center py-12 text-slate-500 animate-pulse">Loading details...</div>
+                <DialogContent sx={{ bgcolor: BG, p: 3 }}>
+                    {!poData ? (
+                        <Box sx={{ textAlign: "center", py: 6, color: "grey.500" }}>
+                            <CircularProgress size={32} sx={{ mb: 2 }} />
+                            <Typography>Loading details...</Typography>
+                        </Box>
                     ) : (
-                        <>
+                        <Box sx={{ display: "flex", flexDirection: "column", gap: 3, mt: 1 }}>
                             {/* GENERAL DETAILS */}
-                            <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
-                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2">
-                                    General PO & Project Info
-                                </h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                    <div className="space-y-1">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Project Name</span>
-                                        <span className="text-sm font-bold text-slate-800">{poData.project_name || "N/A"}</span>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Subject</span>
-                                        <span className="text-sm font-semibold text-slate-800">{poData.subject || "N/A"}</span>
-                                    </div>
-                                    <div className="space-y-1 flex flex-col justify-between">
-                                        <div>
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Requisition Number</span>
-                                            <span className="text-sm font-bold text-slate-800">{poData.requisition_number}</span>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">PO Date</span>
-                                        <span className="text-sm font-semibold text-slate-800">{poData.po_date ? new Date(poData.po_date).toLocaleDateString() : "N/A"}</span>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Created By</span>
-                                        <span className="text-sm font-semibold text-slate-800">{poData.created_by_name || "N/A"}</span>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Revision</span>
-                                        <span className="text-sm font-semibold text-slate-800">
-                                            {poData.revision_number} {poData.is_revised && <span className="text-xs text-red-500 font-bold ml-1">(Revised)</span>}
-                                        </span>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Currency</span>
-                                        <span className="text-sm font-mono font-bold text-blue-600">{poData.currency || "INR"}</span>
-                                    </div>
+                            <Box sx={sectionBoxSx}>
+                                <Typography sx={{ ...labelSx, borderBottom: "1px solid", borderColor: "grey.200", pb: 1, mb: 2 }}>
+                                    General PO &amp; Project Info
+                                </Typography>
+                                <Grid container spacing={3}>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Typography sx={labelSx}>Project Name</Typography>
+                                        <Typography sx={valueSx}>{poData.project_name || "N/A"}</Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Typography sx={labelSx}>Subject</Typography>
+                                        <Typography sx={{ ...valueSx, fontWeight: 600 }}>{poData.subject || "N/A"}</Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Typography sx={labelSx}>Requisition Number</Typography>
+                                        <Typography sx={valueSx}>{poData.requisition_number}</Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Typography sx={labelSx}>PO Date</Typography>
+                                        <Typography sx={{ ...valueSx, fontWeight: 600 }}>{poData.po_date ? new Date(poData.po_date).toLocaleDateString() : "N/A"}</Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Typography sx={labelSx}>Created By</Typography>
+                                        <Typography sx={{ ...valueSx, fontWeight: 600 }}>{poData.created_by_name || "N/A"}</Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Typography sx={labelSx}>Revision</Typography>
+                                        <Typography sx={{ ...valueSx, fontWeight: 600 }}>
+                                            {poData.revision_number} {poData.is_revised && <Typography component="span" sx={{ fontSize: "0.75rem", color: "error.main", fontWeight: 700, ml: 0.5 }}>(Revised)</Typography>}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Typography sx={labelSx}>Currency</Typography>
+                                        <Typography sx={{ ...valueSx, fontFamily: "monospace", color: PRIMARY }}>{poData.currency || "INR"}</Typography>
+                                    </Grid>
                                     {poData.conversion_rate && poData.currency !== 'INR' && (
-                                        <div className="space-y-1">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Conversion Rate</span>
-                                            <span className="text-sm font-mono font-bold text-emerald-600">1 {poData.currency} = ₹{parseFloat(poData.conversion_rate)}</span>
-                                        </div>
+                                        <Grid item xs={12} sm={6} md={3}>
+                                            <Typography sx={labelSx}>Conversion Rate</Typography>
+                                            <Typography sx={{ ...valueSx, fontFamily: "monospace", color: "#059669" }}>1 {poData.currency} = {"₹"}{parseFloat(poData.conversion_rate)}</Typography>
+                                        </Grid>
                                     )}
                                     {poData.payment_due_date && (
-                                        <div className="space-y-1">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Payment Due Date</span>
-                                            <span className="text-sm font-semibold text-slate-800">{new Date(poData.payment_due_date).toLocaleDateString()}</span>
-                                        </div>
+                                        <Grid item xs={12} sm={6} md={3}>
+                                            <Typography sx={labelSx}>Payment Due Date</Typography>
+                                            <Typography sx={{ ...valueSx, fontWeight: 600 }}>{new Date(poData.payment_due_date).toLocaleDateString()}</Typography>
+                                        </Grid>
                                     )}
-                                    <div className="space-y-1">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Status</span>
-                                        {(() => {
-                                            const allReceived = items && items.length > 0 && items.every(i => i.is_received);
-                                            const someReceived = items && items.length > 0 && items.some(i => i.is_received);
-
-                                            let displayStatus = poData.status;
-                                            if (allReceived) {
-                                                displayStatus = 'COMPLETED';
-                                            } else if (someReceived) {
-                                                displayStatus = 'PARTIALLY_RECEIVED';
-                                            }
-
-                                            let statusText = displayStatus;
-                                            if (displayStatus === 'PENDING') statusText = 'Pending';
-                                            else if (displayStatus === 'PARTIALLY_RECEIVED') statusText = 'Partially Received';
-                                            else if (displayStatus === 'COMPLETED') statusText = 'Completed';
-                                            else if (displayStatus === 'CANCELLED') statusText = 'Cancelled';
-
-                                            return (
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                                                    ${displayStatus === 'PENDING' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
-                                                        displayStatus === 'PARTIALLY_RECEIVED' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                                                            displayStatus === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
-                                                                displayStatus === 'CANCELLED' ? 'bg-red-100 text-red-800 border border-red-200' :
-                                                                    'bg-slate-100 text-slate-800 border border-slate-200'}`}>
-                                                    {statusText}
-                                                </span>
-                                            );
-                                        })()}
-                                    </div>
-                                </div>
-                            </div>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Typography sx={labelSx}>Status</Typography>
+                                        {getStatusChip()}
+                                    </Grid>
+                                </Grid>
+                            </Box>
 
                             {/* VENDOR & BANK DETAILS */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Vendor Details Card */}
-                                <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-2">
-                                        <FaBuilding className="text-blue-500" /> Vendor Information
-                                    </h4>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="space-y-1 col-span-2">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Vendor Name</span>
-                                            <span className="text-sm font-bold text-slate-800">{poData.vendor_name}</span>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Phone</span>
-                                            <span className="text-sm font-semibold text-slate-700">{poData.vendor_details?.phone || "N/A"}</span>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Email</span>
-                                            <span className="text-sm font-semibold text-slate-700">{poData.vendor_details?.email || "N/A"}</span>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">GST Number</span>
-                                            <span className="text-sm font-mono font-bold text-slate-800">{poData.vendor_details?.gst_number || poData.vendor_details?.gst_no || "N/A"}</span>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">PAN Number</span>
-                                            <span className="text-sm font-mono font-bold text-slate-800">{poData.vendor_details?.pan_number || poData.vendor_details?.pan_no || "N/A"}</span>
-                                        </div>
-                                        <div className="space-y-1 col-span-2">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Address</span>
-                                            <span className="text-sm text-slate-600 font-medium leading-relaxed">{poData.vendor_details?.address || "N/A"}</span>
-                                        </div>
-                                    </div>
-                                </div>
+                            <Grid container spacing={3}>
+                                <Grid item xs={12} md={6}>
+                                    <Box sx={sectionBoxSx}>
+                                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, borderBottom: "1px solid", borderColor: "grey.200", pb: 1, mb: 2 }}>
+                                            <BusinessIcon sx={{ color: PRIMARY, fontSize: 18 }} />
+                                            <Typography sx={{ ...labelSx, mb: 0 }}>Vendor Information</Typography>
+                                        </Box>
+                                        <Grid container spacing={2}>
+                                            <Grid item xs={12}>
+                                                <Typography sx={labelSx}>Vendor Name</Typography>
+                                                <Typography sx={valueSx}>{poData.vendor_name}</Typography>
+                                            </Grid>
+                                            <Grid item xs={6}>
+                                                <Typography sx={labelSx}>Phone</Typography>
+                                                <Typography sx={{ ...valueSx, fontWeight: 600, color: "grey.700" }}>{poData.vendor_details?.phone || "N/A"}</Typography>
+                                            </Grid>
+                                            <Grid item xs={6}>
+                                                <Typography sx={labelSx}>Email</Typography>
+                                                <Typography sx={{ ...valueSx, fontWeight: 600, color: "grey.700" }}>{poData.vendor_details?.email || "N/A"}</Typography>
+                                            </Grid>
+                                            <Grid item xs={6}>
+                                                <Typography sx={labelSx}>GST Number</Typography>
+                                                <Typography sx={{ ...valueSx, fontFamily: "monospace" }}>{poData.vendor_details?.gst_number || poData.vendor_details?.gst_no || "N/A"}</Typography>
+                                            </Grid>
+                                            <Grid item xs={6}>
+                                                <Typography sx={labelSx}>PAN Number</Typography>
+                                                <Typography sx={{ ...valueSx, fontFamily: "monospace" }}>{poData.vendor_details?.pan_number || poData.vendor_details?.pan_no || "N/A"}</Typography>
+                                            </Grid>
+                                            <Grid item xs={12}>
+                                                <Typography sx={labelSx}>Address</Typography>
+                                                <Typography sx={{ fontSize: "0.875rem", color: "grey.600", fontWeight: 500, lineHeight: 1.6 }}>{poData.vendor_details?.address || "N/A"}</Typography>
+                                            </Grid>
+                                        </Grid>
+                                    </Box>
+                                </Grid>
 
-                                {/* Bank Details Card */}
-                                <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-2">
-                                        🏦 Bank Account Details
-                                    </h4>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="space-y-1 col-span-2">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Account Name</span>
-                                            <span className="text-sm font-bold text-slate-800">{poData.vendor_details?.account_name || "N/A"}</span>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Bank Name</span>
-                                            <span className="text-sm font-semibold text-slate-700">{poData.vendor_details?.bank_name || "N/A"}</span>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Account Number</span>
-                                            <span className="text-sm font-mono font-bold text-slate-800">{poData.vendor_details?.bank_account_number || "N/A"}</span>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">IFSC Code</span>
-                                            <span className="text-sm font-mono font-bold text-slate-800">{poData.vendor_details?.ifsc_code || "N/A"}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                                <Grid item xs={12} md={6}>
+                                    <Box sx={sectionBoxSx}>
+                                        <Typography sx={{ ...labelSx, borderBottom: "1px solid", borderColor: "grey.200", pb: 1, mb: 2 }}>
+                                            {"🏦"} Bank Account Details
+                                        </Typography>
+                                        <Grid container spacing={2}>
+                                            <Grid item xs={12}>
+                                                <Typography sx={labelSx}>Account Name</Typography>
+                                                <Typography sx={valueSx}>{poData.vendor_details?.account_name || "N/A"}</Typography>
+                                            </Grid>
+                                            <Grid item xs={6}>
+                                                <Typography sx={labelSx}>Bank Name</Typography>
+                                                <Typography sx={{ ...valueSx, fontWeight: 600, color: "grey.700" }}>{poData.vendor_details?.bank_name || "N/A"}</Typography>
+                                            </Grid>
+                                            <Grid item xs={6}>
+                                                <Typography sx={labelSx}>Account Number</Typography>
+                                                <Typography sx={{ ...valueSx, fontFamily: "monospace" }}>{poData.vendor_details?.bank_account_number || "N/A"}</Typography>
+                                            </Grid>
+                                            <Grid item xs={6}>
+                                                <Typography sx={labelSx}>IFSC Code</Typography>
+                                                <Typography sx={{ ...valueSx, fontFamily: "monospace" }}>{poData.vendor_details?.ifsc_code || "N/A"}</Typography>
+                                            </Grid>
+                                        </Grid>
+                                    </Box>
+                                </Grid>
+                            </Grid>
 
                             {/* BILLING & SHIPPING DETAILS */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-2">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Bill To</span>
-                                    <p className="text-sm text-slate-700 font-medium whitespace-pre-line leading-relaxed">{poData.bill_to || "N/A"}</p>
-                                </div>
-                                <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-2">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Ship To</span>
-                                    <p className="text-sm text-slate-700 font-medium whitespace-pre-line leading-relaxed">{poData.ship_to || "N/A"}</p>
-                                </div>
-                            </div>
+                            <Grid container spacing={3}>
+                                <Grid item xs={12} md={6}>
+                                    <Box sx={sectionBoxSx}>
+                                        <Typography sx={labelSx}>Bill To</Typography>
+                                        <Typography sx={{ fontSize: "0.875rem", color: "grey.700", fontWeight: 500, whiteSpace: "pre-line", lineHeight: 1.6 }}>{poData.bill_to || "N/A"}</Typography>
+                                    </Box>
+                                </Grid>
+                                <Grid item xs={12} md={6}>
+                                    <Box sx={sectionBoxSx}>
+                                        <Typography sx={labelSx}>Ship To</Typography>
+                                        <Typography sx={{ fontSize: "0.875rem", color: "grey.700", fontWeight: 500, whiteSpace: "pre-line", lineHeight: 1.6 }}>{poData.ship_to || "N/A"}</Typography>
+                                    </Box>
+                                </Grid>
+                            </Grid>
 
                             {/* ITEMS TABLE */}
-                            <div>
-                                <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3">Order Items ({poData.items?.length || 0})</h4>
-                                <div className="border border-slate-200 rounded-lg overflow-hidden">
-                                    <table className="w-full text-left text-sm">
-                                        <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
-                                            <tr>
-                                                <th className="px-4 py-3">Product</th>
-                                                <th className="px-4 py-3 text-right">HSN</th>
-                                                <th className="px-4 py-3 text-right">Quantity</th>
-                                                <th className="px-4 py-3 text-right">Rate</th>
-                                                <th className="px-4 py-3 text-right">Amount</th>
-                                                <th className="px-4 py-3 text-right">Purchase</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {items.map((item) => (
-                                                <tr key={item.id} className="odd:bg-slate-100 even:bg-white hover:bg-slate-200   ">
-                                                    <td className="px-4 py-3">
-                                                        <div className="font-medium text-slate-800">{item.product_name}</div>
-                                                        <div className="text-xs text-slate-500 font-mono">{item.product_code}</div>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right">
-                                                        {item.hsn_code}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right">
-                                                        {Number(item.quantity).toFixed(2)} <span className="text-xs text-slate-400">{item.unit}</span>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right font-mono">
+                            <Box>
+                                <Typography sx={{ fontSize: "0.875rem", fontWeight: 700, color: "grey.700", textTransform: "uppercase", letterSpacing: "0.05em", mb: 1.5 }}>
+                                    Order Items ({poData.items?.length || 0})
+                                </Typography>
+                                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                                    <Table size="small">
+                                        <TableHead>
+                                            <TableRow sx={{ bgcolor: "#F8FAFC" }}>
+                                                <TableCell sx={{ fontWeight: 600, color: "grey.600" }}>Product</TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 600, color: "grey.600" }}>HSN</TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 600, color: "grey.600" }}>Quantity</TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 600, color: "grey.600" }}>Rate</TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 600, color: "grey.600" }}>Amount</TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 600, color: "grey.600" }}>Purchase</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {items.map((item, index) => (
+                                                <TableRow key={item.id} sx={{ bgcolor: index % 2 === 0 ? "#F8FAFC" : "white", "&:hover": { bgcolor: "#F1F5F9" } }}>
+                                                    <TableCell>
+                                                        <Typography sx={{ fontWeight: 500, color: "grey.800", fontSize: "0.875rem" }}>{item.product_name}</Typography>
+                                                        <Typography sx={{ fontSize: "0.75rem", color: "grey.500", fontFamily: "monospace" }}>{item.product_code}</Typography>
+                                                    </TableCell>
+                                                    <TableCell align="right">{item.hsn_code}</TableCell>
+                                                    <TableCell align="right">
+                                                        {Number(item.quantity).toFixed(2)} <Typography component="span" sx={{ fontSize: "0.75rem", color: "grey.400" }}>{item.unit}</Typography>
+                                                    </TableCell>
+                                                    <TableCell align="right" sx={{ fontFamily: "monospace" }}>
                                                         {getCurrencySymbol(poData.currency)} {formatAmount(item.rate, poData.currency)}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right font-bold text-slate-800 font-mono">
+                                                    </TableCell>
+                                                    <TableCell align="right" sx={{ fontWeight: 700, color: "grey.800", fontFamily: "monospace" }}>
                                                         {getCurrencySymbol(poData.currency)} {formatAmount(item.amount, poData.currency)}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right">
-                                                        <input
-                                                            type="checkbox"
+                                                    </TableCell>
+                                                    <TableCell align="right">
+                                                        <Checkbox
+                                                            size="small"
                                                             disabled={item.is_received || processing}
                                                             checked={item.is_received || selectedIds.has(item.id)}
                                                             onChange={() => !item.is_received && handleCheckboxChange(item.id)}
-                                                            className={`w-4 h-4 rounded focus:ring-blue-500 cursor-pointer 
-                                                         ${item.is_received
-                                                                    ? "text-green-600 bg-green-100 border-green-300 cursor-not-allowed"
-                                                                    : "text-blue-600 bg-gray-100 border-gray-300"}`}
+                                                            sx={{
+                                                                color: item.is_received ? "success.main" : "grey.400",
+                                                                "&.Mui-checked": {
+                                                                    color: item.is_received ? "success.main" : PRIMARY,
+                                                                },
+                                                            }}
                                                         />
-                                                    </td>
-                                                </tr>
+                                                    </TableCell>
+                                                </TableRow>
                                             ))}
                                             {(!poData.items || poData.items.length === 0) && (
-                                                <tr>
-                                                    <td colSpan="6" className="px-4 py-8 text-center text-slate-400">
+                                                <TableRow>
+                                                    <TableCell colSpan={6} align="center" sx={{ py: 4, color: "grey.400" }}>
                                                         No items in this order.
-                                                    </td>
-                                                </tr>
+                                                    </TableCell>
+                                                </TableRow>
                                             )}
-                                        </tbody>
-                                        <tfoot className="bg-slate-50 border-t border-slate-200 font-bold text-slate-800">
-                                            <tr>
-                                                <td colSpan="4" className="px-4 py-2 text-right text-slate-500 font-medium">Items Total (Sub Total):</td>
-                                                <td className="px-4 py-2 text-right font-mono">
+                                        </TableBody>
+                                        <TableFooter>
+                                            <TableRow sx={{ bgcolor: "#F8FAFC" }}>
+                                                <TableCell colSpan={4} align="right" sx={{ color: "grey.500", fontWeight: 500 }}>Items Total (Sub Total):</TableCell>
+                                                <TableCell align="right" sx={{ fontFamily: "monospace", fontWeight: 700 }}>
                                                     {getCurrencySymbol(poData.currency)} {formatAmount(poData.items_total || (parseFloat(poData.total_amount) - parseFloat(poData.freight_cost || 0)), poData.currency)}
-                                                </td>
-                                                <td></td>
-                                            </tr>
+                                                </TableCell>
+                                                <TableCell />
+                                            </TableRow>
                                             {parseFloat(poData.discount_amount) > 0 && (
-                                                <tr>
-                                                    <td colSpan="4" className="px-4 py-2 text-right text-red-500 font-medium">Discount:</td>
-                                                    <td className="px-4 py-2 text-right text-red-600 font-mono">
+                                                <TableRow>
+                                                    <TableCell colSpan={4} align="right" sx={{ color: "error.main", fontWeight: 500 }}>Discount:</TableCell>
+                                                    <TableCell align="right" sx={{ color: "error.dark", fontFamily: "monospace", fontWeight: 700 }}>
                                                         -{getCurrencySymbol(poData.currency)} {formatAmount(poData.discount_amount, poData.currency)}
-                                                    </td>
-                                                    <td></td>
-                                                </tr>
+                                                    </TableCell>
+                                                    <TableCell />
+                                                </TableRow>
                                             )}
                                             {parseFloat(poData.cgst_amount) > 0 && (
-                                                <tr>
-                                                    <td colSpan="4" className="px-4 py-2 text-right text-slate-500 font-medium">CGST ({poData.cgst_percentage}%):</td>
-                                                    <td className="px-4 py-2 text-right font-mono">
+                                                <TableRow>
+                                                    <TableCell colSpan={4} align="right" sx={{ color: "grey.500", fontWeight: 500 }}>CGST ({poData.cgst_percentage}%):</TableCell>
+                                                    <TableCell align="right" sx={{ fontFamily: "monospace", fontWeight: 700 }}>
                                                         {getCurrencySymbol(poData.currency)} {formatAmount(poData.cgst_amount, poData.currency)}
-                                                    </td>
-                                                    <td></td>
-                                                </tr>
+                                                    </TableCell>
+                                                    <TableCell />
+                                                </TableRow>
                                             )}
                                             {parseFloat(poData.sgst_amount) > 0 && (
-                                                <tr>
-                                                    <td colSpan="4" className="px-4 py-2 text-right text-slate-500 font-medium">SGST ({poData.sgst_percentage}%):</td>
-                                                    <td className="px-4 py-2 text-right font-mono">
+                                                <TableRow>
+                                                    <TableCell colSpan={4} align="right" sx={{ color: "grey.500", fontWeight: 500 }}>SGST ({poData.sgst_percentage}%):</TableCell>
+                                                    <TableCell align="right" sx={{ fontFamily: "monospace", fontWeight: 700 }}>
                                                         {getCurrencySymbol(poData.currency)} {formatAmount(poData.sgst_amount, poData.currency)}
-                                                    </td>
-                                                    <td></td>
-                                                </tr>
+                                                    </TableCell>
+                                                    <TableCell />
+                                                </TableRow>
                                             )}
                                             {parseFloat(poData.igst_amount) > 0 && (
-                                                <tr>
-                                                    <td colSpan="4" className="px-4 py-2 text-right text-slate-500 font-medium">IGST ({poData.igst_percentage}%):</td>
-                                                    <td className="px-4 py-2 text-right font-mono">
+                                                <TableRow>
+                                                    <TableCell colSpan={4} align="right" sx={{ color: "grey.500", fontWeight: 500 }}>IGST ({poData.igst_percentage}%):</TableCell>
+                                                    <TableCell align="right" sx={{ fontFamily: "monospace", fontWeight: 700 }}>
                                                         {getCurrencySymbol(poData.currency)} {formatAmount(poData.igst_amount, poData.currency)}
-                                                    </td>
-                                                    <td></td>
-                                                </tr>
+                                                    </TableCell>
+                                                    <TableCell />
+                                                </TableRow>
                                             )}
                                             {parseFloat(poData.freight_cost) > 0 && (
-                                                <tr>
-                                                    <td colSpan="4" className="px-4 py-2 text-right text-slate-500 font-medium">Freight Cost:</td>
-                                                    <td className="px-4 py-2 text-right font-mono">
+                                                <TableRow>
+                                                    <TableCell colSpan={4} align="right" sx={{ color: "grey.500", fontWeight: 500 }}>Freight Cost:</TableCell>
+                                                    <TableCell align="right" sx={{ fontFamily: "monospace", fontWeight: 700 }}>
                                                         {getCurrencySymbol(poData.currency)} {formatAmount(poData.freight_cost, poData.currency)}
-                                                    </td>
-                                                    <td></td>
-                                                </tr>
+                                                    </TableCell>
+                                                    <TableCell />
+                                                </TableRow>
                                             )}
-                                            <tr className="bg-slate-100/50">
-                                                <td colSpan="4" className="px-4 py-3 text-right text-base">Total Amount:</td>
-                                                <td className="px-4 py-3 text-right text-lg text-blue-600 font-mono">
+                                            <TableRow sx={{ bgcolor: "#F1F5F9" }}>
+                                                <TableCell colSpan={4} align="right" sx={{ fontWeight: 700, fontSize: "1rem" }}>Total Amount:</TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 700, fontSize: "1.1rem", color: PRIMARY, fontFamily: "monospace" }}>
                                                     {getCurrencySymbol(poData.currency)} {formatAmount(poData.total_amount, poData.currency)}
-                                                </td>
-                                                <td></td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-                            </div>
+                                                </TableCell>
+                                                <TableCell />
+                                            </TableRow>
+                                        </TableFooter>
+                                    </Table>
+                                </TableContainer>
+                            </Box>
 
                             {/* REMARKS & CANCELLATION DETAILS */}
                             {(poData.remarks || poData.status === 'CANCELLED') && (
-                                <div className="grid grid-cols-1 gap-6">
+                                <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
                                     {poData.remarks && (
-                                        <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-2">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Remarks</span>
-                                            <p className="text-sm text-slate-700 font-medium whitespace-pre-line leading-relaxed">{poData.remarks}</p>
-                                        </div>
+                                        <Box sx={sectionBoxSx}>
+                                            <Typography sx={labelSx}>Remarks</Typography>
+                                            <Typography sx={{ fontSize: "0.875rem", color: "grey.700", fontWeight: 500, whiteSpace: "pre-line", lineHeight: 1.6 }}>{poData.remarks}</Typography>
+                                        </Box>
                                     )}
                                     {poData.status === 'CANCELLED' && (
-                                        <div className="bg-red-50 p-5 rounded-xl border border-red-200 space-y-2">
-                                            <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider block">Cancellation Info</span>
-                                            <p className="text-sm text-red-800 font-bold leading-relaxed">Reason: {poData.cancellation_reason || "No reason specified"}</p>
-                                            <p className="text-[10px] text-red-500 font-medium">Cancelled By: {poData.cancelled_by_name || "System"} on {poData.cancelled_at ? new Date(poData.cancelled_at).toLocaleDateString() : "N/A"}</p>
-                                        </div>
+                                        <Box sx={{ ...sectionBoxSx, bgcolor: "#FEF2F2", borderColor: "#FECACA" }}>
+                                            <Typography sx={{ ...labelSx, color: "error.main" }}>Cancellation Info</Typography>
+                                            <Typography sx={{ fontSize: "0.875rem", color: "#991B1B", fontWeight: 700, lineHeight: 1.6 }}>Reason: {poData.cancellation_reason || "No reason specified"}</Typography>
+                                            <Typography sx={{ fontSize: "10px", color: "error.main", fontWeight: 500 }}>Cancelled By: {poData.cancelled_by_name || "System"} on {poData.cancelled_at ? new Date(poData.cancelled_at).toLocaleDateString() : "N/A"}</Typography>
+                                        </Box>
                                     )}
-                                </div>
+                                </Box>
                             )}
 
                             {/* TERMS & CONDITIONS */}
-                            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4 animate-in fade-in duration-300">
-                                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center gap-2">
-                                     Terms & Conditions
-                                 </h4>
-                                 {(() => {
-                                     const termsList = poData?.terms_and_conditions || [];
-                                     if (termsList.length === 0) {
-                                         return (
-                                             <p className="text-xs text-slate-400 italic">No terms and conditions specified for this Purchase Order.</p>
-                                         );
-                                     }
-                                     return (
-                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                             {termsList.map((term, index) => {
-                                                 let label = `Term #${index + 1}`;
-                                                 let value = term;
-                                                 if (typeof term === 'string') {
-                                                     const colonIdx = term.indexOf(':');
-                                                     if (colonIdx !== -1) {
-                                                         label = term.substring(0, colonIdx).trim();
-                                                         value = term.substring(colonIdx + 1).trim();
-                                                     }
-                                                 } else if (term && typeof term === 'object') {
-                                                     if (term.type || term.key || term.label) {
-                                                         label = term.type || term.key || term.label;
-                                                         value = term.value || '';
-                                                     } else {
-                                                         const keys = Object.keys(term);
-                                                         if (keys.length > 0) {
-                                                             label = keys[0];
-                                                             value = term[keys[0]];
-                                                         }
-                                                     }
-                                                 }
-                                                 return (
-                                                     <div key={index} className="flex flex-col p-3.5 bg-white rounded-xl border border-slate-100 shadow-sm hover:border-slate-200 transition-all">
-                                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{label}</span>
-                                                         <span className="text-xs font-semibold text-slate-700 leading-relaxed">{value}</span>
-                                                     </div>
-                                                 );
-                                             })}
-                                         </div>
-                                     );
-                                 })()}
-                             </div>
-                        </>
+                            <Box sx={sectionBoxSx}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, borderBottom: "1px solid", borderColor: "grey.200", pb: 1, mb: 2 }}>
+                                    <Typography sx={{ ...labelSx, mb: 0 }}>Terms &amp; Conditions</Typography>
+                                </Box>
+                                {(() => {
+                                    const termsList = poData?.terms_and_conditions || [];
+                                    if (termsList.length === 0) {
+                                        return (
+                                            <Typography sx={{ fontSize: "0.75rem", color: "grey.400", fontStyle: "italic" }}>No terms and conditions specified for this Purchase Order.</Typography>
+                                        );
+                                    }
+                                    return (
+                                        <Grid container spacing={2}>
+                                            {termsList.map((term, index) => {
+                                                let label = `Term #${index + 1}`;
+                                                let value = term;
+                                                if (typeof term === 'string') {
+                                                    const colonIdx = term.indexOf(':');
+                                                    if (colonIdx !== -1) {
+                                                        label = term.substring(0, colonIdx).trim();
+                                                        value = term.substring(colonIdx + 1).trim();
+                                                    }
+                                                } else if (term && typeof term === 'object') {
+                                                    if (term.type || term.key || term.label) {
+                                                        label = term.type || term.key || term.label;
+                                                        value = term.value || '';
+                                                    } else {
+                                                        const keys = Object.keys(term);
+                                                        if (keys.length > 0) {
+                                                            label = keys[0];
+                                                            value = term[keys[0]];
+                                                        }
+                                                    }
+                                                }
+                                                return (
+                                                    <Grid item xs={12} md={6} key={index}>
+                                                        <Box sx={{ p: 1.75, bgcolor: "white", borderRadius: 2, border: "1px solid", borderColor: "grey.100", "&:hover": { borderColor: "grey.300" } }}>
+                                                            <Typography sx={{ ...labelSx, mb: 0.5 }}>{label}</Typography>
+                                                            <Typography sx={{ fontSize: "0.75rem", fontWeight: 600, color: "grey.700", lineHeight: 1.6 }}>{value}</Typography>
+                                                        </Box>
+                                                    </Grid>
+                                                );
+                                            })}
+                                        </Grid>
+                                    );
+                                })()}
+                            </Box>
+                        </Box>
                     )}
-                </div>
+                </DialogContent>
 
                 {/* FOOTER */}
-                <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 justify-end flex gap-3">
-                    <button
+                <DialogActions sx={{ px: 3, py: 2, borderTop: "1px solid", borderColor: "grey.200", bgcolor: "#F8FAFC", justifyContent: "flex-end", gap: 1.5 }}>
+                    <Button
                         onClick={onClose}
                         disabled={processing}
-                        className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-colors"
+                        variant="outlined"
+                        sx={{
+                            color: "grey.700",
+                            borderColor: "grey.300",
+                            textTransform: "none",
+                            fontWeight: 600,
+                            borderRadius: 2,
+                            "&:hover": { bgcolor: "#F8FAFC" },
+                        }}
                     >
                         Close
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         onClick={handleProceed}
                         disabled={processing || selectedIds.size === 0}
-                        className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
+                        variant="contained"
+                        sx={{
+                            bgcolor: PRIMARY,
+                            "&:hover": { bgcolor: "#0D47A1" },
+                            textTransform: "none",
+                            fontWeight: 600,
+                            borderRadius: 2,
+                        }}
                     >
                         {processing ? "Processing..." : "Proceed"}
-                    </button>
-                </div>
-            </div>
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             <ConfirmDialog
                 open={showPaymentWarning}
@@ -629,7 +759,7 @@ const PurchaseOrderModal = ({ open, onClose, data, onShowAlert, onUpdate }) => {
                 confirmText="Yes, Continue"
                 onCancel={() => setShowPaymentWarning(false)}
                 onConfirm={handlePaymentWarningConfirm}
-                icon={FaExclamationTriangle}
+                icon={WarningAmberIcon}
                 confirmButtonClass="bg-amber-600 hover:bg-amber-700"
                 iconBgClass="bg-amber-100 text-amber-600"
             />
@@ -642,7 +772,7 @@ const PurchaseOrderModal = ({ open, onClose, data, onShowAlert, onUpdate }) => {
                 loading={processing}
                 onCancel={() => setShowConfirm(false)}
                 onConfirm={processBatchPurchase}
-                icon={FaCheckCircle}
+                icon={CheckCircleIcon}
                 confirmButtonClass="bg-blue-600 hover:bg-blue-750"
                 iconBgClass="bg-blue-100 text-blue-600"
             />
@@ -663,8 +793,20 @@ const PurchaseOrderModal = ({ open, onClose, data, onShowAlert, onUpdate }) => {
                 />
             )}
 
-
-        </div>
+            {poData && (
+                <POVerificationModal
+                    open={verificationModalOpen}
+                    onClose={() => setVerificationModalOpen(false)}
+                    poId={poData.id}
+                    poNumber={poData.po_number}
+                    onSuccess={() => {
+                        if (onUpdate) onUpdate();
+                        refreshPOData();
+                        loadVerifStatus(poData.id);
+                    }}
+                />
+            )}
+        </>
     );
 };
 

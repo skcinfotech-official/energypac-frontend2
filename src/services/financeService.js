@@ -26,8 +26,28 @@ export const getFinanceDashboard = async () => {
     return res.data;
 };
 
+export const getFinanceReceivables = async (tradeType = "DOMESTIC", source = "") => {
+    const params = {};
+    if (tradeType) params.trade_type = tradeType;
+    if (source) params.source = source;
+    const res = await axiosSecure.get("/api/finance/receivables", { params });
+    return res.data;
+};
+
 export const getProfitLossList = async (params = {}) => {
     const res = await axiosSecure.get("/api/finance/profit-loss", { params });
+    return res.data;
+};
+
+export const getRevenueAnalytics = async (params = {}) => {
+    // params: { fy, trade_type, source }
+    const res = await axiosSecure.get("/api/finance/revenue-analytics", { params });
+    return res.data;
+};
+
+export const getEnterpriseOverview = async (params = {}) => {
+    // params: { fy } — consolidated money-in / money-out across all modules (INR)
+    const res = await axiosSecure.get("/api/finance/overview", { params });
     return res.data;
 };
 

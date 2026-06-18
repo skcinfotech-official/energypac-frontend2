@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { Box } from "@mui/material";
 import VendorQuotationList from "../components/vendorQuotation/VendorQuotationList";
 import VendorQuotationDetails from "../components/vendorQuotation/VendorQuotationDetails";
 
@@ -15,11 +16,11 @@ export default function VendorQuotation() {
   };
 
   return (
-    <div className="space-y-6">
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {/* LIST TABLE */}
-      <VendorQuotationList 
-        key={listKey} 
-        initialViewId={viewId} 
+      <VendorQuotationList
+        key={listKey}
+        initialViewId={viewId}
         onNewQuotation={() => setIsModalOpen(true)}
       />
 
@@ -29,6 +30,6 @@ export default function VendorQuotation() {
         onClose={() => setIsModalOpen(false)}
         onSuccess={handleQuotationSuccess}
       />
-    </div>
+    </Box>
   );
 }

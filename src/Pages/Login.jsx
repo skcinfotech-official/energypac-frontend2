@@ -1,12 +1,20 @@
 import { useEffect, useState } from "react";
-import { useNavigate , Link  } from "react-router-dom";
-import { FaUser, FaLock, FaChevronRight, FaEye, FaEyeSlash } from "react-icons/fa";
+import { useNavigate, Link } from "react-router-dom";
+import {
+    Box, Paper, TextField, Button, Typography, InputAdornment,
+    IconButton, Alert, CircularProgress
+} from "@mui/material";
+import {
+    Person as PersonIcon,
+    Lock as LockIcon,
+    Visibility as ShowIcon,
+    VisibilityOff as HideIcon,
+    ChevronRight as ChevronRightIcon,
+} from "@mui/icons-material";
 import { useAuth } from "../context/AuthContext";
 import ForgotPasswordModal from "../components/common/ForgotPasswordModal";
 
-
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
 
 export default function Login() {
     const [employeeCode, setEmployeeCode] = useState("");
@@ -15,7 +23,6 @@ export default function Login() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
-
 
     const navigate = useNavigate();
     const { login, isAuthenticated, user, authChecked } = useAuth();
@@ -33,11 +40,9 @@ export default function Login() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
-
         try {
             setLoading(true);
             const user = await login(employeeCode, password);
-            
             if (user?.role === "ADMIN") {
                 navigate("/admin/users", { replace: true });
             } else {
@@ -50,124 +55,166 @@ export default function Login() {
         }
     };
 
-
-
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative overflow-hidden font-inter">
+        <Box sx={{
+            minHeight: '100vh', bgcolor: '#F0F4F8',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            p: 3, position: 'relative', overflow: 'hidden',
+        }}>
+            {/* Decorative bg */}
+            <Box sx={{
+                position: 'absolute', top: -200, right: -200,
+                width: 500, height: 500, borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(21,101,192,0.08) 0%, transparent 70%)',
+            }} />
+            <Box sx={{
+                position: 'absolute', bottom: -200, left: -200,
+                width: 500, height: 500, borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(21,101,192,0.05) 0%, transparent 70%)',
+            }} />
 
-            {/* DECORATIVE ELEMENTS */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2"></div>
-            <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-500/5 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2"></div>
-
-
-            <div className="w-full max-w-md animate-in fade-in zoom-in duration-700">
-                {/* LOGO */}
-                <div className="text-center mb-10">
-                    <img 
-                        src="/main_logo.png" 
-                        alt="Energypac Logo" 
-                        className="h-20 mx-auto mb-4 drop-shadow-2xl" 
-                    />
-                    <h1 className="text-3xl font-bold text-slate-800">
-                        Developed By <Link to="https://skcinfotech.in/" target="_blank"><span className="text-blue-600">SKC INFOTECH</span></Link>
-                    </h1>
-
-
-                    <p className="text-slate-500 mt-4 text-sm uppercase tracking-widest px-4 py-1.5 border border-slate-200 rounded-full inline-block bg-white/50">
+            <Box sx={{ width: '100%', maxWidth: 420, position: 'relative', zIndex: 1 }}>
+                {/* Logo */}
+                <Box sx={{ textAlign: 'center', mb: 5 }}>
+                    <Box component="img" src="/main_logo.png" alt="Energypac Logo"
+                        sx={{ height: 72, mx: 'auto', mb: 2, filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.1))' }} />
+                    <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary' }}>
+                        Developed By{' '}
+                        <Typography component={Link} to="https://skcinfotech.in/" target="_blank"
+                            sx={{ color: 'primary.main', fontWeight: 800, fontSize: 'inherit', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+                            SKC INFOTECH
+                        </Typography>
+                    </Typography>
+                    <Typography variant="caption" sx={{
+                        display: 'inline-block', mt: 2, px: 2, py: 0.75,
+                        border: '1px solid', borderColor: 'divider', borderRadius: 5,
+                        bgcolor: 'rgba(255,255,255,0.7)', fontWeight: 700,
+                        letterSpacing: '0.15em', textTransform: 'uppercase', fontSize: '0.6rem',
+                    }}>
                         Authorized Access Only
-                    </p>
+                    </Typography>
+                </Box>
 
-                </div>
+                {/* Login Card */}
+                <Paper elevation={4} sx={{ p: 4, borderRadius: 4 }}>
+                    <form onSubmit={handleSubmit}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                            <TextField
+                                fullWidth
+                                placeholder="Employee Code"
+                                autoComplete="username"
+                                value={employeeCode}
+                                onChange={e => setEmployeeCode(e.target.value)}
+                                slotProps={{
+                                    input: {
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <PersonIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                                            </InputAdornment>
+                                        ),
+                                    },
+                                }}
+                                sx={{
+                                    '& .MuiOutlinedInput-root': {
+                                        borderRadius: 3, bgcolor: '#F8FAFC',
+                                        '& fieldset': { borderColor: '#E8EDF2' },
+                                    },
+                                }}
+                            />
 
-                {/* LOGIN CARD */}
-                <div className="bg-white border border-slate-200 p-8 rounded-[2.5rem] shadow-2xl">
+                            <TextField
+                                fullWidth
+                                type={showPassword ? "text" : "password"}
+                                placeholder="Enter your password"
+                                autoComplete="current-password"
+                                value={password}
+                                onChange={e => setPassword(e.target.value)}
+                                slotProps={{
+                                    input: {
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <LockIcon sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                                            </InputAdornment>
+                                        ),
+                                        endAdornment: (
+                                            <InputAdornment position="end">
+                                                <IconButton
+                                                    onClick={() => setShowPassword(!showPassword)}
+                                                    edge="end"
+                                                    size="small"
+                                                    aria-label="toggle password visibility"
+                                                    sx={{ color: '#475569', mr: 0.5 }}
+                                                >
+                                                    {showPassword ? <HideIcon fontSize="small" /> : <ShowIcon fontSize="small" />}
+                                                </IconButton>
+                                            </InputAdornment>
+                                        ),
+                                    },
+                                }}
+                                sx={{
+                                    '& .MuiOutlinedInput-root': {
+                                        borderRadius: 3, bgcolor: '#F8FAFC',
+                                        '& fieldset': { borderColor: '#E8EDF2' },
+                                    },
+                                }}
+                            />
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="space-y-4">
-                            <div className="relative group">
-                                <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                                <input
-                                    type="text"
-                                    placeholder="Employee Code"
-                                    autoComplete="username"
-                                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-800 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
-                                    value={employeeCode}
-                                    onChange={(e) => setEmployeeCode(e.target.value)}
-                                />
-
-
-                            </div>
-
-                            <div className="relative group">
-                                <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                                <input
-                                    type={showPassword ? "text" : "password"}
-                                    placeholder="Enter your password"
-                                    autoComplete="current-password"
-                                    className="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-800 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                />
-
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
-                                >
-                                    {showPassword ? <FaEyeSlash /> : <FaEye />}
-                                </button>
-
-                            </div>
-                        </div>
-
-                        {error && (
-                            <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-100 rounded-xl">
-                                <div className="h-2 w-2 rounded-full bg-red-500 shrink-0"></div>
-                                <p className="text-red-600 text-xs font-bold">{error}</p>
-                            </div>
-                        )}
-
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
-                        >
-                            {loading ? (
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    <span>Signing In...</span>
-                                </div>
-                            ) : (
-                                <>Log In <FaChevronRight className="text-xs" /></>
+                            {error && (
+                                <Alert severity="error" sx={{ borderRadius: 2, fontSize: '0.8rem', fontWeight: 600 }}>
+                                    {error}
+                                </Alert>
                             )}
-                        </button>
+
+                            <Button
+                                type="submit"
+                                variant="contained"
+                                fullWidth
+                                disabled={loading}
+                                size="large"
+                                endIcon={!loading && <ChevronRightIcon />}
+                                sx={{
+                                    py: 1.5, borderRadius: 3, fontWeight: 700, fontSize: '0.9rem',
+                                    boxShadow: '0 4px 14px rgba(21,101,192,0.3)',
+                                    '&:hover': { boxShadow: '0 6px 20px rgba(21,101,192,0.4)' },
+                                }}
+                            >
+                                {loading ? (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <CircularProgress size={20} color="inherit" />
+                                        Signing In...
+                                    </Box>
+                                ) : "Log In"}
+                            </Button>
+                        </Box>
                     </form>
 
-                    <div className="mt-8 pt-8 border-t border-slate-100 flex justify-between text-[11px] uppercase tracking-widest text-slate-400 font-bold">
-                        <span>Corporate Enterprise</span>
-                        <button 
-                            type="button"
+                    <Box sx={{
+                        mt: 4, pt: 3, borderTop: '1px solid', borderColor: 'divider',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    }}>
+                        <Typography variant="caption" sx={{ fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'text.secondary', fontSize: '0.6rem' }}>
+                            Corporate Enterprise
+                        </Typography>
+                        <Button
+                            size="small"
                             onClick={() => setIsForgotModalOpen(true)}
-                            className="text-blue-600 hover:text-blue-700 underline focus:outline-none"
+                            sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'none' }}
                         >
                             Forgot Password?
-                        </button>
-                    </div>
+                        </Button>
+                    </Box>
+                </Paper>
 
-                </div>
+                <ForgotPasswordModal isOpen={isForgotModalOpen} onClose={() => setIsForgotModalOpen(false)} />
 
-                <ForgotPasswordModal 
-                    isOpen={isForgotModalOpen} 
-                    onClose={() => setIsForgotModalOpen(false)} 
-                />
-
-
-                <p className="text-center text-slate-400 mt-10 text-[10px] uppercase tracking-[0.2em] font-medium">
-                    © 2026 Energypac Engineering Ltd.
-                </p>
-
-            </div>
-        </div>
+                <Typography variant="caption" sx={{
+                    display: 'block', textAlign: 'center', mt: 4,
+                    color: 'text.secondary', letterSpacing: '0.15em',
+                    textTransform: 'uppercase', fontSize: '0.55rem', fontWeight: 600,
+                }}>
+                    &copy; 2026 Energypac Engineering Ltd.
+                </Typography>
+            </Box>
+        </Box>
     );
 }

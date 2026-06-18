@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Box } from "@mui/material";
 import AdminNavbar from "./layout/AdminNavbar";
 import AdminSidebar from "./layout/AdminSidebar";
 import { Outlet } from "react-router-dom";
@@ -9,31 +10,24 @@ export default function AdminLayout() {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-
-      <div className="h-screen flex overflow-hidden">
+    <Box sx={{ minHeight: '100vh', bgcolor: '#F5F7FA' }}>
+      <Box sx={{ height: '100vh', display: 'flex', overflow: 'hidden' }}>
         {/* LEFT SIDEBAR */}
         <AdminSidebar isOpen={isSidebarOpen} />
 
         {/* RIGHT SIDE AREA */}
-        <div className="flex flex-col flex-1 min-w-0 transition-all duration-300">
-
+        <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, transition: 'all 300ms' }}>
           {/* TOP NAVBAR */}
-          <AdminNavbar
-            toggleSidebar={toggleSidebar}
-            isSidebarOpen={isSidebarOpen}
-          />
+          <AdminNavbar toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
 
           {/* MAIN CONTENT AREA */}
-          <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50">
-
-            <div className="max-w-7xl mx-auto">
+          <Box component="main" sx={{ flex: 1, overflowY: 'auto', p: { xs: 1, md: 4 }, bgcolor: '#F5F7FA' }}>
+            <Box sx={{ maxWidth: '1400px', mx: 'auto' }}>
               <Outlet />
-            </div>
-          </main>
-
-        </div>
-      </div>
-    </div>
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   );
 }

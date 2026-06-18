@@ -3,7 +3,9 @@
  * Handles all HTTP requests with proper base URL configuration
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// Strip any trailing slash(es) so `${API_BASE_URL}${endpoint}` never produces a
+// double slash (e.g. "https://host//api/..."), which 404s on the server.
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '');
 
 /**
  * Get authorization header with token
@@ -38,11 +40,14 @@ export async function apiRequest(endpoint, options = {}) {
       error.status = response.status;
       error.response = response;
 
-      // Try to parse error body
+      // Read the body ONCE as text, then try to parse JSON from it. Reading
+      // response.json() and then response.text() throws
+      // "body stream already read" (e.g. on an HTML 404 page).
+      const raw = await response.text().catch(() => '');
       try {
-        error.data = await response.json();
+        error.data = raw ? JSON.parse(raw) : null;
       } catch {
-        error.text = await response.text();
+        error.text = raw;
       }
 
       throw error;

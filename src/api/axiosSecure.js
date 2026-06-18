@@ -1,7 +1,11 @@
 import axios from "axios";
 
+// Strip trailing slash(es) so combined URLs never produce a double slash
+// (e.g. "https://host//api/..."), which 404s on the server.
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/+$/, "");
+
 const axiosSecure = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000",
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -91,7 +95,7 @@ axiosSecure.interceptors.response.use(
 
       try {
         const res = await axios.post(
-          `${import.meta.env.VITE_API_BASE_URL}/api/auth/refresh`,
+          `${API_BASE_URL}/api/auth/refresh`,
           { refresh: refreshToken }
         );
 

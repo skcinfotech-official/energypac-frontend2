@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import {
     Box, Card, Typography, TextField, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, IconButton, Tooltip, Chip, CircularProgress, InputAdornment,
@@ -44,9 +45,15 @@ const PAYMENT_MODES = [
 
 const TransportPayments = () => {
     const { user } = useAuth();
-    // Recording a payment is a Finance-department action; transport users get read-only.
-    const canRecord = user?.role === "ADMIN" ||
-        !!(user?.permissions || []).find((p) => p.module === "FINANCE" && (p.can_write || p.can_read));
+    const location = useLocation();
+    // This page is mounted under both /finance/... and /transport/.... Recording
+    // a payment is a Finance-department action only — on the Transport module
+    // route it is hidden entirely (view-only), regardless of permissions.
+    const isTransportModule = location.pathname.startsWith("/transport");
+    const canRecord = !isTransportModule && (
+        user?.role === "ADMIN" ||
+        !!(user?.permissions || []).find((p) => p.module === "FINANCE" && (p.can_write || p.can_read))
+    );
 
     const [side, setSide] = useState("BUY"); // BUY | SELL | ALL
     const [search, setSearch] = useState("");

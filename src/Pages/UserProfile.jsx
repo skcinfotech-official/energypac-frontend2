@@ -51,7 +51,10 @@ const UserProfile = () => {
       setToast({ open: true, type: "success", message: "Signature deleted" });
       loadUserData();
     } catch (err) {
-      setToast({ open: true, type: "error", message: "Failed to delete signature" });
+      // Surface the real reason from the backend (e.g. the signature is already
+      // used in a verified document and is kept for audit).
+      const msg = err?.data?.error || err?.data?.detail || "Failed to delete signature";
+      setToast({ open: true, type: "error", message: msg });
     }
   };
 
@@ -127,7 +130,7 @@ const UserProfile = () => {
                 🖊️ Digital Signatures
               </Typography>
               <Typography sx={{ fontSize: "12px", color: "#64748b", mt: 0.5 }}>
-                Upload signatures for document verification and signing
+                Each profile has a single signature. Uploading a new one replaces the old.
               </Typography>
             </Box>
             <Button
@@ -135,7 +138,7 @@ const UserProfile = () => {
               onClick={() => setOpenSignatureModal(true)}
               sx={{ bgcolor: "#0ea5e9" }}
             >
-              + Add Signature
+              {signatures.length > 0 ? "Replace Signature" : "+ Add Signature"}
             </Button>
           </Box>
 

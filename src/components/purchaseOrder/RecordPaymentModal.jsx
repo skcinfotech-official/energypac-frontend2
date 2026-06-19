@@ -82,13 +82,13 @@ const RecordPaymentModal = ({ open, onClose, poData, onSuccess }) => {
                 <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose}></div>
 
                 {/* Modal */}
-                <div className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 font-outfit">
-                    <div className="px-8 py-6 bg-slate-900 text-white flex items-center justify-between">
+                <div className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 font-outfit">
+                    <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
                         <div>
-                            <h3 className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
+                            <h3 className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
                                 <FaMoneyBillWave className="text-emerald-400" /> Record Payment
                             </h3>
-                            <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1">
+                            <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-0.5">
                                 {poData.po_number} • {poData.vendor_name}
                             </p>
                         </div>
@@ -97,15 +97,15 @@ const RecordPaymentModal = ({ open, onClose, poData, onSuccess }) => {
                         </button>
                     </div>
 
-                    <form onSubmit={handleInitialSubmit} className="p-8 space-y-6 bg-slate-50">
+                    <form onSubmit={handleInitialSubmit} className="p-6 space-y-4 bg-slate-50">
                         {error && (
                             <div className="p-4 bg-red-50 border border-red-100 text-red-600 text-xs font-bold rounded-xl animate-in fade-in slide-in-from-top-2">
                                 {error}
                             </div>
                         )}
 
-                        <div className="grid grid-cols-1 gap-6">
-                            <div className="space-y-2">
+                        <div className="grid grid-cols-1 gap-4">
+                            <div className="space-y-1.5">
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
                                     <FaMoneyBillWave className="text-emerald-500" /> Amount to Pay ({poCurrency}) *
                                 </label>
@@ -121,7 +121,7 @@ const RecordPaymentModal = ({ open, onClose, poData, onSuccess }) => {
                                         value={payload.amount}
                                         onChange={handleChange}
                                         placeholder="0.00"
-                                        className="w-full pl-10 pr-5 py-3.5 bg-white border border-slate-200 rounded-xl text-xl font-black focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
+                                        className="w-full pl-10 pr-5 py-3 bg-white border border-slate-200 rounded-xl text-lg font-black focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
                                     />
                                 </div>
                                 <div className="flex justify-between items-center px-1">
@@ -190,22 +190,22 @@ const RecordPaymentModal = ({ open, onClose, poData, onSuccess }) => {
                                     onChange={handleChange}
                                     rows="2"
                                     placeholder="Add payment details/notes..."
-                                    className="w-full px-5 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-emerald-500 outline-none transition-all"
+                                    className="w-full px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-emerald-500 outline-none transition-all"
                                 ></textarea>
                             </div>
                         </div>
 
-                        <div className="flex gap-4 pt-4 border-t border-slate-200">
+                        <div className="flex gap-3 pt-3 border-t border-slate-200">
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="flex-1 px-6 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-all active:scale-95"
+                                className="flex-1 px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-all active:scale-95"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
-                                className="flex-[2] px-6 py-3.5 bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 active:scale-95"
+                                className="flex-[2] px-6 py-3 bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 active:scale-95"
                             >
                                 Confirm Payment
                             </button>

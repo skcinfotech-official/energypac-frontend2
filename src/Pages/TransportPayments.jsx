@@ -197,12 +197,12 @@ const TransportPayments = () => {
             {/* Table */}
             <Card variant="outlined" sx={{ borderRadius: 3, overflow: "hidden" }}>
                 <TableContainer>
-                    <Table size="small" sx={{ "& .MuiTableCell-root": { fontSize: "0.74rem" } }}>
+                    <Table size="small" sx={{ "& .MuiTableCell-root": { fontSize: "0.7rem", px: 1, py: 0.75 } }}>
                         <TableHead>
                             <TableRow sx={{ bgcolor: "#F8FAFC" }}>
                                 {["Transport No", "Side", "Reference", "Party", "Transporter", "Freight", "Paid", "Balance", "Status", "Actions"].map((h, i) => (
                                     <TableCell key={h} align={[5, 6, 7].includes(i) ? "right" : i === 9 ? "center" : "left"}
-                                        sx={{ fontWeight: 800, fontSize: 11, textTransform: "uppercase", color: "text.secondary" }}>{h}</TableCell>
+                                        sx={{ fontWeight: 800, fontSize: 10, textTransform: "uppercase", color: "text.secondary", whiteSpace: "nowrap" }}>{h}</TableCell>
                                 ))}
                             </TableRow>
                         </TableHead>
@@ -219,8 +219,8 @@ const TransportPayments = () => {
                                             sx={{ fontSize: 9, height: 18, fontWeight: 800, bgcolor: r.direction === "BUY" ? "#fef2f2" : "#eff6ff", color: r.direction === "BUY" ? "#b91c1c" : "#1d4ed8" }} />
                                     </TableCell>
                                     <TableCell sx={{ fontFamily: "monospace", fontSize: 11 }}>{r.reference}</TableCell>
-                                    <TableCell sx={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.party}</TableCell>
-                                    <TableCell sx={{ maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.transporter_name}</TableCell>
+                                    <TableCell sx={{ maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.party}</TableCell>
+                                    <TableCell sx={{ maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.transporter_name}</TableCell>
                                     <TableCell align="right" sx={{ fontWeight: 700 }}>{f2(r.total_cost)}</TableCell>
                                     <TableCell align="right" sx={{ color: "#047857", fontWeight: 700 }}>{f2(r.amount_paid)}</TableCell>
                                     <TableCell align="right" sx={{ fontWeight: 800, color: Number(r.balance) > 0 ? "#dc2626" : "#059669" }}>{f2(r.balance)}</TableCell>

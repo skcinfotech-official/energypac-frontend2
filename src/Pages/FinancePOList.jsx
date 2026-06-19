@@ -177,21 +177,22 @@ const FinancePOList = () => {
     };
 
     const thSx = {
-        fontSize: '0.6875rem',
+        fontSize: '0.625rem',
         fontWeight: 700,
         color: 'text.secondary',
         textTransform: 'uppercase',
-        letterSpacing: '0.05em',
-        py: 2,
-        px: 3,
+        letterSpacing: '0.03em',
+        py: 1.25,
+        px: 1.25,
+        whiteSpace: 'nowrap',
         borderBottom: '1px solid',
         borderColor: 'divider',
         backgroundColor: 'grey.50',
     };
 
     const tdSx = {
-        py: 2,
-        px: 3,
+        py: 1.25,
+        px: 1.25,
         borderBottom: '1px solid',
         borderColor: 'grey.100',
     };
@@ -367,9 +368,9 @@ const FinancePOList = () => {
                 <Card variant="outlined" sx={{ borderRadius: 4, overflow: 'hidden' }}>
                     <TableContainer>
                         <Table sx={{
-                            '& .MuiTableCell-root': { fontSize: '0.78rem' },
-                            '& .MuiTypography-body2': { fontSize: '0.78rem' },
-                            '& .MuiTypography-caption': { fontSize: '0.66rem' },
+                            '& .MuiTableCell-root': { fontSize: '0.72rem' },
+                            '& .MuiTypography-body2': { fontSize: '0.72rem' },
+                            '& .MuiTypography-caption': { fontSize: '0.62rem' },
                         }}>
                             <TableHead>
                                 <TableRow>

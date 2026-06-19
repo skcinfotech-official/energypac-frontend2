@@ -30,7 +30,16 @@ const PasswordConfirmModal = ({
     };
 
     return (
-        <Dialog open={!!open} onClose={loading ? undefined : onCancel} maxWidth="xs" fullWidth>
+        <Dialog
+            open={!!open}
+            onClose={loading ? undefined : onCancel}
+            maxWidth="xs"
+            fullWidth
+            // Some callers (e.g. RecordPaymentModal) render inside a custom
+            // overlay at z-[9999]. Keep this confirmation above it so it isn't
+            // hidden behind the parent modal's backdrop.
+            sx={{ zIndex: 10050 }}
+        >
             <form onSubmit={handleSubmit}>
                 <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <Avatar sx={{ bgcolor: 'primary.light', width: 36, height: 36 }}>

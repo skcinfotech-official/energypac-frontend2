@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { getProformaInvoices, getProformaInvoiceById, createBill, getBillsByPI } from "../services/salesService";
+import { getProformaInvoices, getProformaInvoiceById, createBill, getBillableItems } from "../services/salesService";
 import {
     Box, Card, Paper, Typography, Button, TextField, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, IconButton, Tooltip, CircularProgress, Chip,
@@ -29,7 +28,6 @@ import InfoIcon from "@mui/icons-material/Info";
 import AlertToast from "../components/ui/AlertToast";
 
 const CreateBill = () => {
-    const navigate = useNavigate();
 
     // Page Status
     const [loading, setLoading] = useState(false);
@@ -49,7 +47,9 @@ const CreateBill = () => {
 
     // Currency from selected PI
     const [piCurrency, setPiCurrency] = useState("INR");
-    const [billAlreadyExists, setBillAlreadyExists] = useState(null);
+    // Quantity-level partial billing: true when the PI's every line is fully
+    // billed (nothing left to bill) — generating a new bill is then blocked.
+    const [fullyBilled, setFullyBilled] = useState(false);
 
     const getCurrencySymbol = (code) => {
         switch (code?.toUpperCase()) {
@@ -124,7 +124,7 @@ const CreateBill = () => {
         if (!newMode || newMode === mode) return;
         setMode(newMode);
         setSelectedPi(null);
-        setBillAlreadyExists(null);
+        setFullyBilled(false);
         setPiList([]);
         setPiSearch("");
         // International currency is whatever the chosen PI uses — stay neutral until one is picked.
@@ -153,22 +153,27 @@ const CreateBill = () => {
         setIsPiDropdownOpen(false);
         setPiSearch("");
         setLoading(true);
-        setBillAlreadyExists(null);
+        setFullyBilled(false);
 
         try {
-            // Check if bill already exists for this PI
-            const billsRes = await getBillsByPI(pi.id);
-            const existingBills = (billsRes?.bills || []).filter(b => b.status !== "CANCELLED");
-            if (existingBills.length > 0) {
-                setBillAlreadyExists(existingBills[0]);
+            // Quantity-level partial billing: fetch what is still left to bill.
+            // A fully-billed PI is blocked; otherwise we pre-fill the REMAINING
+            // quantity per line so the user bills only the unbilled balance.
+            const billable = await getBillableItems(pi.id);
+            if (billable?.is_fully_billed) {
+                setFullyBilled(true);
                 setLoading(false);
                 setAlert({
                     open: true,
                     type: "error",
-                    message: `Bill "${existingBills[0].bill_number}" has already been generated for this PI. Duplicate bills are not allowed.`
+                    message: "This PI is fully billed. No remaining quantity left to bill.",
                 });
                 return;
             }
+            const remainingByPiItem = {};
+            (billable?.items || []).forEach((it) => {
+                remainingByPiItem[it.pi_item] = Number(it.remaining_qty);
+            });
 
             const details = await getProformaInvoiceById(pi.id);
             if (details) {
@@ -180,15 +185,24 @@ const CreateBill = () => {
                 const defaultBillType = mode;
                 const defaultIgst = 0;
 
-                const mappedItems = (details.items || []).map(item => ({
-                    pi_item: item.id || null,
-                    product: item.product || null,
-                    item_name: item.product_name || item.item_name || "Product Item",
-                    hsn_code: item.hsn_code || "",
-                    unit: item.unit || "KG",
-                    quantity: Number(item.quantity) || 0,
-                    rate: Number(item.unit_price || item.rate) || 0
-                }));
+                // Keep only lines that still have a remaining quantity; default
+                // each to its remaining (the max billable now). User can lower it.
+                const mappedItems = (details.items || [])
+                    .map((item) => {
+                        const rem = remainingByPiItem[item.id];
+                        return { item, rem };
+                    })
+                    .filter(({ rem }) => rem === undefined || rem > 0)
+                    .map(({ item, rem }) => ({
+                        pi_item: item.id || null,
+                        product: item.product || null,
+                        item_name: item.product_name || item.item_name || "Product Item",
+                        hsn_code: item.hsn_code || "",
+                        unit: item.unit || "KG",
+                        quantity: rem !== undefined ? rem : (Number(item.quantity) || 0),
+                        max_quantity: rem !== undefined ? rem : undefined,
+                        rate: Number(item.unit_price || item.rate) || 0
+                    }));
 
                 setFormData(prev => ({
                     ...prev,
@@ -264,9 +278,16 @@ const CreateBill = () => {
     const handleItemChange = (index, field, value) => {
         setFormData(prev => {
             const updatedItems = [...prev.items];
+            let nextValue = field === "quantity" || field === "rate" ? (parseFloat(value) || 0) : value;
+            // Quantity-level partial billing: never let a line be billed for more
+            // than its remaining (unbilled) quantity. Backend enforces this too.
+            if (field === "quantity") {
+                const max = updatedItems[index].max_quantity;
+                if (max !== undefined && nextValue > max) nextValue = max;
+            }
             updatedItems[index] = {
                 ...updatedItems[index],
-                [field]: field === "quantity" || field === "rate" ? (parseFloat(value) || 0) : value
+                [field]: nextValue
             };
             return {
                 ...prev,
@@ -330,10 +351,8 @@ const CreateBill = () => {
 
             await createBill(payload);
             setAlert({ open: true, type: "success", message: "Bill generated successfully!" });
-
-            setTimeout(() => {
-                navigate("/finance/pi-bills");
-            }, 1500);
+            // Stay on this page after creating — do not auto-redirect to the bills
+            // list. The user can navigate away manually when they're ready.
 
         } catch (err) {
             console.error("Failed to create bill", err);
@@ -542,19 +561,19 @@ const CreateBill = () => {
                         </Grid>
                     </Paper>
 
-                    {/* BILL ALREADY EXISTS ALERT */}
-                    {billAlreadyExists && (
+                    {/* PI FULLY BILLED ALERT */}
+                    {fullyBilled && (
                         <Alert
                             severity="error"
                             icon={<InfoIcon />}
                             sx={{ borderRadius: 4, border: "1px solid", borderColor: "error.200" }}
                         >
                             <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                                Bill Already Generated for this PI
+                                PI Fully Billed
                             </Typography>
                             <Typography variant="caption" sx={{ display: "block", mt: 0.5 }}>
-                                Bill <Box component="span" sx={{ fontFamily: "monospace", fontWeight: 700 }}>{billAlreadyExists.bill_number}</Box> has already been created for this Proforma Invoice.
-                                You cannot create a duplicate bill. Please select a different PI.
+                                Every item of this Proforma Invoice has already been billed in full.
+                                There is no remaining quantity left to bill. Please select a different PI.
                             </Typography>
                         </Alert>
                     )}
@@ -770,9 +789,14 @@ const CreateBill = () => {
                                                             value={item.quantity}
                                                             onChange={(e) => handleItemChange(index, "quantity", e.target.value)}
                                                             required
-                                                            inputProps={{ min: "0.01", step: "any" }}
+                                                            inputProps={{ min: "0.01", step: "any", max: item.max_quantity }}
                                                             InputProps={{ sx: { borderRadius: 2, bgcolor: "grey.50", fontSize: 12, fontWeight: 700, width: 96, "& input": { textAlign: "right" } } }}
                                                         />
+                                                        {item.max_quantity !== undefined && (
+                                                            <Typography sx={{ fontSize: 10, color: "grey.500", fontWeight: 600, mt: 0.5, textAlign: "right" }}>
+                                                                Remaining: {item.max_quantity}
+                                                            </Typography>
+                                                        )}
                                                     </TableCell>
                                                     <TableCell sx={{ textAlign: "right" }}>
                                                         <TextField
@@ -976,7 +1000,7 @@ const CreateBill = () => {
                                     type="submit"
                                     variant="contained"
                                     fullWidth
-                                    disabled={submitting || loading || !!billAlreadyExists}
+                                    disabled={submitting || loading || fullyBilled}
                                     startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : <CheckIcon sx={{ fontSize: 16 }} />}
                                     sx={{
                                         py: 1.5,

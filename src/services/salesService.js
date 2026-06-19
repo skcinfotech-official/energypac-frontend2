@@ -279,6 +279,19 @@ export const getBillsByPI = async (piId, page = 1) => {
     }
 };
 
+// Remaining (unbilled) quantity per PI line — drives quantity-level partial billing.
+export const getBillableItems = async (piId) => {
+    try {
+        const response = await axiosSecure.get("/api/pi-bills/billable_items", {
+            params: { proforma_invoice: piId },
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching billable items:", error);
+        throw error;
+    }
+};
+
 export const getBillReport = async (params = {}) => {
     try {
         const response = await axiosSecure.get("/api/pi-bills", { params });

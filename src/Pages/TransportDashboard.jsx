@@ -309,7 +309,7 @@ export default function TransportDashboard() {
 
     return (
         <>
-            <Box sx={{ maxWidth: 1280, mx: "auto", py: 0.5, display: "flex", flexDirection: "column", gap: 3 }}>
+            <Box sx={{ width: "100%", py: 0.5, display: "flex", flexDirection: "column", gap: 3 }}>
                 {/* Header */}
                 <Card variant="outlined" sx={{ borderRadius: 4, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
                     <CardContent sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, alignItems: { md: "center" }, justifyContent: "space-between", gap: 2, p: 3, "&:last-child": { pb: 3 } }}>

@@ -199,7 +199,7 @@ const FinancePOList = () => {
 
     return (
         <>
-            <Box sx={{ maxWidth: 1280, mx: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 3 }}>
                 {/* Header */}
                 <Card
                     variant="outlined"

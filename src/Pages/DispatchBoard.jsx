@@ -55,7 +55,7 @@ const DispatchBoard = () => {
     const pending = data?.pending || [];
 
     return (
-        <Box sx={{ maxWidth: 1100, mx: "auto", py: 1, display: "flex", flexDirection: "column", gap: 3 }}>
+        <Box sx={{ width: "100%", py: 1, display: "flex", flexDirection: "column", gap: 3 }}>
             <Card variant="outlined" sx={{ p: 3, borderRadius: 3, display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 2 }}>
                 <Box>
                     <Typography variant="h5" sx={{ fontWeight: 800, display: "flex", alignItems: "center", gap: 1.5 }}>

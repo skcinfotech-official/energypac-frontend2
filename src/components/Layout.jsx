@@ -35,7 +35,7 @@ export default function Layout({ status }) {
                     flex: 1, overflowY: 'auto',
                     p: { xs: 2, md: 3 },
                 }}>
-                    <Box sx={{ maxWidth: 1800, mx: 'auto' }}>
+                    <Box sx={{ width: '100%' }}>
                         <Outlet />
                     </Box>
                 </Box>

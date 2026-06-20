@@ -238,7 +238,7 @@ export default function RevenueAnalysis() {
 
     return (
         <>
-            <Box sx={{ maxWidth: 1200, mx: "auto", py: 1, display: "flex", flexDirection: "column", gap: 3 }}>
+            <Box sx={{ width: "100%", py: 1, display: "flex", flexDirection: "column", gap: 3 }}>
                 {/* Header */}
                 <Card variant="outlined" sx={{ borderRadius: 3, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
                     <CardContent sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, alignItems: { sm: "center" }, justifyContent: "space-between", gap: 2, p: 3, "&:last-child": { pb: 3 } }}>

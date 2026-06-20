@@ -364,7 +364,7 @@ const CreateBill = () => {
     };
 
     return (
-        <Box sx={{ maxWidth: 1280, mx: "auto", py: 2, px: 1, display: "flex", flexDirection: "column", gap: 3 }}>
+        <Box sx={{ width: "100%", py: 2, px: 1, display: "flex", flexDirection: "column", gap: 3 }}>
             {/* HEADER */}
             <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: "1px solid", borderColor: "grey.200" }}>
                 <Box sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 2 }}>

@@ -74,7 +74,7 @@ const RequisitionFormPage = () => {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
+    <Container maxWidth={false} sx={{ py: 3 }}>
       {/* HEADER */}
       <Box sx={{ mb: 4, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>

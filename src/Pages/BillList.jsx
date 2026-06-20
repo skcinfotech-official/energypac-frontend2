@@ -390,7 +390,7 @@ const BillList = () => {
 
     return (
         <>
-            <Box sx={{ maxWidth: '80rem', mx: 'auto', py: 0.5, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Box sx={{ width: '100%', py: 0.5, display: 'flex', flexDirection: 'column', gap: 3 }}>
                 {/* Header */}
                 <Card variant="outlined" sx={{ p: 3, borderRadius: 4, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, justifyContent: 'space-between', gap: 2 }}>
                     <Box>

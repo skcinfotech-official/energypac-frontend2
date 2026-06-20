@@ -652,7 +652,7 @@ const TransportList = () => {
 
     return (
         <>
-            <Box sx={{ maxWidth: 1280, mx: "auto", py: 1, display: "flex", flexDirection: "column", gap: 3 }}>
+            <Box sx={{ width: "100%", py: 1, display: "flex", flexDirection: "column", gap: 3 }}>
                 {/* Header Section */}
                 <Paper elevation={0} sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, alignItems: { md: "center" }, justifyContent: "space-between", gap: 2, p: 3, borderRadius: 3, border: "1px solid", borderColor: "grey.200" }}>
                     <Box>

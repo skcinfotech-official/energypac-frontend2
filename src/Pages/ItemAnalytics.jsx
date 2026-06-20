@@ -95,7 +95,7 @@ export default function ItemAnalytics() {
 
     return (
         <>
-            <Box sx={{ maxWidth: 1280, mx: "auto", py: 1, display: "flex", flexDirection: "column", gap: 3 }}>
+            <Box sx={{ width: "100%", py: 1, display: "flex", flexDirection: "column", gap: 3 }}>
                 {/* Header */}
                 <Card variant="outlined" sx={{ borderRadius: 4, border: "1px solid #e2e8f0", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
                     <CardContent sx={{ p: 3, "&:last-child": { pb: 3 } }}>

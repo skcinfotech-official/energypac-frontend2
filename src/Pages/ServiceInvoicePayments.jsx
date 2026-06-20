@@ -128,7 +128,7 @@ const ServiceInvoicePayments = () => {
     ];
 
     return (
-        <Box sx={{ maxWidth: 1100, mx: "auto", py: 1, display: "flex", flexDirection: "column", gap: 3 }}>
+        <Box sx={{ width: "100%", py: 1, display: "flex", flexDirection: "column", gap: 3 }}>
             {/* Header */}
             <Card variant="outlined" sx={{ p: 3, borderRadius: 3, display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 2 }}>
                 <Box>

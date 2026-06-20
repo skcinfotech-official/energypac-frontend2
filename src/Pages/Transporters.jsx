@@ -11,10 +11,15 @@ import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import CloseIcon from "@mui/icons-material/Close";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import Groups2Icon from "@mui/icons-material/Groups2";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import GridOnIcon from "@mui/icons-material/GridOn";
+import { pdf } from "@react-pdf/renderer";
+import { saveAs } from "file-saver";
 
 import {
     getTransporters, createTransporter, updateTransporter, getTransporterLedger,
 } from "../services/transportService";
+import TransporterLedgerPDF from "../components/transport/TransporterLedgerPDF";
 import AlertToast from "../components/ui/AlertToast";
 
 const f2 = (v) => `₹ ${Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -77,6 +82,165 @@ const Transporters = () => {
     };
 
     const setField = (k, v) => setForm((f) => ({ ...f, data: { ...f.data, [k]: v } }));
+
+    // Build a safe file name stem from the transporter
+    const ledgerFileStem = () => {
+        const t = ledger.data?.transporter || {};
+        const stem = `Ledger_${t.transporter_code || t.name || "transporter"}`;
+        return stem.replace(/[^a-zA-Z0-9_-]/g, "_");
+    };
+
+    const exportLedgerPdf = async () => {
+        if (!ledger.data) return;
+        try {
+            const blob = await pdf(<TransporterLedgerPDF ledger={ledger.data} />).toBlob();
+            saveAs(blob, `${ledgerFileStem()}.pdf`);
+        } catch (err) {
+            console.error(err);
+            setAlert({ open: true, type: "error", message: "Failed to generate PDF" });
+        }
+    };
+
+    // Styled Excel that mirrors the PDF — same colour bands, summary cards,
+    // bordered table. Uses exceljs (xlsx can't apply cell colours/borders).
+    const exportLedgerExcel = async () => {
+        if (!ledger.data) return;
+        try {
+            const { default: ExcelJS } = await import("exceljs");
+            const t = ledger.data.transporter || {};
+            const sum = ledger.data.summary || {};
+            const entries = ledger.data.entries || [];
+            const n2 = (v) => Number(v || 0);
+            const fdate = (d) =>
+                d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+
+            const wb = new ExcelJS.Workbook();
+            const ws = wb.addWorksheet("Ledger", { views: [{ showGridLines: false }] });
+            ws.columns = [
+                { width: 22 }, { width: 12 }, { width: 26 }, { width: 16 },
+                { width: 14 }, { width: 14 }, { width: 14 }, { width: 13 },
+            ];
+
+            const thin = { style: "thin", color: { argb: "FF000000" } };
+            const allBorders = { top: thin, left: thin, bottom: thin, right: thin };
+            const center = { vertical: "middle", horizontal: "center" };
+            const right = { vertical: "middle", horizontal: "right" };
+            const setFill = (cell, argb) => { cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb } }; };
+            const mergeRow = (r) => ws.mergeCells(`A${r}:H${r}`);
+
+            // ── Company header ──────────────────────────────────────────────
+            ws.addRow(["ENERGYPAC ENGINEERING LIMITED"]);
+            ws.addRow(["KB-22 'BHAKTA TOWER', 4TH FL, SECTOR-III, SALT LAKE, KOLKATA - 700 106."]);
+            ws.addRow(["GSTIN: 19AABCE4975G1ZE"]);
+            mergeRow(1); mergeRow(2); mergeRow(3);
+            ws.getCell("A1").font = { bold: true, size: 14 };
+            ws.getCell("A1").alignment = center;
+            ws.getCell("A2").font = { size: 9 }; ws.getCell("A2").alignment = center;
+            ws.getCell("A3").font = { size: 9 }; ws.getCell("A3").alignment = center;
+
+            // ── Title band (dark like the PDF) ──────────────────────────────
+            ws.addRow([]);
+            ws.addRow(["TRANSPORTER LEDGER"]);
+            mergeRow(5);
+            const titleCell = ws.getCell("A5");
+            titleCell.font = { bold: true, size: 13, color: { argb: "FFFFFFFF" } };
+            titleCell.alignment = center;
+            setFill(titleCell, "FF0F172A");
+            ws.getRow(5).height = 24;
+
+            // ── Transporter info ────────────────────────────────────────────
+            ws.addRow([]);
+            const infoRow = ws.addRow([
+                "Code", t.transporter_code || "—", "Transporter", t.name || "—",
+                "Contact", t.contact_person || t.phone || "—", "GSTIN", t.gst_number || "—",
+            ]);
+            [1, 3, 5, 7].forEach((c) => {
+                const cell = infoRow.getCell(c);
+                cell.font = { bold: true, size: 8, color: { argb: "FF475569" } };
+                setFill(cell, "FFF1F5F9");
+            });
+            infoRow.eachCell((cell) => { cell.border = allBorders; });
+
+            // ── Summary cards (colour-coded like the PDF) ───────────────────
+            ws.addRow([]);
+            const buy = ws.addRow(["Buy Payable Balance", n2(sum.buy_balance), "", `Billed ${n2(sum.buy_billed)}  ·  Paid ${n2(sum.buy_paid)}`]);
+            const sell = ws.addRow(["Sell Recoverable Balance", n2(sum.sell_balance), "", `Billed ${n2(sum.sell_billed)}  ·  Recd ${n2(sum.sell_paid)}`]);
+            const ship = ws.addRow(["Shipments", entries.length]);
+            const cardRows = [
+                { row: buy, fill: "FFFEF2F2", valColor: "FFB91C1C" },
+                { row: sell, fill: "FFEFF6FF", valColor: "FF1D4ED8" },
+                { row: ship, fill: "FFF8FAFC", valColor: "FF1E293B" },
+            ];
+            cardRows.forEach(({ row, fill, valColor }) => {
+                for (let c = 1; c <= 8; c++) { const cell = row.getCell(c); setFill(cell, fill); cell.border = allBorders; }
+                row.getCell(1).font = { bold: true, size: 9, color: { argb: "FF475569" } };
+                row.getCell(2).font = { bold: true, size: 12, color: { argb: valColor } };
+                row.getCell(2).numFmt = "#,##0.00";
+                row.getCell(2).alignment = { horizontal: "left" };
+                row.getCell(4).font = { size: 8, color: { argb: "FF64748B" } };
+            });
+            // Shipments count shouldn't carry a decimal money format
+            ship.getCell(2).numFmt = "0";
+            ship.getCell(2).font = { bold: true, size: 12, color: { argb: "FF1E293B" } };
+
+            // ── Shipment Entries heading ────────────────────────────────────
+            ws.addRow([]);
+            const headingRow = ws.addRow(["Shipment Entries"]);
+            mergeRow(headingRow.number);
+            headingRow.getCell(1).font = { bold: true, size: 10 };
+
+            // ── Table header ────────────────────────────────────────────────
+            const head = ws.addRow(["Transport No", "Side", "Reference", "Dispatch", "Freight", "Paid", "Balance", "Status"]);
+            head.eachCell((cell, c) => {
+                cell.font = { bold: true, size: 9, color: { argb: "FF334155" } };
+                setFill(cell, "FFF1F5F9");
+                cell.border = allBorders;
+                cell.alignment = [5, 6, 7].includes(c) ? right : { vertical: "middle", horizontal: "left" };
+            });
+
+            // ── Table rows ──────────────────────────────────────────────────
+            if (entries.length === 0) {
+                const empty = ws.addRow(["No shipments"]);
+                mergeRow(empty.number);
+                empty.getCell(1).alignment = center;
+                empty.getCell(1).font = { italic: true, color: { argb: "FF94A3B8" } };
+                empty.getCell(1).border = allBorders;
+            } else {
+                entries.forEach((e) => {
+                    const r = ws.addRow([
+                        e.transport_number, e.direction, e.reference || "—", fdate(e.dispatch_date),
+                        n2(e.total_cost), n2(e.amount_paid), n2(e.balance),
+                        (e.payment_status || "").replace(/_/g, " "),
+                    ]);
+                    r.eachCell((cell) => { cell.border = allBorders; cell.font = { size: 9 }; });
+                    // Side chip colour
+                    const sideCell = r.getCell(2);
+                    sideCell.alignment = center;
+                    if (e.direction === "BUY") { setFill(sideCell, "FFFEF2F2"); sideCell.font = { size: 9, bold: true, color: { argb: "FFB91C1C" } }; }
+                    else { setFill(sideCell, "FFEFF6FF"); sideCell.font = { size: 9, bold: true, color: { argb: "FF1D4ED8" } }; }
+                    r.getCell(4).alignment = center;
+                    [5, 6, 7].forEach((c) => { r.getCell(c).numFmt = "#,##0.00"; r.getCell(c).alignment = right; });
+                    // Balance: red if outstanding, green if cleared
+                    r.getCell(7).font = { size: 9, bold: true, color: { argb: n2(e.balance) > 0 ? "FFDC2626" : "FF059669" } };
+                    r.getCell(8).alignment = center;
+                    r.getCell(8).font = { size: 8, bold: true };
+                });
+            }
+
+            // ── Footer ──────────────────────────────────────────────────────
+            ws.addRow([]);
+            const footer = ws.addRow([`Generated on ${fdate(new Date())}  ·  ENERGYPAC ENGINEERING LIMITED  ·  All amounts in INR`]);
+            mergeRow(footer.number);
+            footer.getCell(1).font = { size: 8, italic: true, color: { argb: "FF94A3B8" } };
+            footer.getCell(1).alignment = center;
+
+            const buffer = await wb.xlsx.writeBuffer();
+            saveAs(new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `${ledgerFileStem()}.xlsx`);
+        } catch (err) {
+            console.error(err);
+            setAlert({ open: true, type: "error", message: "Failed to generate Excel" });
+        }
+    };
 
     return (
         <Box sx={{ width: "100%", py: 1, display: "flex", flexDirection: "column", gap: 3 }}>
@@ -169,7 +333,13 @@ const Transporters = () => {
                         <Typography variant="h6" sx={{ fontWeight: 900, display: "flex", alignItems: "center", gap: 1 }}><ReceiptLongIcon sx={{ color: "#a78bfa" }} /> Transporter Ledger</Typography>
                         <Typography sx={{ fontSize: 12, color: "#94a3b8", fontWeight: 700, mt: 0.5 }}>{ledger.data?.transporter?.transporter_code} · {ledger.data?.transporter?.name}</Typography>
                     </Box>
-                    <IconButton onClick={() => setLedger({ open: false, loading: false, data: null })} sx={{ color: "#fff" }}><CloseIcon /></IconButton>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <Button onClick={exportLedgerPdf} disabled={!ledger.data} startIcon={<PictureAsPdfIcon />}
+                            variant="contained" size="small" sx={{ bgcolor: "#dc2626", fontWeight: 800, textTransform: "uppercase", fontSize: 11, borderRadius: 2, "&:hover": { bgcolor: "#b91c1c" } }}>PDF</Button>
+                        <Button onClick={exportLedgerExcel} disabled={!ledger.data} startIcon={<GridOnIcon />}
+                            variant="contained" size="small" sx={{ bgcolor: "#059669", fontWeight: 800, textTransform: "uppercase", fontSize: 11, borderRadius: 2, "&:hover": { bgcolor: "#047857" } }}>Excel</Button>
+                        <IconButton onClick={() => setLedger({ open: false, loading: false, data: null })} sx={{ color: "#fff" }}><CloseIcon /></IconButton>
+                    </Box>
                 </Box>
                 <Box sx={{ p: 3, bgcolor: "#f8fafc" }}>
                     {ledger.loading ? (

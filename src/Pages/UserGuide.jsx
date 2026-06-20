@@ -68,6 +68,7 @@ const guideData = [
                 id: "overview",
                 title: "System Overview",
                 content: {
+                    path: "Login → Sidebar (left)",
                     description: "Energypac ERP is a comprehensive enterprise resource planning system designed for managing the complete procurement-to-sales lifecycle. The system covers Master Data management, Purchase workflow, Sales operations, Finance tracking, Transport logistics, and Returns processing.",
                     points: [
                         "Role-based access control ensures users only see modules they have permission for",
@@ -82,6 +83,7 @@ const guideData = [
                 id: "navigation",
                 title: "Navigation & Layout",
                 content: {
+                    path: "Top navbar + Left sidebar",
                     description: "The application uses a sidebar navigation on the left and a top navbar. The sidebar can be collapsed for more screen space.",
                     steps: [
                         { action: "Sidebar Toggle", detail: "Click the hamburger menu (☰) on the top-left of the navbar to expand or collapse the sidebar" },
@@ -96,6 +98,7 @@ const guideData = [
                 id: "common-actions",
                 title: "Common Actions",
                 content: {
+                    path: "Any list page (top toolbar + row icons)",
                     description: "These actions are available across most list pages in the system.",
                     steps: [
                         { action: "Search", detail: "Use the search bar at the top of any list to filter records by name, number, or other fields", icon: <SearchIcon /> },
@@ -121,6 +124,7 @@ const guideData = [
                 title: "Items / Products",
                 icon: <WidgetsIcon />,
                 content: {
+                    path: "Sidebar → Master → Items",
                     description: "Manage your product catalog. Items are used across Purchase Orders, Proforma Invoices, Bills, and Returns.",
                     steps: [
                         { action: "Add Item", detail: "Click '+ Add New' to create a new item. Fill in the item name, unit (KG, PCS, MTR, etc.), HSN code, and optionally set minimum stock level for low-stock alerts" },
@@ -143,6 +147,7 @@ const guideData = [
                 title: "Vendors",
                 icon: <BusinessCenterIcon />,
                 content: {
+                    path: "Sidebar → Master → Vendors",
                     description: "Manage your vendor/supplier database. Vendors are assigned to requisitions and linked to purchase orders.",
                     steps: [
                         { action: "Add Vendor", detail: "Click '+ Add New' to register a new vendor. Fill in company name, contact person, phone, email, address, and bank details" },
@@ -163,6 +168,7 @@ const guideData = [
                 title: "Currency",
                 icon: <LanguageIcon />,
                 content: {
+                    path: "Sidebar → Master → Currency",
                     description: "Manage currencies and conversion rates for multi-currency transactions. INR is the base currency.",
                     steps: [
                         { action: "Add Currency", detail: "Click '+ Add New' to add a new currency. Enter the currency code (USD, EUR, GBP, etc.), name, symbol, and current conversion rate to INR" },
@@ -189,6 +195,7 @@ const guideData = [
                 id: "purchase-flow",
                 title: "Purchase Workflow Overview",
                 content: {
+                    path: "Sidebar → Purchase",
                     description: "The purchase process follows a structured workflow from requirement identification to order placement.",
                     flow: [
                         { step: "1. Requisition", detail: "Create a purchase requisition listing required items and quantities" },
@@ -204,6 +211,7 @@ const guideData = [
                 title: "Requisition",
                 icon: <DescriptionIcon />,
                 content: {
+                    path: "Sidebar → Purchase → Requisition",
                     description: "A requisition is the starting point of the purchase process. It lists what items need to be purchased and in what quantity.",
                     steps: [
                         { action: "Create Requisition", detail: "Click '+ New Requisition'. Add a requisition date, then add line items by selecting products from the dropdown and entering required quantities" },
@@ -226,6 +234,7 @@ const guideData = [
                 title: "Vendor Assignment",
                 icon: <GroupIcon />,
                 content: {
+                    path: "Sidebar → Purchase → Vendor Assignment",
                     description: "Assign one or more vendors to a requisition so they can provide quotations.",
                     steps: [
                         { action: "Create Assignment", detail: "Click '+ Assign Vendors'. Select a requisition from the dropdown, then choose which vendors to assign for quotation" },
@@ -244,6 +253,7 @@ const guideData = [
                 title: "Vendor Quotation",
                 icon: <AssignmentIcon />,
                 content: {
+                    path: "Sidebar → Purchase → Vendor Quotation",
                     description: "Record and manage quotations received from vendors against assigned requisitions.",
                     steps: [
                         { action: "Create Quotation", detail: "Click '+ New Quotation'. Select the requisition and vendor, then enter prices, delivery terms, and validity for each item" },
@@ -262,6 +272,7 @@ const guideData = [
                 title: "Quotation Comparison",
                 icon: <BalanceIcon />,
                 content: {
+                    path: "Sidebar → Purchase → Quotation Comparison",
                     description: "Compare quotations from different vendors side-by-side to make informed purchasing decisions.",
                     steps: [
                         { action: "Select Requisition", detail: "Choose a requisition to see all vendor quotations for it in a comparison table" },
@@ -280,6 +291,7 @@ const guideData = [
                 title: "Purchase Order",
                 icon: <LocalOfferIcon />,
                 content: {
+                    path: "Sidebar → Purchase → Purchase Order",
                     description: "Purchase Orders (POs) are formal orders sent to vendors. They track items, quantities, prices, payments, and delivery status.",
                     steps: [
                         { action: "View PO List", detail: "The PO list shows all purchase orders with their number, vendor, total value, currency, status, and payment progress" },
@@ -310,6 +322,7 @@ const guideData = [
                 id: "sales-flow",
                 title: "Sales Workflow Overview",
                 content: {
+                    path: "Sidebar → Sales",
                     description: "The sales process manages client interactions from enquiry to billing and payment collection.",
                     flow: [
                         { step: "1. Client Query", detail: "Receive and log client enquiries with requirements" },
@@ -325,11 +338,17 @@ const guideData = [
                 title: "Sales Dashboard",
                 icon: <DashboardIcon />,
                 content: {
-                    description: "A visual overview of your sales performance with key metrics and charts.",
+                    path: "Sidebar → Sales → Dashboard",
+                    description: "The first screen of the Sales module — a visual snapshot of how sales are doing right now. Open it whenever you want a quick health check before drilling into details.",
                     steps: [
-                        { action: "Key Metrics", detail: "View total sales, pending invoices, monthly revenue, and collection rate at a glance" },
-                        { action: "Date Range Filter", detail: "Change the date range to analyze sales performance for specific periods" },
-                        { action: "Charts", detail: "Interactive charts show trends in sales, collections, and outstanding amounts" }
+                        { action: "Read the Stat Cards", detail: "The top row of cards shows Total Sales (value billed), Pending Invoices (bills not fully paid), Monthly Revenue, and Collection Rate (% of billed money actually received). These update automatically from your bills." },
+                        { action: "Change the Date Range", detail: "Use the date pickers (or the FY / period dropdown) at the top-right to set a start and end date — every card and chart on the page recalculates for that window." },
+                        { action: "Read the Trend Charts", detail: "The line/bar charts plot sales and collections over time so you can spot growth or a slow month. Hover over any point to see the exact figure for that day/month." },
+                        { action: "Jump to Details", detail: "Use the sidebar to move from this overview into Proforma Invoice, Create Bill, or Finance → PI Bills when you need to act on a specific record." }
+                    ],
+                    tips: [
+                        "This page is read-only — it shows numbers but you create/edit records on the other Sales pages.",
+                        "Collection Rate well below 100% means money is billed but not yet collected — check Finance → PI Bills → Outstanding."
                     ]
                 }
             },
@@ -338,6 +357,7 @@ const guideData = [
                 title: "Client Query / Enquiry",
                 icon: <BusinessCenterIcon />,
                 content: {
+                    path: "Sidebar → Sales → Client Query",
                     description: "Log and manage client enquiries. This is the first step in the sales pipeline.",
                     steps: [
                         { action: "Create Enquiry", detail: "Click '+ New Enquiry'. Enter client name, contact details, requirement description, and expected items" },
@@ -356,6 +376,7 @@ const guideData = [
                 title: "Proforma Invoice (PI)",
                 icon: <ReceiptIcon />,
                 content: {
+                    path: "Sidebar → Sales → Proforma Invoice",
                     description: "Proforma Invoices are quotations sent to clients. They go through a lifecycle: Draft → Sent → Accepted/Cancelled.",
                     steps: [
                         { action: "Create PI", detail: "Click '+ New PI'. Select/enter client details, add line items with quantities and prices, select currency, and review the terms" },
@@ -383,6 +404,7 @@ const guideData = [
                 title: "PI Verification & Signatures",
                 icon: <CheckCircleIcon />,
                 content: {
+                    path: "Sidebar → Sales → Proforma Invoice → open a PI",
                     description: "Before sharing a PI, route it for internal sign-off. A PI needs ONE role — the Authorized Signatory — who applies their digital signature, which then appears on the PI PDF.",
                     steps: [
                         { action: "Send for Verification", detail: "Open a PI and click 'Send for Verification'. Pick the Authorized Signatory — yourself ('★ You') or another user — then send" },
@@ -404,6 +426,7 @@ const guideData = [
                 title: "Create Bill",
                 icon: <AccountBalanceWalletIcon />,
                 content: {
+                    path: "Sidebar → Sales → Create Bill",
                     description: "Generate tax invoices/bills from accepted Proforma Invoices. Bills are used for payment tracking and GST compliance.",
                     steps: [
                         { action: "Select PI", detail: "Search and select an accepted Proforma Invoice from the dropdown. The system will auto-populate client details and items" },
@@ -427,6 +450,7 @@ const guideData = [
                 title: "Commercial Invoices (Export)",
                 icon: <DescriptionIcon />,
                 content: {
+                    path: "Sidebar → Sales → Commercial Invoices",
                     description: "For INTERNATIONAL (export) Proforma Invoices, generate the Commercial Invoice and its Packing List — used for customs and shipping. No GST applies to exports.",
                     steps: [
                         { action: "View List", detail: "Open Sales → Commercial Invoices to see all export invoices with CI Number, linked PI, invoice number, date, currency, CPT value, status, and packing list status" },
@@ -447,6 +471,7 @@ const guideData = [
                 title: "Domestic Invoices (Tax Invoices)",
                 icon: <ReceiptIcon />,
                 content: {
+                    path: "Sidebar → Sales → Domestic Invoices",
                     description: "GST tax invoices for domestic product sales. These are the formal tax documents issued to Indian clients.",
                     steps: [
                         { action: "View List", detail: "Open Sales → Domestic Invoices to list all product tax invoices with number, date, party, and amounts" },
@@ -466,6 +491,7 @@ const guideData = [
                 title: "Service Invoices",
                 icon: <ReceiptIcon />,
                 content: {
+                    path: "Sidebar → Sales → Service Invoices",
                     description: "Standalone GST invoices for services (not tied to product items). Useful for service revenue such as installation, commissioning, or consultancy.",
                     steps: [
                         { action: "View List", detail: "Open Sales → Service Invoices to list all service GST invoices" },
@@ -484,11 +510,17 @@ const guideData = [
                 title: "Sales Statistics",
                 icon: <TrendingUpIcon />,
                 content: {
-                    description: "Detailed statistical analysis of your sales data with charts and breakdowns.",
+                    path: "Sidebar → Sales → Statistics",
+                    description: "A deeper, number-heavy analysis of your sales than the Dashboard — totals, averages, growth, and breakdowns by client and product. Use it for monthly/quarterly reviews.",
                     steps: [
-                        { action: "View Statistics", detail: "See overall sales metrics including total revenue, number of bills, average order value, and growth trends" },
-                        { action: "Date Filters", detail: "Filter by custom date ranges to analyze specific periods" },
-                        { action: "Charts & Graphs", detail: "Visual charts show revenue trends, top clients, and product-wise sales distribution" }
+                        { action: "Set the Period", detail: "Pick a date range at the top. All figures below recompute for that period — compare this month vs last month by switching the range." },
+                        { action: "Read the Headline Numbers", detail: "Total Revenue, number of bills, and Average Order Value (revenue ÷ number of bills) tell you both volume and deal size." },
+                        { action: "Study the Trend", detail: "The growth/trend chart shows whether revenue is rising or falling versus the previous period." },
+                        { action: "Top Clients & Products", detail: "Breakdown sections rank your biggest clients and best-selling products so you know who and what drives revenue." }
+                    ],
+                    tips: [
+                        "Average Order Value rising is good even if the bill count is flat — it means bigger deals.",
+                        "Export-heavy months show under International; domestic under Domestic if a trade-type split is shown."
                     ]
                 }
             },
@@ -497,10 +529,17 @@ const guideData = [
                 title: "Performance Report",
                 icon: <EmojiEventsIcon />,
                 content: {
-                    description: "Analyze sales team and individual performance with detailed metrics.",
+                    path: "Sidebar → Sales → Performance Report",
+                    description: "Measures how effectively enquiries turn into revenue — conversion rate, deal size, and target achievement. Use it to judge the health of the sales pipeline.",
                     steps: [
-                        { action: "Performance Metrics", detail: "View metrics like conversion rate, average deal size, and sales target achievement" },
-                        { action: "Period Comparison", detail: "Compare performance across different time periods" }
+                        { action: "Conversion Rate", detail: "Shows what share of enquiries / proforma invoices became actual bills. A low rate means leads are leaking before billing." },
+                        { action: "Average Deal Size", detail: "The typical value of a converted deal — useful for forecasting how many deals you need to hit a target." },
+                        { action: "Target Achievement", detail: "Compares actual sales against the target for the period, so you can see if you're ahead or behind." },
+                        { action: "Compare Periods", detail: "Switch the date range to compare this period against an earlier one and see if performance is improving." }
+                    ],
+                    tips: [
+                        "If conversion is low, review Sales → Proforma Invoice for PIs stuck in DRAFT/SENT that never reached ACCEPTED.",
+                        "Read this alongside Statistics — one shows efficiency, the other shows volume."
                     ]
                 }
             },
@@ -509,11 +548,17 @@ const guideData = [
                 title: "Product Analysis",
                 icon: <Inventory2Icon />,
                 content: {
-                    description: "Analyze sales performance by product/item to identify top-selling and slow-moving items.",
+                    path: "Sidebar → Sales → Product Analysis",
+                    description: "Breaks your sales down item-by-item so you can see which products earn the most and which are barely moving. Use it for stocking and pricing decisions.",
                     steps: [
-                        { action: "Top Products", detail: "See which items generate the most revenue and highest volumes" },
-                        { action: "Trend Analysis", detail: "Track product sales trends over time" },
-                        { action: "Revenue Breakdown", detail: "View per-product revenue contribution to total sales" }
+                        { action: "Top Products", detail: "A ranked list/chart of items by revenue and by quantity sold — your money-makers sit at the top." },
+                        { action: "Set the Date Range", detail: "Filter to a period to see what sold well this quarter versus last." },
+                        { action: "Trend per Product", detail: "Track how a single item's sales move over time — rising demand vs a fading product." },
+                        { action: "Revenue Contribution", detail: "See each product's share of total sales, so you know how dependent revenue is on a few items." }
+                    ],
+                    tips: [
+                        "Slow movers here often overlap with Finance → Dead Stock / Inventory Aging — cross-check before reordering.",
+                        "A few products carrying most revenue is a concentration risk — watch their stock and pricing closely."
                     ]
                 }
             }
@@ -530,6 +575,7 @@ const guideData = [
                 title: "Finance Dashboard",
                 icon: <DashboardIcon />,
                 content: {
+                    path: "Sidebar → Finance → Dashboard",
                     description: "A comprehensive financial overview showing cash flow, payments, outstanding amounts, and profitability metrics. All aggregated values are shown in INR.",
                     steps: [
                         { action: "Key Metrics", detail: "View Total Inflow (collections from clients), Total Outflow (payments to vendors + transport), Net Cash Flow, and Total Purchased Value" },
@@ -551,6 +597,7 @@ const guideData = [
                 title: "Finance PO List",
                 icon: <LocalOfferIcon />,
                 content: {
+                    path: "Sidebar → Finance → PO List",
                     description: "Finance-specific view of Purchase Orders with payment tracking and recording capabilities.",
                     steps: [
                         { action: "View PO Payments", detail: "See each PO with its total value, amount paid, balance, and payment status" },
@@ -571,6 +618,7 @@ const guideData = [
                 title: "PI Bills List",
                 icon: <FormatListBulletedIcon />,
                 content: {
+                    path: "Sidebar → Finance → PI Bills",
                     description: "Manage all sales bills/invoices. Track billing status, record client payments, and generate reports.",
                     steps: [
                         { action: "View All Bills", detail: "See all generated bills with their number, client, PI reference, amount, status, and payment info" },
@@ -593,6 +641,7 @@ const guideData = [
                 title: "PI Advance List",
                 icon: <MonetizationOnIcon />,
                 content: {
+                    path: "Sidebar → Finance → PI Advance",
                     description: "Track advance payments received from clients against Proforma Invoices before bills are generated.",
                     steps: [
                         { action: "View Advances", detail: "See all PI advance payments with their PI reference, client, amount, and date" },
@@ -610,6 +659,7 @@ const guideData = [
                 title: "Service Invoice Payments",
                 icon: <PaymentsIcon />,
                 content: {
+                    path: "Sidebar → Finance → Service Invoice Payments",
                     description: "Record and track collections against standalone Service Tax Invoices (GST, INR).",
                     steps: [
                         { action: "Open Page", detail: "Finance → Service Invoice Payments. See summary cards: invoices, billed, received, outstanding." },
@@ -628,6 +678,7 @@ const guideData = [
                 title: "Transport Payments",
                 icon: <LocalShippingIcon />,
                 content: {
+                    path: "Sidebar → Finance → Transport Payments",
                     description: "Record freight money for both sides: freight we pay transporters on purchases (Buy), and freight we recover from clients on sales delivery (Sell).",
                     steps: [
                         { action: "Open Page", detail: "Finance → Transport Payments. Toggle Buy / Sell / All; see payable, recoverable, paid, and outstanding totals." },
@@ -646,6 +697,7 @@ const guideData = [
                 title: "Enterprise Overview (Money In / Out)",
                 icon: <MonetizationOnIcon />,
                 content: {
+                    path: "Sidebar → Finance → Revenue Analysis (top section)",
                     description: "A consolidated, all-INR money-movement view at the top of Revenue Analysis — how much came in, how much went out, and what's still outstanding, across every module.",
                     steps: [
                         { action: "Money In", detail: "Goods sales collected (PI bills) + Service collected + Client advances + Freight recovered from clients." },
@@ -664,6 +716,7 @@ const guideData = [
                 title: "Revenue Analysis",
                 icon: <ReceiptIcon />,
                 content: {
+                    path: "Sidebar → Finance → Revenue Analysis",
                     description: "Enterprise profitability — P&L per deal plus charts, freight, and service breakdowns. All values in INR.",
                     steps: [
                         { action: "Profit & Loss Report", detail: "Per-requisition/PI revenue, purchase cost, transport cost, freight recovered, and margin. Freight recovered shows under the Transport column." },
@@ -684,11 +737,17 @@ const guideData = [
                 title: "Item Analytics",
                 icon: <TrendingUpIcon />,
                 content: {
-                    description: "Deep analytics on item-level performance across purchases and sales.",
+                    path: "Sidebar → Finance → Item Analytics",
+                    description: "Joins purchase and sales data per item so you can see the true margin on every product — what you paid, what you sold it for, and how prices have moved.",
                     steps: [
-                        { action: "Item Performance", detail: "View each item's purchase cost, selling price, margin, and volume trends" },
-                        { action: "Price History", detail: "Track how purchase prices have changed over time for each item" },
-                        { action: "Top Items", detail: "Identify top items by revenue, margin, and volume" }
+                        { action: "Item Performance", detail: "Each item row shows purchase cost, selling price, margin (sell − cost), and volume sold/bought." },
+                        { action: "Price History", detail: "Track how an item's purchase price changed across POs over time — spot vendors creeping prices up." },
+                        { action: "Top Items by Margin", detail: "Sort/identify items that contribute the most profit, not just the most revenue." },
+                        { action: "Date Range", detail: "Filter to a period to analyse margins for a specific season or quarter." }
+                    ],
+                    tips: [
+                        "A high-revenue item with thin margin may be less valuable than a smaller, high-margin one.",
+                        "Rising purchase prices here are an early warning to renegotiate with the vendor or raise your selling price."
                     ]
                 }
             },
@@ -697,6 +756,7 @@ const guideData = [
                 title: "Dead Stock / Inventory Aging",
                 icon: <WidgetsIcon />,
                 content: {
+                    path: "Sidebar → Finance → Inventory Aging",
                     description: "Identify slow-moving and dead stock items that haven't been sold or moved in a long time.",
                     steps: [
                         { action: "View Aging Report", detail: "See items categorized by how long they've been in stock without movement" },
@@ -722,11 +782,17 @@ const guideData = [
                 title: "Transport Dashboard",
                 icon: <PieChartIcon />,
                 content: {
-                    description: "Visual overview of transport operations including delivery status, costs, and logistics metrics.",
+                    path: "Sidebar → Transport → Dashboard",
+                    description: "The landing screen of the Transport module — a logistics health check showing how many shipments are moving, delivered, or pending, and how much freight is costing.",
                     steps: [
-                        { action: "Delivery Stats", detail: "View total shipments, in-transit, delivered, and pending deliveries" },
-                        { action: "Cost Overview", detail: "See total transport costs broken down by type (freight, loading, insurance, etc.)" },
-                        { action: "Date Range Filter", detail: "Filter dashboard data by specific date ranges" }
+                        { action: "Delivery Stat Cards", detail: "See total shipments, In-Transit (dispatched but not delivered), Delivered, and Pending counts at a glance." },
+                        { action: "Cost Overview", detail: "Total freight broken down by cost type (Freight, Loading, Unloading, Insurance, etc.) — all in INR." },
+                        { action: "Date Range Filter", detail: "Set a period at the top to recompute every card for that window." },
+                        { action: "Drill In", detail: "From here go to Transport → Pending Dispatch to see what still needs shipping, or Transport Entry to log a new shipment." }
+                    ],
+                    tips: [
+                        "A growing In-Transit count with few Delivered may mean shipments aren't being marked delivered — update them in Transport Entry.",
+                        "Freight here is always INR even when the linked PO/PI is in another currency."
                     ]
                 }
             },
@@ -735,6 +801,7 @@ const guideData = [
                 title: "Transport Entry (with Consignment Items)",
                 icon: <FormatListBulletedIcon />,
                 content: {
+                    path: "Sidebar → Transport → Transport Entry",
                     description: "Log a shipment against a Purchase Order (inbound) or Proforma Invoice (outbound). You can now ship items partially and track exactly which items went in each trip.",
                     steps: [
                         { action: "Create Entry", detail: "Click 'Log New Shipment'. Choose PO or PI and select the order — the order's items load automatically below as a Consignment Items table." },
@@ -759,6 +826,7 @@ const guideData = [
                 title: "Pending Dispatch Board & Tracker",
                 icon: <InventoryIcon />,
                 content: {
+                    path: "Sidebar → Transport → Pending Dispatch",
                     description: "See which orders still have items to ship, and track shipment progress line-by-line across all transporters.",
                     steps: [
                         { action: "Open Board", detail: "Transport → Pending Dispatch. Toggle Inbound (PO) / Outbound (PI)." },
@@ -776,14 +844,18 @@ const guideData = [
                 title: "Transporters & Ledger",
                 icon: <FormatListBulletedIcon />,
                 content: {
+                    path: "Sidebar → Transport → Transporters",
                     description: "A master list of transporters/carriers, each with its own running ledger of money billed, paid, and outstanding.",
                     steps: [
                         { action: "Add Transporter", detail: "Transport → Transporters → Add. Enter name, contact, phone, GST/PAN, address." },
                         { action: "Open Ledger", detail: "Click the ledger (receipt) icon on a transporter row." },
-                        { action: "Read Ledger", detail: "Buy Payable Balance = freight you owe on purchases. Sell Recoverable Balance = freight on sales delivery vs what the client reimbursed. Below: every shipment with billed/paid/balance." }
+                        { action: "Read Ledger", detail: "Buy Payable Balance = freight you owe on purchases. Sell Recoverable Balance = freight on sales delivery vs what the client reimbursed. Below: every shipment with billed/paid/balance." },
+                        { action: "Export PDF", detail: "Inside the ledger window, click the red 'PDF' button (top-right) to download the transporter's full ledger as a printable PDF — company header, summary cards, and the shipment table." },
+                        { action: "Export Excel", detail: "Click the green 'Excel' button to download the same ledger as a styled .xlsx — same colours, title band, summary cards, and bordered table as the PDF, but editable in Excel." }
                     ],
                     tips: [
-                        "A shipment only appears in a transporter's ledger if you selected that transporter from the master dropdown on the entry."
+                        "A shipment only appears in a transporter's ledger if you selected that transporter from the master dropdown on the entry.",
+                        "The Excel and PDF exports are laid out identically — use PDF to share/print, Excel when you need to filter or add your own columns."
                     ]
                 }
             },
@@ -792,6 +864,7 @@ const guideData = [
                 title: "Transport Payments (View)",
                 icon: <PaymentsIcon />,
                 content: {
+                    path: "Sidebar → Transport → Transport Payments",
                     description: "A read-only view inside the Transport module showing what freight money is tied to each shipment — the same data Finance records against.",
                     steps: [
                         { action: "Open", detail: "Transport → Transport Payments. Toggle Buy / Sell / All." },
@@ -816,6 +889,7 @@ const guideData = [
                 id: "returns-overview",
                 title: "Returns Module Overview",
                 content: {
+                    path: "Sidebar → Returns",
                     description: "Manage both Sales Returns (from clients) and Purchase Returns (to vendors). Returns follow a lifecycle: Draft → Approved → Completed, or can be Cancelled.",
                     flow: [
                         { step: "1. Create Return", detail: "Log the return with items, quantities, and reason" },
@@ -830,6 +904,7 @@ const guideData = [
                 title: "Sales Returns",
                 icon: <InventoryIcon />,
                 content: {
+                    path: "Sidebar → Returns → Sales tab",
                     description: "Process items returned by clients. Usable items are added back to stock, unusable items are written off.",
                     steps: [
                         { action: "Create Sales Return", detail: "Click '+ New Return' in the Sales Returns tab. Select the PI/Bill reference, add return items with quantities, condition (usable/unusable), and reason" },
@@ -850,6 +925,7 @@ const guideData = [
                 title: "Purchase Returns",
                 icon: <LocalShippingIcon />,
                 content: {
+                    path: "Sidebar → Returns → Purchase tab",
                     description: "Process items being returned to vendors. Stock is deducted and a Debit Note is generated.",
                     steps: [
                         { action: "Create Purchase Return", detail: "Click '+ New Return' in the Purchase Returns tab. Select the PO reference, add items being returned with quantities and reason" },
@@ -877,6 +953,7 @@ const guideData = [
                 title: "User Management",
                 icon: <AdminPanelSettingsIcon />,
                 content: {
+                    path: "Sidebar → Admin → Users",
                     description: "Admin-only section for managing system users, their roles, and module permissions.",
                     steps: [
                         { action: "Add User", detail: "Click '+ Add User'. Enter full name, email, username, password, and role (ADMIN or USER)" },
@@ -898,6 +975,7 @@ const guideData = [
                 title: "Audit Logs",
                 icon: <HistoryIcon />,
                 content: {
+                    path: "Sidebar → Admin → Audit Logs",
                     description: "Track all system activities for compliance and troubleshooting. Every create, update, and delete action is logged.",
                     steps: [
                         { action: "View Logs", detail: "Browse the chronological log of all system activities" },
@@ -967,6 +1045,7 @@ const guideData = [
                 id: "signature-setup",
                 title: "Upload Your Signature",
                 content: {
+                    path: "Sidebar → (your name) → My Profile",
                     description: "Set up your digital signature which will be embedded in PDF documents when you approve Purchase Orders and Proforma Invoices.",
                     steps: [
                         { action: "Go to Profile", detail: "Click on your name in the sidebar → 'My Profile (Signature)'" },
@@ -986,6 +1065,7 @@ const guideData = [
                 id: "pi-verification",
                 title: "Proforma Invoice (PI) Verification",
                 content: {
+                    path: "Sidebar → Sales → Proforma Invoice → open a PI",
                     description: "Route a Proforma Invoice for sign-off. A PI needs ONE role — the Authorized Signatory. You can assign yourself or another user; if you assign yourself, your saved signature is applied automatically.",
                     steps: [
                         { action: "Open the PI", detail: "Go to Sales → Proforma Invoice, open a PI, and click the green 'Send for Verification' button" },
@@ -1007,6 +1087,7 @@ const guideData = [
                 id: "po-verification",
                 title: "Purchase Order (PO) Verification",
                 content: {
+                    path: "Sidebar → Purchase → Purchase Order → open a PO",
                     description: "Route a Purchase Order for sign-off. A PO uses TWO roles — 'Checked By' and 'Authorized Signatory'. Each can be yourself or another user; your own slots are signed automatically.",
                     steps: [
                         { action: "Open the PO", detail: "Go to Purchase → Purchase Order, open a PO, and click 'Send for Verification'" },
@@ -1027,6 +1108,7 @@ const guideData = [
                 id: "verify-dashboard",
                 title: "Verify Documents Dashboard",
                 content: {
+                    path: "Sidebar → Verify Documents",
                     description: "Central hub where all verification requests are sent to you. Access via sidebar → 'Verify Documents'.",
                     steps: [
                         { action: "View Pending", detail: "See all pending verification requests waiting for your approval" },
@@ -1049,6 +1131,7 @@ const guideData = [
                 id: "notifications",
                 title: "Verification Notifications",
                 content: {
+                    path: "Top navbar → 🔔 bell icon",
                     description: "Get real-time notifications when verification requests are sent to you.",
                     steps: [
                         { action: "Notification Bell", detail: "Top-right corner shows a notification bell with a red count badge" },
@@ -1112,6 +1195,7 @@ export default function UserGuide() {
                 const searchable = [
                     sec.title,
                     c.description,
+                    c.path,
                     ...(c.steps || []).map(s => `${s.action} ${s.detail}`),
                     ...(c.points || []),
                     ...(c.tips || []),
@@ -1307,6 +1391,30 @@ export default function UserGuide() {
                             </Box>
                         </CardContent>
                     </Card>
+
+                    {/* Where to find it (navigation path) */}
+                    {currentSection?.content?.path && (
+                        <Card variant="outlined" sx={{ borderRadius: 3, borderColor: colors.border, bgcolor: "#fff", mb: 4 }}>
+                            <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                                    <ExploreIcon sx={{ fontSize: 16, color: colors.text }} />
+                                    <Typography sx={{ fontSize: "0.6875rem", fontWeight: 700, color: "grey.500", textTransform: "uppercase", letterSpacing: "0.04em", mr: 0.5 }}>
+                                        Where to find it
+                                    </Typography>
+                                    {currentSection.content.path.split("→").map((part, i, arr) => (
+                                        <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                            <Chip
+                                                label={part.trim()}
+                                                size="small"
+                                                sx={{ bgcolor: colors.bg, color: colors.text, fontWeight: 600, fontSize: "0.6875rem", height: 24 }}
+                                            />
+                                            {i < arr.length - 1 && <ChevronRightIcon sx={{ fontSize: 12, color: "grey.400" }} />}
+                                        </Box>
+                                    ))}
+                                </Box>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Workflow / Flow Diagram */}
                     {currentSection?.content?.flow && (

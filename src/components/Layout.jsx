@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Box, CircularProgress, Typography } from "@mui/material";
 import Navbar from "./layout/Navbar";
 import Sidebar from "./layout/Sidebar";
+import TourLauncher from "./TourLauncher";
 import { Outlet } from "react-router-dom";
 
 export default function Layout({ status }) {
@@ -31,7 +32,7 @@ export default function Layout({ status }) {
             <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, transition: 'all 0.25s ease' }}>
                 <Navbar toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
 
-                <Box component="main" sx={{
+                <Box component="main" data-tour="main-content" sx={{
                     flex: 1, overflowY: 'auto',
                     p: { xs: 2, md: 3 },
                 }}>
@@ -40,6 +41,8 @@ export default function Layout({ status }) {
                     </Box>
                 </Box>
             </Box>
+
+            <TourLauncher />
         </Box>
     );
 }

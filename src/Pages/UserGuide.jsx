@@ -1171,6 +1171,18 @@ export default function UserGuide() {
     const currentSection = currentModule?.sections?.find(s => s.id === activeSection);
     const colors = colorMap[currentModule?.color || "blue"];
 
+    const moduleTourMap = {
+        "getting-started": "orientation",
+        sales: "sales-flow",
+        purchase: "purchase-flow",
+        transport: "transport-flow",
+        finance: "finance-flow",
+    };
+    const tourForModule = moduleTourMap[activeModule] || "orientation";
+    const startInteractiveTour = () => {
+        window.dispatchEvent(new CustomEvent("energypac:start-tour", { detail: tourForModule }));
+    };
+
     useEffect(() => {
         const handleScroll = () => {
             if (contentRef.current) {
@@ -1297,6 +1309,31 @@ export default function UserGuide() {
                             </List>
                         </Paper>
                     )}
+                </Box>
+
+                {/* Start Interactive Tour */}
+                <Box sx={{ px: 1.5, py: 1.5, borderBottom: "1px solid", borderColor: "grey.100" }}>
+                    <Button
+                        fullWidth
+                        onClick={startInteractiveTour}
+                        startIcon={<RocketIcon sx={{ fontSize: 16 }} />}
+                        sx={{
+                            background: "linear-gradient(to right, #1565C0, #0D47A1)",
+                            color: "#fff",
+                            textTransform: "none",
+                            fontWeight: 700,
+                            fontSize: "0.75rem",
+                            borderRadius: 2,
+                            py: 1,
+                            boxShadow: "0 4px 14px rgba(21,101,192,0.35)",
+                            "&:hover": { background: "linear-gradient(to right, #0D47A1, #082f6b)" },
+                        }}
+                    >
+                        {tourForModule === "orientation" ? "Start Interactive Tour" : "Tour This Module Live"}
+                    </Button>
+                    <Typography sx={{ fontSize: "0.625rem", color: "grey.400", textAlign: "center", mt: 0.75 }}>
+                        We'll highlight each step on the real screen
+                    </Typography>
                 </Box>
 
                 {/* Module List */}
@@ -1572,7 +1609,7 @@ export default function UserGuide() {
                         onClick={scrollToTop}
                         sx={{
                             position: "fixed",
-                            bottom: 24,
+                            bottom: 88,
                             right: 24,
                             bgcolor: "#1565C0",
                             color: "#fff",

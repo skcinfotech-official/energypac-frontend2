@@ -23,6 +23,7 @@
     "@tailwindcss/vite": "^4.1.18",
     "axios": "^1.13.2",
     "dotenv": "^17.2.3",
+    "driver.js": "^1.4.0",
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
     "jspdf": "2.5.2",

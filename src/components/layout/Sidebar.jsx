@@ -99,11 +99,11 @@ export default function Sidebar({ isOpen }) {
                     </Typography>
                 )}
 
-                <SidebarLink to="/audit-logs" label="Audit Logs" icon={<HistoryIcon />} isOpen={isOpen} />
-                <SidebarLink to="/sales/client-query" label="Client Query" icon={<SupportAgentIcon />} isOpen={isOpen} />
+                <SidebarLink to="/audit-logs" label="Audit Logs" icon={<HistoryIcon />} isOpen={isOpen} tourId="tour-audit" />
+                <SidebarLink to="/sales/client-query" label="Client Query" icon={<SupportAgentIcon />} isOpen={isOpen} tourId="tour-client-query" />
 
                 {hasPermission("MASTER") && (
-                    <SidebarDropdown label="Master" icon={<InventoryIcon />} isOpen={isOpen} items={[
+                    <SidebarDropdown label="Master" icon={<InventoryIcon />} isOpen={isOpen} tourId="tour-master" items={[
                         { to: "/master/item", label: "Item", icon: <CategoryIcon /> },
                         { to: "/master/vendor", label: "Vendor", icon: <PersonIcon /> },
                         { to: "/master/currency", label: "Currency", icon: <LanguageIcon /> },
@@ -111,7 +111,7 @@ export default function Sidebar({ isOpen }) {
                 )}
 
                 {hasPermission("PURCHASE") && (
-                    <SidebarDropdown label="Purchase" icon={<ShoppingCartIcon />} isOpen={isOpen} items={[
+                    <SidebarDropdown label="Purchase" icon={<ShoppingCartIcon />} isOpen={isOpen} tourId="tour-purchase" items={[
                         { to: "/", label: "Purchase Dashboard", icon: <DashboardIcon /> },
                         { to: "/requisition", label: "Requisition", icon: <DescriptionIcon /> },
                         { to: "/vendor-assignment", label: "Vendor Assignment", icon: <PersonIcon /> },
@@ -123,7 +123,7 @@ export default function Sidebar({ isOpen }) {
                 )}
 
                 {hasPermission("SALES") && (
-                    <SidebarDropdown label="Sales" icon={<AttachMoneyIcon />} isOpen={isOpen} items={[
+                    <SidebarDropdown label="Sales" icon={<AttachMoneyIcon />} isOpen={isOpen} tourId="tour-sales" items={[
                         { to: "/sales/dashboard", label: "Sales Dashboard", icon: <DashboardIcon /> },
                         { to: "/sales/sales-statistics", label: "Sales Statistics", icon: <BarChartIcon /> },
                         { to: "/sales/sales-performance", label: "Performance Report", icon: <EmojiEventsIcon /> },
@@ -137,7 +137,7 @@ export default function Sidebar({ isOpen }) {
                 )}
 
                 {hasPermission("FINANCE") && (
-                    <SidebarDropdown label="Finance" icon={<AccountBalanceIcon />} isOpen={isOpen} items={[
+                    <SidebarDropdown label="Finance" icon={<AccountBalanceIcon />} isOpen={isOpen} tourId="tour-finance" items={[
                         { to: "/finance/dashboard", label: "Finance Dashboard", icon: <DashboardIcon /> },
                         { to: "/finance/purchase-orders", label: "PO List", icon: <StorefrontIcon /> },
                         { to: "/finance/pi-bills", label: "PI Bills List", icon: <ListAltIcon /> },
@@ -151,7 +151,7 @@ export default function Sidebar({ isOpen }) {
                 )}
 
                 {hasPermission("TRANSPORT") && (
-                    <SidebarDropdown label="Transport" icon={<ShippingIcon />} isOpen={isOpen} items={[
+                    <SidebarDropdown label="Transport" icon={<ShippingIcon />} isOpen={isOpen} tourId="tour-transport" items={[
                         { to: "/transport/dashboard", label: "Transport Dashboard", icon: <PieChartIcon /> },
                         { to: "/transport", label: "Transport Entry", icon: <ListAltIcon /> },
                         { to: "/transport/dispatch", label: "Pending Dispatch", icon: <InventoryIcon /> },
@@ -161,15 +161,15 @@ export default function Sidebar({ isOpen }) {
                 )}
 
                 {hasPermission("RETURNS") && (
-                    <SidebarLink to="/returns" label="Returns" icon={<UndoIcon />} isOpen={isOpen} />
+                    <SidebarLink to="/returns" label="Returns" icon={<UndoIcon />} isOpen={isOpen} tourId="tour-returns" />
                 )}
 
                 {user?.role === "ADMIN" && (
-                    <SidebarLink to="/admin/users" label="Admin Panel" icon={<AdminIcon />} isOpen={isOpen} />
+                    <SidebarLink to="/admin/users" label="Admin Panel" icon={<AdminIcon />} isOpen={isOpen} tourId="tour-admin" />
                 )}
 
                 <Divider sx={{ my: 1.5, mx: 1 }} />
-                <SidebarLink to="/profile" label="Signature" icon={<AccountCircleIcon />} isOpen={isOpen} />
+                <SidebarLink to="/profile" label="Signature" icon={<AccountCircleIcon />} isOpen={isOpen} tourId="tour-profile" />
                 <SidebarLink
                     to="/verifications"
                     label="Verify Documents"
@@ -177,8 +177,9 @@ export default function Sidebar({ isOpen }) {
                     isOpen={isOpen}
                     badgeCount={pendingCount}
                     badgeColor="error"
+                    tourId="tour-verify"
                 />
-                <SidebarLink to="/user-guide" label="User Guide" icon={<MenuBookIcon />} isOpen={isOpen} />
+                <SidebarLink to="/user-guide" label="User Guide" icon={<MenuBookIcon />} isOpen={isOpen} tourId="tour-userguide" />
             </Box>
 
             {/* FOOTER */}
@@ -209,7 +210,7 @@ export default function Sidebar({ isOpen }) {
     );
 }
 
-function SidebarLink({ to, label, icon, isOpen, badgeCount = 0, badgeColor = 'primary' }) {
+function SidebarLink({ to, label, icon, isOpen, badgeCount = 0, badgeColor = 'primary', tourId }) {
     const location = useLocation();
     const isActive = location.pathname === to;
 
@@ -219,6 +220,7 @@ function SidebarLink({ to, label, icon, isOpen, badgeCount = 0, badgeColor = 'pr
             to={to}
             end
             selected={isActive}
+            data-tour={tourId}
             sx={{
                 minHeight: 40,
                 px: isOpen ? 1.5 : 1,
@@ -255,7 +257,7 @@ function SidebarLink({ to, label, icon, isOpen, badgeCount = 0, badgeColor = 'pr
     return isOpen ? button : <Tooltip title={`${label}${badgeCount > 0 ? ` (${badgeCount})` : ''}`} placement="right" arrow>{button}</Tooltip>;
 }
 
-function SidebarDropdown({ label, icon, isOpen, items }) {
+function SidebarDropdown({ label, icon, isOpen, items, tourId }) {
     const location = useLocation();
     const isAnyChildActive = items.some(item => location.pathname === item.to);
     const [expanded, setExpanded] = useState(isAnyChildActive);
@@ -263,6 +265,7 @@ function SidebarDropdown({ label, icon, isOpen, items }) {
     const headerBtn = (
         <ListItemButton
             onClick={() => isOpen && setExpanded(prev => !prev)}
+            data-tour={tourId}
             sx={{
                 minHeight: 40, px: isOpen ? 1.5 : 1,
                 justifyContent: isOpen ? 'flex-start' : 'center',

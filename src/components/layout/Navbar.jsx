@@ -55,6 +55,7 @@ export default function Navbar({ toggleSidebar, isSidebarOpen }) {
                     <IconButton
                         onClick={toggleSidebar}
                         size="small"
+                        data-tour="tour-menu-toggle"
                         sx={{
                             mr: 2, color: 'text.secondary',
                             '&:hover': { color: 'primary.main', bgcolor: 'primary.main', '& .MuiSvgIcon-root': { color: '#fff' } },
@@ -78,7 +79,9 @@ export default function Navbar({ toggleSidebar, isSidebarOpen }) {
                     </Box>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <NotificationBell />
+                        <Box data-tour="tour-notifications" sx={{ display: 'flex' }}>
+                            <NotificationBell />
+                        </Box>
 
                         <Chip
                             icon={<DotIcon sx={{ fontSize: '0.5rem !important', color: '#4CAF50 !important' }} />}
@@ -86,6 +89,7 @@ export default function Navbar({ toggleSidebar, isSidebarOpen }) {
                             size="small"
                             variant="outlined"
                             onClick={() => navigate('/profile')}
+                            data-tour="tour-userchip"
                             sx={{
                                 display: { xs: 'none', sm: 'flex' },
                                 fontWeight: 600, fontSize: '0.75rem',
@@ -98,6 +102,7 @@ export default function Navbar({ toggleSidebar, isSidebarOpen }) {
                             onClick={() => setLogoutOpen(true)}
                             startIcon={<LogoutIcon sx={{ fontSize: '1rem' }} />}
                             size="small"
+                            data-tour="tour-logout"
                             sx={{
                                 color: 'text.secondary', fontWeight: 600, fontSize: '0.8rem',
                                 border: '1px solid', borderColor: 'divider',

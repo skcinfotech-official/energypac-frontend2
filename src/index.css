@@ -23,6 +23,13 @@ input[type="number"] {
     --font-inter: 'Inter', sans-serif;
   }
 
+  /* Fluid root font-size: nearly all font sizes in the app are in `rem`,
+     so scaling the root scales the whole UI proportionally with the viewport.
+     ~14.5px on small laptops → ~16px around 1440px → caps at 17px on large screens. */
+  html {
+    font-size: clamp(14.5px, 0.28vw + 11.6px, 17px);
+  }
+
   body {
     @apply bg-[rgb(var(--background))] text-slate-900;
     font-family: var(--font-inter);

@@ -1,6 +1,6 @@
-import { createTheme } from '@mui/material/styles';
+import { createTheme, responsiveFontSizes } from '@mui/material/styles';
 
-const theme = createTheme({
+const baseTheme = createTheme({
     palette: {
         primary: {
             main: '#1565C0',
@@ -299,5 +299,10 @@ const theme = createTheme({
         },
     },
 });
+
+// Add breakpoint-based scaling to the heading/text variants (h1–h6, subtitle,
+// body, etc.). Combined with the fluid root font-size in index.css, this makes
+// typography respond to screen size app-wide.
+const theme = responsiveFontSizes(baseTheme, { factor: 2.2 });
 
 export default theme;

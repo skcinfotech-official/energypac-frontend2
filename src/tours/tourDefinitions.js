@@ -168,6 +168,7 @@ export const tours = [
             {
                 route: "/finance/pi-bills",
                 element: '[data-tour="tour-finance"]',
+                module: "FINANCE", // cross-module step — skipped if the user has no Finance access
                 popover: {
                     title: "Step 4 — Collect Payment",
                     description: "Finally, in Finance → PI Bills, record the client's payments against the bill and track what's still outstanding. Sale complete! 🎉",
@@ -313,15 +314,18 @@ export const tours = [
     },
 ];
 
+// True if the user is allowed to read a given module (ADMIN sees everything).
+// A null/undefined module means "no restriction".
+export function canReadModule(user, module) {
+    if (!module) return true;
+    if (user?.role === "ADMIN") return true;
+    const perm = user?.permissions?.find((p) => p.module === module);
+    return perm ? perm.can_read : false;
+}
+
 // Filter tours by the current user's module permissions.
 export function availableTours(user) {
-    const canSee = (module) => {
-        if (!module) return true;
-        if (user?.role === "ADMIN") return true;
-        const perm = user?.permissions?.find((p) => p.module === module);
-        return perm ? perm.can_read : false;
-    };
-    return tours.filter((t) => canSee(t.module));
+    return tours.filter((t) => canReadModule(user, t.module));
 }
 
 export function getTour(id) {

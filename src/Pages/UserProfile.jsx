@@ -72,7 +72,7 @@ const UserProfile = () => {
   }
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
+    <Container maxWidth={false} disableGutters sx={{ py: 4 }}>
       {/* HEADER */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 4 }}>
         <Typography variant="h5" sx={{ fontWeight: 900, color: "#1a1a2e" }}>

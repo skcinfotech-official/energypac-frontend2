@@ -1283,7 +1283,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
     if (variant === "page") {
         return (
             <Box sx={{ p: { xs: 1, sm: 2 }, bgcolor: BG, minHeight: '100%' }}>
-                <Card sx={{ maxWidth: 1100, mx: 'auto', borderRadius: 4, overflow: 'hidden', boxShadow: 2 }}>
+                <Card sx={{ width: '100%', borderRadius: 4, overflow: 'hidden', boxShadow: 2 }}>
                     <Box sx={{ px: 3, py: 2, borderBottom: '1px solid', borderColor: 'divider', bgcolor: '#F8FAFC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Box>
                             <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>{headerTitle}</Typography>

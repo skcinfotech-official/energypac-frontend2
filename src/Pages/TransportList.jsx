@@ -1215,7 +1215,7 @@ const TransportList = () => {
 
                                     {/* Autocomplete Ref Select Dropdown */}
                                     {isRefDropdownOpen && (
-                                        <Paper elevation={8} sx={{ position: "absolute", left: 0, right: 0, mt: 1, borderRadius: 2.5, zIndex: 100, maxHeight: 224, overflow: "auto", border: "1px solid", borderColor: "grey.200" }}>
+                                        <Paper elevation={8} sx={{ position: "absolute", left: 0, right: 0, mt: 1, borderRadius: 2.5, zIndex: 100, maxHeight: 340, overflow: "auto", border: "1px solid", borderColor: "grey.200" }}>
                                             {refLoading ? (
                                                 <Typography sx={{ p: 2, textAlign: "center", fontSize: "0.7rem", color: "grey.400", fontWeight: 700, textTransform: "uppercase" }}>
                                                     Searching active references...
@@ -1229,11 +1229,12 @@ const TransportList = () => {
                                                             display: "flex",
                                                             alignItems: "center",
                                                             justifyContent: "space-between",
+                                                            gap: 1.5,
                                                             px: 2.5,
                                                             py: 1.5,
                                                             cursor: "pointer",
                                                             fontWeight: 700,
-                                                            fontSize: "0.75rem",
+                                                            fontSize: "0.8rem",
                                                             color: "grey.700",
                                                             borderBottom: "1px solid",
                                                             borderColor: "grey.100",
@@ -1241,8 +1242,8 @@ const TransportList = () => {
                                                             transition: "all 0.15s"
                                                         }}
                                                     >
-                                                        <span>{refType === "PO" ? item.po_number : item.pi_number}</span>
-                                                        <Chip label={item.client_name || item.vendor_name || "Active"} size="small" variant="outlined" sx={{ fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", height: 22 }} />
+                                                        <span style={{ flex: 1, minWidth: 0, whiteSpace: "normal", wordBreak: "break-word" }}>{refType === "PO" ? item.po_number : item.pi_number}</span>
+                                                        <Chip label={item.client_name || item.vendor_name || "Active"} size="small" variant="outlined" sx={{ flexShrink: 0, maxWidth: "45%", fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase", height: 22, "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" } }} />
                                                     </Box>
                                                 ))
                                             ) : (

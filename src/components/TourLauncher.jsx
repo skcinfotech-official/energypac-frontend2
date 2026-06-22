@@ -16,7 +16,7 @@ import {
     PlayCircle as PlayIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContext";
-import { availableTours, getTour } from "../tours/tourDefinitions";
+import { availableTours, getTour, canReadModule } from "../tours/tourDefinitions";
 
 const TOUR_SEEN_KEY = "energypac_tour_seen_v1";
 
@@ -43,9 +43,17 @@ export default function TourLauncher() {
             try { driverRef.current.destroy(); } catch { /* noop */ }
         }
 
-        // Drop steps whose element is missing on a fixed page (permission-hidden).
-        // Steps with a `route` are kept — their element appears after navigation.
-        const steps = tour.steps.filter((s) => s.route || document.querySelector(s.element));
+        // Drop steps the user can't follow:
+        //  1. A cross-module step (s.module) the user has no read access to —
+        //     its page/route would be permission-blocked.
+        //  2. A non-navigating step whose target element isn't on screen
+        //     (e.g. a sidebar item hidden because that module is off).
+        // Steps with a `route` are otherwise kept — their element appears after
+        // navigation, so we can't query for it yet.
+        const steps = tour.steps.filter((s) => {
+            if (s.module && !canReadModule(user, s.module)) return false;
+            return s.route || document.querySelector(s.element);
+        });
         if (steps.length === 0) return;
 
         const driverObj = driver({
@@ -90,7 +98,7 @@ export default function TourLauncher() {
         } else {
             driverObj.drive();
         }
-    }, [navigate]);
+    }, [navigate, user]);
 
     // Allow other pages (e.g. the User Guide) to launch a tour by name.
     useEffect(() => {

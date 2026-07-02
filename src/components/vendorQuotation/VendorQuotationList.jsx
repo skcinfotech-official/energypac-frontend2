@@ -6,6 +6,7 @@ import {
 } from "@mui/material";
 import {
     Visibility as ViewIcon,
+    Edit as EditIcon,
     ReceiptLong as InvoiceIcon,
     Add as AddIcon,
     ChevronLeft as PrevIcon,
@@ -302,18 +303,18 @@ const VendorQuotationList = ({ initialViewId, onNewQuotation }) => {
                                                         <ViewIcon fontSize="small" />
                                                     </IconButton>
                                                 </Tooltip>
-                                                {/* <Tooltip title="Edit Quotation">
+                                                <Tooltip title="Edit Quotation">
                                                     <IconButton
                                                         size="small"
                                                         onClick={() => handleEdit(row.id)}
                                                         sx={{
                                                             color: '#3B82F6',
-                                                            '&:hover': { color: '#1565C0', bgcolor: '#F0FDF4' }
+                                                            '&:hover': { color: '#1565C0', bgcolor: '#EFF6FF' }
                                                         }}
                                                     >
                                                         <EditIcon fontSize="small" />
                                                     </IconButton>
-                                                </Tooltip> */}
+                                                </Tooltip>
                                             </Box>
                                         </TableCell>
                                     </TableRow>

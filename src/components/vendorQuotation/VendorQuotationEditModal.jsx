@@ -138,7 +138,15 @@ const VendorQuotationEditModal = ({ open, onClose, quotationId, onSuccess }) => 
             onClose();
         } catch (err) {
             console.error(err);
-            setError("Failed to update quotation.");
+            const rd = err.response?.data;
+            let msg = "Failed to update quotation.";
+            if (rd) {
+                if (typeof rd === "string") msg = rd;
+                else if (rd.detail) msg = rd.detail;
+                else if (Array.isArray(rd.items)) msg = rd.items[0];
+                else if (rd.non_field_errors) msg = Array.isArray(rd.non_field_errors) ? rd.non_field_errors[0] : rd.non_field_errors;
+            }
+            setError(msg);
         } finally {
             setSubmitting(false);
         }

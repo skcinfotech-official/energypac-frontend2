@@ -15,6 +15,7 @@ const emptyItem = { product: "", product_name: "", product_code: "", quantity: "
 const RequisitionFormPage = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState({
+    requisition_number: "",
     requisition_date: new Date().toISOString().split("T")[0],
     remarks: "",
     items: [{ ...emptyItem }],
@@ -62,11 +63,16 @@ const RequisitionFormPage = () => {
           remarks: item.remarks || "",
         })),
       };
+      if ((form.requisition_number || "").trim()) {
+        payload.requisition_number = form.requisition_number.trim();
+      }
       await createRequisition(payload);
       setToast({ open: true, type: "success", message: "Requisition created successfully!" });
       setTimeout(() => navigate("/requisition"), 1500);
     } catch (err) {
-      const detail = err.response?.data?.error || err.response?.data?.detail || "Failed to create requisition";
+      const rd = err.response?.data;
+      const reqNumErr = Array.isArray(rd?.requisition_number) ? rd.requisition_number[0] : rd?.requisition_number;
+      const detail = reqNumErr || rd?.error || rd?.detail || "Failed to create requisition";
       setToast({ open: true, type: "error", message: `Error: ${detail}` });
     } finally {
       setSubmitting(false);
@@ -108,6 +114,21 @@ const RequisitionFormPage = () => {
             📅 Requisition Details
           </Typography>
           <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                <Typography sx={{ fontSize: "10px", fontWeight: 900, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.02em" }}>
+                  Requisition Number <Box component="span" sx={{ color: "#94a3b8", fontWeight: 700 }}>(optional)</Box>
+                </Typography>
+                <TextField
+                  fullWidth
+                  value={form.requisition_number}
+                  onChange={(e) => setForm({ ...form, requisition_number: e.target.value })}
+                  placeholder="Leave blank to auto-generate (e.g. EEL/2026/001)"
+                  helperText="Enter a custom requisition number, or leave blank to auto-generate."
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2, bgcolor: "white", fontFamily: "monospace", "& fieldset": { borderColor: "#dbeafe" } }, "& .MuiFormHelperText-root": { fontSize: "10px", color: "#94a3b8", ml: 0.5 } }}
+                />
+              </Box>
+            </Grid>
             <Grid item xs={12} md={6}>
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
                 <Typography sx={{ fontSize: "10px", fontWeight: 900, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.02em" }}>

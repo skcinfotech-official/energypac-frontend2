@@ -13,7 +13,7 @@ import AlertToast from "../ui/AlertToast";
 const emptyItem = { product: "", quantity: "", remarks: "", unit: "" };
 
 const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false }) => {
-  const [form, setForm] = useState({ requisition_date: new Date().toISOString().split("T")[0], remarks: "", items: [{ ...emptyItem }] });
+  const [form, setForm] = useState({ requisition_number: "", requisition_date: new Date().toISOString().split("T")[0], remarks: "", items: [{ ...emptyItem }] });
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ open: false, type: "error", message: "" });
   const [isAssigned, setIsAssigned] = useState(false);
@@ -78,11 +78,16 @@ const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false
     setSubmitting(true);
     try {
       const payload = { requisition_date: form.requisition_date, remarks: form.remarks, items: form.items.map(item => ({ product_id: item.product, product: item.product, quantity: Number(item.quantity), remarks: item.remarks || "" })) };
+      if (!editData && (form.requisition_number || "").trim()) {
+        payload.requisition_number = form.requisition_number.trim();
+      }
       editData ? await updateRequisition(editData.id, payload) : await createRequisition(payload);
       onSuccess();
       onClose();
     } catch (err) {
-      const detail = err.response?.data?.error || err.response?.data?.detail || err.response?.data?.message || err.message || "Failed to save requisition";
+      const rd = err.response?.data;
+      const reqNumErr = Array.isArray(rd?.requisition_number) ? rd.requisition_number[0] : rd?.requisition_number;
+      const detail = reqNumErr || rd?.error || rd?.detail || rd?.message || err.message || "Failed to save requisition";
       setToast({ open: true, type: "error", message: `Error: ${detail}` });
     } finally {
       setSubmitting(false);
@@ -114,6 +119,14 @@ const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false
           <Paper sx={{ p: 3.5, bgcolor: "white", border: "2px solid #dbeafe", borderRadius: 2.5, background: "linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%)", boxShadow: "0 2px 8px rgba(30, 64, 175, 0.08)" }}>
             <Typography sx={{ fontSize: "10px", fontWeight: 900, color: "#1e40af", textTransform: "uppercase", letterSpacing: "0.05em", mb: 3 }}>📋 Requisition Info</Typography>
             <Grid container spacing={3}>
+              {!editData && !viewOnly && (
+                <Grid item xs={12}>
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                    <Typography sx={{ fontSize: "10px", fontWeight: 900, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.02em" }}>Requisition Number <Box component="span" sx={{ color: "#94a3b8", fontWeight: 700 }}>(optional)</Box></Typography>
+                    <TextField fullWidth size="small" placeholder="Leave blank to auto-generate (e.g. EEL/2026/001)" value={form.requisition_number} onChange={(e) => setForm({ ...form, requisition_number: e.target.value })} helperText="Enter a custom requisition number, or leave blank to let the system generate one automatically." sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1.5, bgcolor: "white", fontFamily: "monospace", "& fieldset": { borderColor: "#dbeafe" } }, "& .MuiFormHelperText-root": { fontSize: "9px", color: "#94a3b8", ml: 0.5 } }} />
+                  </Box>
+                </Grid>
+              )}
               <Grid item xs={12} md={6}>
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
                   <Typography sx={{ fontSize: "10px", fontWeight: 900, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.02em" }}>Requisition Date</Typography>

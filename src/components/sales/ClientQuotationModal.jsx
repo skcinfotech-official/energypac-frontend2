@@ -55,6 +55,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
     const [tradeType, setTradeType] = useState("DOMESTIC");
     const [formData, setFormData] = useState({
         requisition: "",
+        pi_number: "",
         pi_date: new Date().toISOString().split('T')[0],
         currency: "USD",
         conversion_rate: "",
@@ -80,6 +81,8 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
     const [reqSearch, setReqSearch] = useState("");
     const [reqOpen, setReqOpen] = useState(false);
     const [selectedReqNumber, setSelectedReqNumber] = useState("");
+    // Multi-requisition: all requisitions this PI draws items from ({ id, number }).
+    const [selectedRequisitions, setSelectedRequisitions] = useState([]);
     const [items, setItems] = useState([]);
     const [terms, setTerms] = useState(makeDefaultTerms());
     const [submitting, setSubmitting] = useState(false);
@@ -144,14 +147,27 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                 });
 
                 const populatedItems = (invoice.items || []).map(item => ({
+                    id: item.id,
+                    requisition_item_id: item.requisition_item || "",
                     product: item.product || item.product_id || "",
                     product_name: item.product_name || item.item_name || "Product",
+                    product_code: item.product_code || "",
                     hsn_code: item.hsn_code || "N/A",
                     quantity: Number(item.quantity) || 1,
                     unit_price: Number(item.unit_price || item.rate) || 0,
                     unit: item.unit || "pcs",
+                    requisition: item.source_requisition || invoice.requisition || "",
+                    requisition_number: item.source_requisition_number || invoice.requisition_number || "",
+                    // Existing lines are always included & editable.
+                    selected: true,
+                    can_add_to_pi: true,
                 }));
                 setItems(populatedItems);
+
+                // Rebuild the multi-requisition chips from the loaded PI.
+                const reqIds = invoice.requisitions || (invoice.requisition ? [invoice.requisition] : []);
+                const reqNums = invoice.requisition_numbers || (invoice.requisition_number ? [invoice.requisition_number] : []);
+                setSelectedRequisitions(reqIds.map((id, i) => ({ id, number: reqNums[i] || "" })));
 
                 const populatedTerms = (invoice.terms_and_conditions || []).map((term, index) => {
                     // New format: stored as objects {key, value, bold}
@@ -182,6 +198,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                 setTradeType("DOMESTIC");
                 setFormData({
                     requisition: "",
+                    pi_number: "",
                     pi_date: new Date().toISOString().split('T')[0],
                     currency: "USD",
                     conversion_rate: "",
@@ -213,27 +230,27 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                 setReqSearch("");
                 setReqOpen(false);
                 setSelectedReqNumber("");
+                setSelectedRequisitions([]);
             }
             setError("");
             setProfitPreview(null);
         }
     }, [isOpen, invoice]);
 
-    // Requisition search (server-side, debounced) — only in requisition mode
+    // Requisition search (server-side, debounced) — requisition mode (create & edit,
+    // since edit now supports adding more requisitions).
     useEffect(() => {
-        if (!isOpen || isEdit || piMode !== "requisition") return;
+        if (!isOpen || piMode !== "requisition") return;
         const t = setTimeout(async () => {
             try {
-                // when a requisition is already chosen, don't re-search with its number
-                const q = formData.requisition ? "" : reqSearch;
-                const res = await fetchRequisitions(1, q, "", "");
+                const res = await fetchRequisitions(1, reqSearch, "", "");
                 setRequisitions(res.data?.results || []);
             } catch (err) {
                 console.error("Failed to fetch requisitions", err);
             }
         }, 300);
         return () => clearTimeout(t);
-    }, [isOpen, isEdit, piMode, reqSearch, formData.requisition]);
+    }, [isOpen, piMode, reqSearch]);
 
     const handleModeChange = (mode) => {
         if (isEdit) return;
@@ -247,19 +264,23 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
         setReqSearch("");
         setReqOpen(false);
         setSelectedReqNumber("");
+        setSelectedRequisitions([]);
     };
 
     const selectRequisition = async (req) => {
         const reqId = req?.id || "";
-        setFormData(prev => ({ ...prev, requisition: reqId }));
-        setSelectedReqNumber(req?.requisition_number || "");
-        setReqOpen(false);
-        setReqSearch(req?.requisition_number || "");
+        if (!reqId) return;
 
-        if (!reqId) {
-            setItems([]);
+        // Already added? — ignore (multi-select accumulates, no duplicates).
+        if (selectedRequisitions.some(r => r.id === reqId)) {
+            setReqOpen(false);
+            setReqSearch("");
             return;
         }
+
+        const reqNumber = req?.requisition_number || "";
+        setReqOpen(false);
+        setReqSearch("");
 
         setLoadingItems(true);
         try {
@@ -269,6 +290,9 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
             const mappedItems = rawList.map(item => {
                 const remainingQty = item.remaining_qty !== undefined ? Number(item.remaining_qty) : Number(item.quantity) || 1;
                 return {
+                    requisition_item_id: item.requisition_item_id || "",
+                    requisition: item.requisition || reqId,
+                    requisition_number: item.requisition_number || reqNumber,
                     product: item.product_id || item.product || "",
                     product_name: item.product_name || item.item_name || "Product",
                     product_code: item.product_code || "",
@@ -284,7 +308,21 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                     selected: item.can_add_to_pi !== false,
                 };
             });
-            setItems(mappedItems);
+
+            // Append new requisition's items; dedupe by requisition_item_id.
+            setItems(prev => {
+                const seen = new Set(prev.map(i => i.requisition_item_id).filter(Boolean));
+                const fresh = mappedItems.filter(i => !i.requisition_item_id || !seen.has(i.requisition_item_id));
+                return [...prev, ...fresh];
+            });
+
+            // Track selection; keep formData.requisition = primary (first) for compat.
+            setSelectedRequisitions(prev => {
+                const next = [...prev, { id: reqId, number: reqNumber }];
+                setFormData(fd => ({ ...fd, requisition: next[0].id }));
+                setSelectedReqNumber(next[0].number);
+                return next;
+            });
 
             const unavailable = mappedItems.filter(i => !i.can_add_to_pi);
             if (unavailable.length > 0) {
@@ -303,6 +341,18 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
         } finally {
             setLoadingItems(false);
         }
+    };
+
+    const removeRequisition = (reqId) => {
+        // Drop the requisition and all of its lines from the PI.
+        setItems(prev => prev.filter(i => i.requisition !== reqId));
+        setSelectedRequisitions(prev => {
+            const next = prev.filter(r => r.id !== reqId);
+            const primary = next[0] || null;
+            setFormData(fd => ({ ...fd, requisition: primary ? primary.id : "" }));
+            setSelectedReqNumber(primary ? primary.number : "");
+            return next;
+        });
     };
 
     const loadStockProducts = async () => {
@@ -481,17 +531,22 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                 : items;
 
             if (selectedItems.length === 0) throw new Error("At least one item is required");
-            if (piMode === "requisition" && !formData.requisition) throw new Error("Please select a Requisition");
+            if (piMode === "requisition" && selectedRequisitions.length === 0) throw new Error("Please select at least one Requisition");
 
             const payload = {
                 ...formData,
+                pi_number: !isEdit ? (formData.pi_number || "").trim() : undefined,
                 conversion_rate: formData.currency === "INR" ? 1 : Number(formData.conversion_rate) || 1,
-                requisition: piMode === "requisition" ? formData.requisition : null,
+                requisition: piMode === "requisition" ? (formData.requisition || null) : null,
+                requisitions: piMode === "requisition" ? selectedRequisitions.map(r => r.id) : [],
                 source: piMode === "stock_sale" ? "STOCK_SALE" : piMode === "direct" ? "DIRECT" : undefined,
                 trade_type: tradeType,
                 items: selectedItems.map(it => ({
+                    ...(it.id ? { id: it.id } : {}),
                     product: it.product,
+                    requisition: piMode === "requisition" ? (it.requisition || formData.requisition || null) : null,
                     hsn_code: it.hsn_code,
+                    unit: (it.unit || "").trim(),
                     quantity: Number(it.quantity),
                     unit_price: Number(it.unit_price)
                 })),
@@ -681,29 +736,22 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                             <Grid container spacing={2}>
                                 {piMode === "requisition" ? (
                                     <Grid item xs={12} md={4}>
-                                        <Typography sx={labelSx}>Requisition Reference *</Typography>
-                                        {isEdit ? (
-                                            <TextField
-                                                value={invoice?.requisition_number || "Active Requisition"}
-                                                fullWidth size="small" disabled
-                                                sx={inputSx}
-                                            />
-                                        ) : (
-                                            <Box sx={{ position: 'relative' }}>
+                                        <Typography sx={labelSx}>Requisition Reference(s) *</Typography>
+                                        {isEdit && (
+                                            <Typography sx={{ fontSize: 10, color: 'text.disabled', mb: 0.5 }}>
+                                                Add more requisitions to pull extra received items into this PI.
+                                            </Typography>
+                                        )}
+                                        <Box sx={{ position: 'relative' }}>
                                                 <TextField
                                                     value={reqSearch}
                                                     onChange={(e) => {
                                                         setReqSearch(e.target.value);
                                                         setReqOpen(true);
-                                                        if (formData.requisition) {
-                                                            setFormData(prev => ({ ...prev, requisition: "" }));
-                                                            setSelectedReqNumber("");
-                                                            setItems([]);
-                                                        }
                                                     }}
                                                     onFocus={() => setReqOpen(true)}
                                                     onBlur={() => setTimeout(() => setReqOpen(false), 150)}
-                                                    placeholder="Search requisition number..."
+                                                    placeholder="Search & add requisition(s)..."
                                                     fullWidth size="small"
                                                     InputProps={{ startAdornment: <SearchIcon sx={{ fontSize: 16, color: 'text.disabled', mr: 0.5 }} /> }}
                                                     sx={inputSx}
@@ -714,25 +762,36 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                                                             <Typography sx={{ fontSize: 12, color: 'text.disabled', textAlign: 'center', py: 2, fontStyle: 'italic' }}>
                                                                 {reqSearch ? "No matching requisition" : "Type to search requisitions"}
                                                             </Typography>
-                                                        ) : requisitions.map(req => (
-                                                            <Box
-                                                                key={req.id}
-                                                                onMouseDown={(e) => e.preventDefault()}
-                                                                onClick={() => selectRequisition(req)}
-                                                                sx={{ px: 1.5, py: 1, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'monospace', borderBottom: '1px solid', borderColor: 'divider', bgcolor: formData.requisition === req.id ? '#EFF6FF' : 'white', '&:hover': { bgcolor: '#F1F5F9' } }}
-                                                            >
-                                                                {req.requisition_number}
-                                                            </Box>
+                                                        ) : requisitions.map(req => {
+                                                            const alreadyAdded = selectedRequisitions.some(r => r.id === req.id);
+                                                            return (
+                                                                <Box
+                                                                    key={req.id}
+                                                                    onMouseDown={(e) => e.preventDefault()}
+                                                                    onClick={() => !alreadyAdded && selectRequisition(req)}
+                                                                    sx={{ px: 1.5, py: 1, cursor: alreadyAdded ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'monospace', borderBottom: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: alreadyAdded ? '#F1F5F9' : 'white', color: alreadyAdded ? 'text.disabled' : 'text.primary', '&:hover': { bgcolor: alreadyAdded ? '#F1F5F9' : '#EFF6FF' } }}
+                                                                >
+                                                                    {req.requisition_number}
+                                                                    {alreadyAdded && <Typography component="span" sx={{ fontSize: 10, fontWeight: 700, color: 'success.main' }}>✓ added</Typography>}
+                                                                </Box>
+                                                            );
+                                                        })}
+                                                    </Box>
+                                                )}
+                                                {selectedRequisitions.length > 0 && (
+                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.75 }}>
+                                                        {selectedRequisitions.map((r, i) => (
+                                                            <Chip
+                                                                key={r.id}
+                                                                label={i === 0 ? `${r.number} (primary)` : r.number}
+                                                                size="small"
+                                                                onDelete={() => removeRequisition(r.id)}
+                                                                sx={{ fontFamily: 'monospace', fontSize: 10, fontWeight: 700, bgcolor: i === 0 ? '#DBEAFE' : '#EFF6FF', color: PRIMARY, '& .MuiChip-deleteIcon': { fontSize: 14 } }}
+                                                            />
                                                         ))}
                                                     </Box>
                                                 )}
-                                                {formData.requisition && selectedReqNumber && (
-                                                    <Typography sx={{ fontSize: 10, color: 'success.main', mt: 0.5, fontWeight: 700 }}>
-                                                        ✓ {selectedReqNumber} selected
-                                                    </Typography>
-                                                )}
-                                            </Box>
-                                        )}
+                                        </Box>
                                     </Grid>
                                 ) : (
                                     <Grid item xs={12} md={4}>
@@ -747,6 +806,22 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                                                 </Box>
                                             )}
                                         </Box>
+                                    </Grid>
+                                )}
+
+                                {!isEdit && (
+                                    <Grid item xs={12} md={4}>
+                                        <Typography sx={labelSx}>PI Number (optional)</Typography>
+                                        <TextField
+                                            name="pi_number"
+                                            value={formData.pi_number}
+                                            onChange={handleInputChange}
+                                            fullWidth
+                                            size="small"
+                                            placeholder="Leave blank to auto-generate"
+                                            helperText="Enter a custom PI number, or leave blank to auto-generate."
+                                            sx={inputSx}
+                                        />
                                     </Grid>
                                 )}
 
@@ -1042,7 +1117,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                                                 <TableCell sx={{ fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: 'text.secondary' }}>Product Name / Details</TableCell>
                                                 {piMode === "requisition" && <TableCell sx={{ fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: 'text.secondary', width: 96, textAlign: 'center' }}>Status</TableCell>}
                                                 <TableCell sx={{ fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: 'text.secondary', width: 176 }}>HSN Code</TableCell>
-                                                <TableCell sx={{ fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: 'text.secondary', width: 112, textAlign: 'right' }}>Quantity</TableCell>
+                                                <TableCell sx={{ fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: 'text.secondary', width: 176, textAlign: 'right' }}>Quantity / Unit</TableCell>
                                                 <TableCell sx={{ fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: 'text.secondary', width: 144, textAlign: 'right' }}>Unit Price ({formData.currency})</TableCell>
                                                 <TableCell sx={{ fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: 'text.secondary', width: 144, textAlign: 'right' }}>Total Amount</TableCell>
                                                 <TableCell sx={{ fontWeight: 700, fontSize: 10, textTransform: 'uppercase', color: 'text.secondary', width: 48 }} />
@@ -1093,6 +1168,13 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                                                                         <Typography component="span" sx={{ ml: 1, color: '#059669', fontSize: 10 }}>Stock: {item.current_stock}</Typography>
                                                                     )}
                                                                 </Typography>
+                                                                {piMode === "requisition" && item.requisition_number && selectedRequisitions.length > 1 && (
+                                                                    <Chip
+                                                                        label={item.requisition_number}
+                                                                        size="small"
+                                                                        sx={{ mt: 0.5, height: 16, fontSize: 9, fontWeight: 700, fontFamily: 'monospace', bgcolor: '#EFF6FF', color: PRIMARY }}
+                                                                    />
+                                                                )}
                                                                 {disabled && (
                                                                     <Typography sx={{ fontSize: 10, color: 'error.main', fontWeight: 700, mt: 0.25, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                                                         <WarningAmberIcon sx={{ fontSize: 10 }} />
@@ -1124,15 +1206,26 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                                                                 />
                                                             </TableCell>
                                                             <TableCell sx={{ textAlign: 'right', py: 1.5 }}>
-                                                                <TextField
-                                                                    type="number"
-                                                                    value={item.quantity}
-                                                                    onChange={(e) => handleItemChange(index, "quantity", e.target.value)}
-                                                                    size="small"
-                                                                    inputProps={{ min: 1, style: { textAlign: 'right' } }}
-                                                                    disabled={disabled}
-                                                                    sx={{ width: 96, '& .MuiOutlinedInput-root': { borderRadius: 1.5 }, '& .MuiInputBase-input': { fontSize: 11, fontWeight: 600, py: 0.75, px: 1 } }}
-                                                                />
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.75 }}>
+                                                                    <TextField
+                                                                        type="number"
+                                                                        value={item.quantity}
+                                                                        onChange={(e) => handleItemChange(index, "quantity", e.target.value)}
+                                                                        size="small"
+                                                                        inputProps={{ min: 1, style: { textAlign: 'right' } }}
+                                                                        disabled={disabled}
+                                                                        sx={{ width: 88, '& .MuiOutlinedInput-root': { borderRadius: 1.5 }, '& .MuiInputBase-input': { fontSize: 11, fontWeight: 600, py: 0.75, px: 1 } }}
+                                                                    />
+                                                                    <TextField
+                                                                        value={item.unit || ''}
+                                                                        onChange={(e) => handleItemChange(index, "unit", e.target.value)}
+                                                                        size="small"
+                                                                        placeholder="Unit"
+                                                                        title="Unit of measure"
+                                                                        disabled={disabled}
+                                                                        sx={{ width: 64, '& .MuiOutlinedInput-root': { borderRadius: 1.5 }, '& .MuiInputBase-input': { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', py: 0.75, px: 1 } }}
+                                                                    />
+                                                                </Box>
                                                             </TableCell>
                                                             <TableCell sx={{ textAlign: 'right', py: 1.5 }}>
                                                                 <TextField

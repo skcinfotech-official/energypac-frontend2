@@ -12,40 +12,53 @@ Font.register({
 });
 
 const styles = StyleSheet.create({
-    page: { padding: 30, paddingBottom: 40, fontFamily: 'Roboto', fontSize: 8, color: '#000' },
-    watermarkContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' },
-    watermarkText: { fontSize: 70, fontWeight: 'bold', color: '#e2f0fd', transform: 'rotate(-45deg)', opacity: 0.5, letterSpacing: 10 },
-    table: { marginTop: 10, borderWidth: 1, borderColor: '#000' },
+    page: { padding: 24, paddingBottom: 40, fontFamily: 'Roboto', fontSize: 8, color: '#000' },
+
+    // ── Header grid (mirrors the printed Proforma Invoice form) ──
+    grid: { borderWidth: 1, borderColor: '#000' },
+    gridTitle: { borderBottomWidth: 1, borderBottomColor: '#000', padding: 5, alignItems: 'center' },
+    row: { flexDirection: 'row' },
+    rowBB: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000' },
+    cellR: { borderRightWidth: 1, borderRightColor: '#000' },
+    pad: { padding: 4 },
+    hlabel: { fontSize: 7, fontWeight: 'bold', color: '#000' },
+    hvalue: { fontSize: 8, fontWeight: 'bold', marginTop: 2, lineHeight: 1.3 },
+
+    // ── Items table ──
+    table: { marginTop: 6, borderWidth: 1, borderColor: '#000' },
     tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', fontWeight: 'bold', backgroundColor: '#E5E7EB', alignItems: 'center' },
-    tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', alignItems: 'center', minHeight: 24 },
-    col1: { width: '6%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
-    col2: { width: '34%', padding: 4, borderRightWidth: 1, borderRightColor: '#000' },
-    col3: { width: '10%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
-    col4: { width: '10%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'right' },
+    tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', alignItems: 'stretch', minHeight: 30 },
+    col1: { width: '5%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
+    col2: { width: '38%', padding: 4, borderRightWidth: 1, borderRightColor: '#000' },
+    col3: { width: '12%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
+    col4: { width: '9%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'right' },
     col5: { width: '8%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'center' },
-    colRate: { width: '14%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'right' },
-    col6: { width: '18%', padding: 4, textAlign: 'right' },
-    label: { fontSize: 6.5, fontWeight: 'bold', color: '#444', marginBottom: 1, textTransform: 'uppercase' },
+    colRate: { width: '12%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', textAlign: 'right' },
+    col6: { width: '16%', padding: 4, textAlign: 'right' },
 });
 
-const EnergypacLogo = () => (
-    <Image src={`${window.location.origin}/logo.jpeg`} style={{ width: 180, height: 25, marginBottom: 5 }} />
+// Small header field: bold label above a bold value. Declared at module scope
+// so it is not re-created on every render.
+const Field = ({ label, value, valueSize, minHeight }) => (
+    <>
+        <Text style={styles.hlabel}>{label}</Text>
+        <Text style={[styles.hvalue, valueSize ? { fontSize: valueSize } : null, minHeight ? { minHeight } : null]}>{value || ''}</Text>
+    </>
 );
 
 const ClientQuotationPDF = ({ quotation, verification }) => {
     if (!quotation) return null;
 
     const curr = quotation.currency || 'USD';
-    const symbol = curr === 'INR' ? '₹' : (curr === 'USD' ? '$' : curr);
 
-    const fmt = (val) => `${symbol} ${Number(val || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const num2 = (val) => Number(val || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     const formatDate = (date) => {
         if (!date) return '';
         return new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.');
     };
 
-    // Extract verified user from verification data
+    // Extract verified authorized signatory (if the PI has been signed off)
     const getVerifiedUser = () => {
         if (!verification || !verification.verifiers) return null;
         return verification.verifiers.find(v => v.role === 'AUTHORIZED_SIGNATORY');
@@ -56,158 +69,142 @@ const ClientQuotationPDF = ({ quotation, verification }) => {
     const subtotal = items.reduce((s, i) => s + (Number(i.quantity || 0) * Number(i.unit_price || 0)), 0);
     const grandTotal = Number(quotation.grand_total || subtotal);
 
+    // Header-level freight entered on the PI. 0 -> plain "GRAND TOTAL".
+    const freightCharges = Number(quotation.freight_charges || 0);
+    const grandLabel = freightCharges > 0
+        ? `GRAND TOTAL (INCLUDING OF FREIGHT CHARGES ${curr} ${num2(freightCharges)})`
+        : 'GRAND TOTAL';
+
+    // Project-reference line (under Invoice No / Ref / GST):
+    // requisition number(s) the PI is built on; if none (stock sale / direct),
+    // fall back to the manually-entered Project Name.
+    const reqRefs = (Array.isArray(quotation.requisition_numbers) && quotation.requisition_numbers.length)
+        ? quotation.requisition_numbers.filter(Boolean).join(', ')
+        : (quotation.requisition_number || '');
+    const projectRef = reqRefs || quotation.project_name || '';
+
     const termsRaw = quotation.terms_and_conditions || [];
-    const terms = termsRaw.map((t, i) => {
+    const terms = termsRaw.map((t) => {
         if (typeof t === 'string') {
             const idx = t.indexOf(':');
-            return idx !== -1 ? { label: t.substring(0, idx).trim(), value: t.substring(idx + 1).trim(), bold: false } : { label: `Term ${i + 1}`, value: t, bold: false };
+            return idx !== -1 ? { label: t.substring(0, idx).trim(), value: t.substring(idx + 1).trim(), bold: false } : { label: '', value: t, bold: false };
         }
-        if (t && typeof t === 'object') return { label: t.key || t.label || `Term ${i + 1}`, value: t.value || '', bold: !!t.bold };
+        if (t && typeof t === 'object') return { label: t.key || t.label || '', value: t.value || '', bold: !!t.bold };
         return null;
     }).filter(Boolean);
-
-    const InfoRow = ({ label, value }) => value ? (
-        <View style={{ flexDirection: 'row', marginBottom: 2 }}>
-            <Text style={{ width: '35%', fontSize: 7.5, fontWeight: 'bold' }}>{label} :</Text>
-            <Text style={{ width: '65%', fontSize: 7.5 }}>{value}</Text>
-        </View>
-    ) : null;
 
     return (
         <Document>
             <Page size="A4" style={styles.page}>
 
-                <View style={styles.watermarkContainer} fixed>
-                    <Text style={styles.watermarkText}>ENERGYPAC</Text>
-                </View>
+                {/* ══════════ HEADER GRID ══════════ */}
+                <View style={styles.grid}>
 
-                {/* Letterhead */}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 1.5, borderBottomColor: '#000', paddingBottom: 6, marginBottom: 8 }}>
-                    <EnergypacLogo />
-                    <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
-                        <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#0E5EB3' }}>ENERGYPAC ENGINEERING LTD.</Text>
-                        <Text style={{ fontSize: 6.5, color: '#333', marginTop: 1.5 }}>KB-22, "Bhakta Tower", 4th Floor, Sector-III,</Text>
-                        <Text style={{ fontSize: 6.5, color: '#333' }}>Salt Lake City, KOLKATA - 700 098, INDIA.</Text>
-                        <Text style={{ fontSize: 6.5, color: '#333' }}>Tel. : 033 4006 5853, GSTIN : 19AABCE4975G1ZE</Text>
-                        <Text style={{ fontSize: 6.5, color: '#333' }}>E-mail : energypackolkata@gmail.com | eel@energypacindia.in</Text>
-                    </View>
-                </View>
-
-                {/* Title */}
-                <View style={{ borderWidth: 1, borderColor: '#000', marginBottom: 8 }}>
-                    <View style={{ borderBottomWidth: 1, borderBottomColor: '#000', padding: 4, alignItems: 'center', backgroundColor: '#F9FAFB' }}>
-                        <Text style={{ fontSize: 10, fontWeight: 'bold', letterSpacing: 1 }}>PROFORMA INVOICE</Text>
+                    {/* Title */}
+                    <View style={styles.gridTitle}>
+                        <Text style={{ fontSize: 11, fontWeight: 'bold', letterSpacing: 1 }}>PROFORMA INVOICE</Text>
                     </View>
 
-                    {/* Two columns: Exporter + Invoice Details */}
-                    <View style={{ flexDirection: 'row' }}>
-                        <View style={{ width: '55%', padding: 5, borderRightWidth: 1, borderRightColor: '#000', minHeight: 70 }}>
-                            <Text style={styles.label}>Beneficiary / Exporter:</Text>
-                            <Text style={{ fontSize: 8, fontWeight: 'bold', marginBottom: 2 }}>{quotation.exporter_beneficiary || 'ENERGYPAC ENGINEERING LIMITED.'}</Text>
-                            <Text style={{ fontSize: 6.5, color: '#333', lineHeight: 1.2 }}>KB-22, Bhakta Tower, 4th Floor, Sector-III,{'\n'}Salt Lake City, Kolkata - 700098, India.</Text>
-                            {quotation.gst_number && (
-                                <Text style={{ fontSize: 7.5, fontWeight: 'bold', marginTop: 4 }}>GSTIN : {quotation.gst_number}</Text>
-                            )}
+                    {/* Row 1: Beneficiary | (Invoice No & Date / Exporters Ref / GST) + Project line */}
+                    <View style={styles.rowBB}>
+                        <View style={[{ width: '50%', minHeight: 64 }, styles.cellR, styles.pad]}>
+                            <Text style={styles.hlabel}>Beneficiary / Exporter:</Text>
+                            <Text style={{ fontSize: 8, fontWeight: 'bold', lineHeight: 1.3, marginTop: 2 }}>
+                                {quotation.exporter_beneficiary || 'ENERGYPAC ENGINEERING LIMITED.'}
+                            </Text>
                         </View>
-                        <View style={{ width: '45%', padding: 5 }}>
-                            <InfoRow label="PI NO" value={quotation.pi_number} />
-                            <InfoRow label="DATE" value={formatDate(quotation.pi_date)} />
-                            <InfoRow label="REQUISITION" value={quotation.requisition_number || (quotation.is_stock_sale ? 'STOCK SALE' : 'N/A')} />
-                            {quotation.exporter_reference && <InfoRow label="EXPORTER REF" value={quotation.exporter_reference} />}
-                            {quotation.lc_number && <InfoRow label="L/C NUMBER" value={quotation.lc_number} />}
-                            <InfoRow label="CURRENCY" value={curr} />
-                        </View>
-                    </View>
-                </View>
-
-                {/* Consignee & Importer */}
-                {(quotation.consignee || quotation.applicant_importer) && (
-                    <View style={{ borderWidth: 1, borderColor: '#000', marginBottom: 8, flexDirection: 'row' }}>
-                        {quotation.consignee && (
-                            <View style={{ width: quotation.applicant_importer ? '50%' : '100%', padding: 5, borderRightWidth: quotation.applicant_importer ? 1 : 0, borderRightColor: '#000' }}>
-                                <Text style={styles.label}>Consignee:</Text>
-                                <Text style={{ fontSize: 7.5, fontWeight: 'bold', lineHeight: 1.2 }}>{quotation.consignee}</Text>
-                            </View>
-                        )}
-                        {quotation.applicant_importer && (
-                            <View style={{ width: quotation.consignee ? '50%' : '100%', padding: 5 }}>
-                                <Text style={styles.label}>Applicant / Importer:</Text>
-                                <Text style={{ fontSize: 7.5, fontWeight: 'bold', lineHeight: 1.2 }}>{quotation.applicant_importer}</Text>
-                            </View>
-                        )}
-                    </View>
-                )}
-
-                {/* Shipping Details */}
-                {(quotation.country_of_origin || quotation.final_destination || quotation.port_of_loading || quotation.port_of_discharge || quotation.terms_of_delivery || quotation.terms_of_payment) && (
-                    <View style={{ borderWidth: 1, borderColor: '#000', marginBottom: 8 }}>
-                        <View style={{ flexDirection: 'row', borderBottomWidth: (quotation.port_of_loading || quotation.port_of_discharge || quotation.terms_of_delivery || quotation.terms_of_payment) ? 1 : 0, borderBottomColor: '#000' }}>
-                            {quotation.country_of_origin && (
-                                <View style={{ width: '50%', padding: 4, borderRightWidth: 1, borderRightColor: '#000' }}>
-                                    <Text style={styles.label}>Country of Origin:</Text>
-                                    <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>{quotation.country_of_origin}</Text>
+                        <View style={{ width: '50%' }}>
+                            <View style={styles.rowBB}>
+                                <View style={[{ width: '38%' }, styles.cellR, styles.pad]}>
+                                    <Text style={styles.hlabel}>Proforma Invoice No. & Date</Text>
+                                    <Text style={styles.hvalue}>
+                                        {quotation.pi_number}{quotation.pi_date ? `  DT. ${formatDate(quotation.pi_date)}` : ''}
+                                    </Text>
                                 </View>
-                            )}
-                            {quotation.final_destination && (
-                                <View style={{ width: '50%', padding: 4 }}>
-                                    <Text style={styles.label}>Final Destination:</Text>
-                                    <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>{quotation.final_destination}</Text>
+                                <View style={[{ width: '30%' }, styles.cellR, styles.pad]}>
+                                    <Field label="Exporters Ref." value={quotation.exporter_reference} valueSize={7.5} />
                                 </View>
-                            )}
+                                <View style={[{ width: '32%' }, styles.pad]}>
+                                    <Text style={styles.hlabel}>GST NO.</Text>
+                                    <Text style={{ fontSize: 7.5, fontWeight: 'bold', marginTop: 2 }}>{quotation.gst_number || ''}</Text>
+                                </View>
+                            </View>
+                            <View style={[styles.pad, { flex: 1, justifyContent: 'center' }]}>
+                                <Text style={{ fontSize: 8, fontWeight: 'bold' }}>{projectRef}</Text>
+                            </View>
                         </View>
-                        {(quotation.port_of_loading || quotation.port_of_discharge) && (
-                            <View style={{ flexDirection: 'row', borderBottomWidth: (quotation.terms_of_delivery || quotation.terms_of_payment) ? 1 : 0, borderBottomColor: '#000' }}>
-                                {quotation.port_of_loading && (
-                                    <View style={{ width: '50%', padding: 4, borderRightWidth: 1, borderRightColor: '#000' }}>
-                                        <Text style={styles.label}>Port of Loading:</Text>
-                                        <Text style={{ fontSize: 7.5 }}>{quotation.port_of_loading}</Text>
-                                    </View>
-                                )}
-                                {quotation.port_of_discharge && (
-                                    <View style={{ width: '50%', padding: 4 }}>
-                                        <Text style={styles.label}>Port of Discharge:</Text>
-                                        <Text style={{ fontSize: 7.5 }}>{quotation.port_of_discharge}</Text>
-                                    </View>
-                                )}
-                            </View>
-                        )}
-                        {(quotation.terms_of_delivery || quotation.terms_of_payment) && (
-                            <View style={{ flexDirection: 'row' }}>
-                                {quotation.terms_of_delivery && (
-                                    <View style={{ width: '50%', padding: 4, borderRightWidth: 1, borderRightColor: '#000' }}>
-                                        <Text style={styles.label}>Terms of Delivery:</Text>
-                                        <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>{quotation.terms_of_delivery}</Text>
-                                    </View>
-                                )}
-                                {quotation.terms_of_payment && (
-                                    <View style={{ width: '50%', padding: 4 }}>
-                                        <Text style={styles.label}>Terms of Payment:</Text>
-                                        <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>{quotation.terms_of_payment}</Text>
-                                    </View>
-                                )}
-                            </View>
-                        )}
                     </View>
-                )}
 
-                {/* Items Table */}
+                    {/* Row 2: Consignee + Country/Destination | Applicant/Importer */}
+                    <View style={styles.rowBB}>
+                        <View style={[{ width: '50%' }, styles.cellR]}>
+                            <View style={[styles.pad, { borderBottomWidth: 1, borderBottomColor: '#000', minHeight: 34 }]}>
+                                <Text style={styles.hlabel}>Consignee:</Text>
+                                <Text style={{ fontSize: 7.5, fontWeight: 'bold', marginTop: 2, lineHeight: 1.3 }}>{quotation.consignee || ''}</Text>
+                            </View>
+                            <View style={styles.row}>
+                                <View style={[{ width: '50%' }, styles.cellR, styles.pad]}>
+                                    <Field label="Country of Origin:" value={quotation.country_of_origin} />
+                                </View>
+                                <View style={[{ width: '50%' }, styles.pad]}>
+                                    <Field label="Final Destination:" value={quotation.final_destination} />
+                                </View>
+                            </View>
+                        </View>
+                        <View style={[{ width: '50%' }, styles.pad]}>
+                            <Text style={styles.hlabel}>Applicant / Importer / Notify Party:</Text>
+                            <Text style={{ fontSize: 7.5, fontWeight: 'bold', marginTop: 2, lineHeight: 1.3 }}>{quotation.applicant_importer || ''}</Text>
+                        </View>
+                    </View>
+
+                    {/* Row 3: Pre-carriage / Place of Receipt | Terms of Delivery */}
+                    <View style={styles.rowBB}>
+                        <View style={[{ width: '50%' }, styles.cellR, styles.row]}>
+                            <View style={[{ width: '50%' }, styles.cellR, styles.pad]}>
+                                <Field label="Pre-carriage by:" value={quotation.pre_carriage_by} />
+                            </View>
+                            <View style={[{ width: '50%' }, styles.pad]}>
+                                <Field label="Place of Receipt by Pre carriage:" value={quotation.place_of_receipt} />
+                            </View>
+                        </View>
+                        <View style={[{ width: '50%' }, styles.pad]}>
+                            <Field label="Terms of Delivery:" value={quotation.terms_of_delivery} />
+                        </View>
+                    </View>
+
+                    {/* Row 4: Port of Loading | Port of Discharge | Terms of Payment */}
+                    <View style={styles.row}>
+                        <View style={[{ width: '50%' }, styles.cellR, styles.pad]}>
+                            <Field label="Port of Loading:" value={quotation.port_of_loading} />
+                        </View>
+                        <View style={[{ width: '22%' }, styles.cellR, styles.pad]}>
+                            <Field label="Port of Discharge:" value={quotation.port_of_discharge} />
+                        </View>
+                        <View style={[{ width: '28%' }, styles.pad]}>
+                            <Field label="Terms of Payment:" value={quotation.terms_of_payment} />
+                        </View>
+                    </View>
+                </View>
+
+                {/* ══════════ ITEMS TABLE ══════════ */}
                 <View style={styles.table}>
                     <View style={styles.tableHeader} fixed>
-                        <Text style={styles.col1}>SL.</Text>
+                        <Text style={styles.col1}>SL #</Text>
                         <Text style={styles.col2}>DESCRIPTION OF GOODS</Text>
                         <Text style={styles.col3}>HS CODE</Text>
                         <Text style={styles.col4}>QTY</Text>
-                        <Text style={styles.col5}>U.O.M</Text>
+                        <Text style={styles.col5}>U.O.M.</Text>
                         <Text style={styles.colRate}>RATE ({curr})</Text>
-                        <Text style={styles.col6}>AMOUNT ({curr})</Text>
+                        <Text style={styles.col6}>TOTAL AMOUNT ({curr})</Text>
                     </View>
+
                     {items.map((item, index) => (
                         <View key={index} style={styles.tableRow} wrap={false}>
                             <Text style={styles.col1}>{index + 1}</Text>
                             <View style={styles.col2}>
                                 <Text style={{ fontWeight: 'bold', fontSize: 8 }}>{item.product_name || item.item_name}</Text>
                                 {item.description && item.description !== item.product_name && (
-                                    <Text style={{ fontSize: 7, color: '#444', marginTop: 1 }}>{item.description}</Text>
+                                    <Text style={{ fontSize: 7, color: '#333', marginTop: 1 }}>{item.description}</Text>
                                 )}
                             </View>
                             <Text style={styles.col3}>{item.hsn_code || '-'}</Text>
@@ -217,60 +214,54 @@ const ClientQuotationPDF = ({ quotation, verification }) => {
                             <Text style={styles.col6}>{Number(item.amount || (item.quantity * item.unit_price) || 0).toFixed(2)}</Text>
                         </View>
                     ))}
+
+                    {/* Grand total row */}
+                    <View style={styles.row} wrap={false}>
+                        <Text style={{ width: '72%', padding: 4, fontWeight: 'bold', fontSize: 8, borderRightWidth: 1, borderRightColor: '#000' }}>
+                            {grandLabel}
+                        </Text>
+                        <Text style={{ width: '12%', padding: 4, fontWeight: 'bold', fontSize: 8, textAlign: 'center', borderRightWidth: 1, borderRightColor: '#000' }}>
+                            CPT PRICE
+                        </Text>
+                        <Text style={{ width: '16%', padding: 4, fontWeight: 'bold', fontSize: 8.5, textAlign: 'right' }}>
+                            {num2(grandTotal)}
+                        </Text>
+                    </View>
                 </View>
 
-                {/* Totals & Terms */}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }} wrap={false}>
-                    {/* Left: Terms */}
-                    <View style={{ width: '55%', paddingRight: 10 }}>
-                        {terms.length > 0 && (
-                            <View>
-                                <Text style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: 4, fontSize: 8 }}>Terms & Conditions:</Text>
-                                {terms.map((term, idx) => (
-                                    <View key={idx} style={{ flexDirection: 'row', marginBottom: 2 }}>
-                                        <Text style={{ width: 12, fontSize: 7.5, fontWeight: 'bold' }}>{idx + 1}</Text>
-                                        <Text style={{ width: 80, fontSize: 7.5, fontWeight: 'bold' }}>{term.label}</Text>
-                                        <Text style={{ width: 8, fontSize: 7.5, fontWeight: term.bold ? 'bold' : 'normal' }}>:</Text>
-                                        <Text style={{ flex: 1, fontSize: 7.5, lineHeight: 1.1, fontWeight: term.bold ? 'bold' : 'normal' }}>{term.value}</Text>
-                                    </View>
-                                ))}
+                {/* ══════════ TERMS & CONDITIONS ══════════ */}
+                {terms.length > 0 && (
+                    <View style={{ marginTop: 8 }}>
+                        <Text style={{ fontWeight: 'bold', textDecoration: 'underline', fontSize: 8.5, marginBottom: 3 }}>Terms &amp; Conditions:</Text>
+                        {terms.map((term, idx) => (
+                            <View key={idx} style={{ flexDirection: 'row', marginBottom: 2 }} wrap={false}>
+                                <Text style={{ width: 16, fontSize: 8, fontWeight: 'bold' }}>{idx + 1}.</Text>
+                                <Text style={{ flex: 1, fontSize: 8, lineHeight: 1.2 }}>
+                                    {term.label ? <Text style={{ fontWeight: 'bold' }}>{term.label}: </Text> : null}
+                                    <Text style={{ fontWeight: term.bold ? 'bold' : 'normal' }}>{term.value}</Text>
+                                </Text>
                             </View>
-                        )}
+                        ))}
                     </View>
+                )}
 
-                    {/* Right: Subtotal Box */}
-                    <View style={{ width: '45%', borderWidth: 1, borderColor: '#000', alignSelf: 'flex-start' }}>
-                        <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000' }}>
-                            <Text style={{ width: '60%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', fontWeight: 'bold', textAlign: 'right', fontSize: 7.5 }}>SUB TOTAL</Text>
-                            <Text style={{ width: '40%', padding: 4, textAlign: 'right', fontWeight: 'bold', fontSize: 7.5 }}>{fmt(subtotal)}</Text>
-                        </View>
-                        <View style={{ flexDirection: 'row', backgroundColor: '#F3F4F6' }}>
-                            <Text style={{ width: '60%', padding: 4, borderRightWidth: 1, borderRightColor: '#000', fontWeight: 'bold', textAlign: 'right', fontSize: 8 }}>GRAND TOTAL</Text>
-                            <Text style={{ width: '40%', padding: 4, textAlign: 'right', fontWeight: 'bold', fontSize: 8, color: '#0E5EB3' }}>{fmt(grandTotal)}</Text>
-                        </View>
-                    </View>
-                </View>
-
-                {/* Signature */}
-                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 30 }} wrap={false}>
-                    <View style={{ width: '45%', alignItems: 'center' }}>
-                        <Text style={{ fontSize: 7.5, marginBottom: 2 }}>Yours faithfully,</Text>
-                        <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: '#333' }}>For Energypac Engineering Limited.</Text>
-                        <View style={{ marginTop: 16, width: 120, alignItems: 'center' }}>
+                {/* ══════════ SIGNATURE BOX ══════════ */}
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 }} wrap={false}>
+                    <View style={{ width: '42%', borderWidth: 1, borderColor: '#000' }}>
+                        <Text style={{ padding: 4, fontWeight: 'bold', fontSize: 8, borderBottomWidth: 1, borderBottomColor: '#000' }}>
+                            For Energypac Engineering Limited
+                        </Text>
+                        <View style={{ height: 56, alignItems: 'center', justifyContent: 'center' }}>
                             {signatory && signatory.status === 'VERIFIED' && signatory.signature_base64 ? (
-                                <Image src={signatory.signature_base64} style={{ width: 95, height: 34, objectFit: 'contain', marginBottom: 2 }} />
-                            ) : (
-                                <View style={{ height: 34 }} />
+                                <Image src={signatory.signature_base64} style={{ width: 100, height: 38, objectFit: 'contain' }} />
+                            ) : null}
+                            {signatory && signatory.status === 'VERIFIED' && (
+                                <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: '#10b981', marginTop: 2 }}>✓ {signatory.full_name}</Text>
                             )}
-                            <View style={{ width: '100%', borderTopWidth: 1, borderTopColor: '#000', paddingTop: 3, alignItems: 'center' }}>
-                                {signatory && signatory.status === 'VERIFIED' && (
-                                    <Text style={{ fontSize: 8, fontWeight: 'bold', color: '#10b981' }}>
-                                        ✓ {signatory.full_name}
-                                    </Text>
-                                )}
-                                <Text style={{ fontSize: 7.5, fontWeight: 'bold' }}>Authorized Signatory</Text>
-                            </View>
                         </View>
+                        <Text style={{ padding: 4, fontWeight: 'bold', fontSize: 8, borderTopWidth: 1, borderTopColor: '#000' }}>
+                            Exporter
+                        </Text>
                     </View>
                 </View>
 

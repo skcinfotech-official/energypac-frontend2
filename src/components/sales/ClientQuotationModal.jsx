@@ -4,7 +4,8 @@ import {
     Box, Typography, IconButton, Button, TextField, Grid,
     Table, TableHead, TableBody, TableRow, TableCell, TableFooter,
     Checkbox, Chip, Alert, CircularProgress, FormControl,
-    InputLabel, Select, MenuItem, Tooltip, Divider, Card,
+    InputLabel, Select, MenuItem, Tooltip, Divider, Card, Autocomplete,
+    InputAdornment,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddIcon from "@mui/icons-material/Add";
@@ -80,12 +81,12 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
         negotiated_by: "",
         checked_by: "",
         profit_loading_percent: 5,
+        freight_charges: 0,
     });
 
     const [requisitions, setRequisitions] = useState([]);
     const [reqSearch, setReqSearch] = useState("");
-    const [reqOpen, setReqOpen] = useState(false);
-    const [selectedReqNumber, setSelectedReqNumber] = useState("");
+    const [, setSelectedReqNumber] = useState("");
     // Multi-requisition: all requisitions this PI draws items from ({ id, number }).
     const [selectedRequisitions, setSelectedRequisitions] = useState([]);
     const [items, setItems] = useState([]);
@@ -153,6 +154,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                     negotiated_by: invoice.negotiated_by || "",
                     checked_by: invoice.checked_by || "",
                     profit_loading_percent: invoice.profit_loading_percent ?? 5,
+                    freight_charges: invoice.freight_charges ?? 0,
                 });
 
                 const populatedItems = (invoice.items || []).map(item => ({
@@ -172,6 +174,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                     export_cost: Number(item.export_cost) || 0,
                     last_lc_reference: item.last_lc_reference || "",
                     last_unit_price: Number(item.last_unit_price) || 0,
+                    actual_purchase_rate: Number(item.actual_purchase_rate) || 0,
                     // Existing lines are always included & editable.
                     selected: true,
                     can_add_to_pi: true,
@@ -236,6 +239,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                     negotiated_by: "",
                     checked_by: "",
                     profit_loading_percent: 5,
+                    freight_charges: 0,
                 });
                 setItems([]);
                 setTerms(makeDefaultTerms());
@@ -246,14 +250,13 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                 setShowDirectAdd(false);
                 setNewItem({ item_name: "", hsn_code: "", unit: "PCS", rate: "" });
                 setReqSearch("");
-                setReqOpen(false);
                 setSelectedReqNumber("");
                 setSelectedRequisitions([]);
             }
             setError("");
             setProfitPreview(null);
         }
-    }, [isOpen, invoice]);
+    }, [isOpen, invoice, isEdit]);
 
     // Requisition search (server-side, debounced) — requisition mode (create & edit,
     // since edit now supports adding more requisitions).
@@ -280,7 +283,6 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
         setShowDirectAdd(false);
         setNewItem({ item_name: "", hsn_code: "", unit: "PCS", rate: "" });
         setReqSearch("");
-        setReqOpen(false);
         setSelectedReqNumber("");
         setSelectedRequisitions([]);
     };
@@ -291,13 +293,11 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
 
         // Already added? — ignore (multi-select accumulates, no duplicates).
         if (selectedRequisitions.some(r => r.id === reqId)) {
-            setReqOpen(false);
             setReqSearch("");
             return;
         }
 
         const reqNumber = req?.requisition_number || "";
-        setReqOpen(false);
         setReqSearch("");
 
         setLoadingItems(true);
@@ -324,6 +324,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                     purchase_status: item.purchase_status || "PENDING",
                     can_add_to_pi: item.can_add_to_pi !== undefined ? item.can_add_to_pi : true,
                     selected: item.can_add_to_pi !== false,
+                    actual_purchase_rate: Number(item.actual_purchase_rate) || 0,
                 };
             });
 
@@ -390,7 +391,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
         if (isOpen && piMode === "stock_sale" && stockProducts.length === 0) {
             loadStockProducts();
         }
-    }, [isOpen, piMode]);
+    }, [isOpen, piMode, stockProducts.length]);
 
     // Direct PI — debounced product master search (any item, not just in-stock)
     useEffect(() => {
@@ -411,6 +412,12 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
     }, [isOpen, piMode, directSearch]);
 
     const filteredDirect = directProducts.filter(p => !items.some(i => i.product === p.id));
+
+    // Distinct LC No & Date values already entered on this PI — offered as
+    // suggestions so shared-LC lines are picked (exact match) not re-typed.
+    const lcOptions = [...new Set(
+        items.map(i => (i.last_lc_reference || "").trim()).filter(Boolean)
+    )];
 
     const handleAddDirectItem = (product) => {
         setItems(prev => [...prev, {
@@ -536,7 +543,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
             } catch { setProfitPreview(null); }
         }, 500);
         return () => clearTimeout(timer);
-    }, [formData.requisition, formData.currency, formData.conversion_rate, items, piMode]);
+    }, [formData.requisition, formData.currency, formData.conversion_rate, items, piMode, isEdit]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -560,6 +567,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                 source: piMode === "stock_sale" ? "STOCK_SALE" : piMode === "direct" ? "DIRECT" : undefined,
                 trade_type: tradeType,
                 profit_loading_percent: Number(formData.profit_loading_percent) || 0,
+                freight_charges: Number(formData.freight_charges) || 0,
                 items: selectedItems.map(it => ({
                     ...(it.id ? { id: it.id } : {}),
                     product: it.product,
@@ -765,56 +773,72 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                                                 Add more requisitions to pull extra received items into this PI.
                                             </Typography>
                                         )}
-                                        <Box sx={{ position: 'relative' }}>
+                                        <Autocomplete
+                                            multiple
+                                            disableCloseOnSelect
+                                            options={requisitions.filter((r) => !selectedRequisitions.some((s) => s.id === r.id))}
+                                            value={selectedRequisitions}
+                                            filterOptions={(x) => x}
+                                            inputValue={reqSearch}
+                                            onInputChange={(e, val, reason) => {
+                                                if (reason === "input") setReqSearch(val);
+                                                if (reason === "clear") setReqSearch("");
+                                            }}
+                                            onChange={(e, newVal, reason, details) => {
+                                                if (reason === "selectOption" && details?.option) {
+                                                    selectRequisition(details.option);
+                                                } else if (reason === "removeOption" && details?.option) {
+                                                    removeRequisition(details.option.id);
+                                                } else if (reason === "clear") {
+                                                    selectedRequisitions.forEach((r) => removeRequisition(r.id));
+                                                }
+                                            }}
+                                            getOptionLabel={(o) => o.requisition_number || o.number || ""}
+                                            isOptionEqualToValue={(o, v) => o.id === v.id}
+                                            noOptionsText={reqSearch ? "No matching requisition" : "Type to search requisitions"}
+                                            renderOption={(props, option) => {
+                                                const { key, ...optionProps } = props;
+                                                return (
+                                                    <Box component="li" key={key ?? option.id} {...optionProps} sx={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600 }}>
+                                                        {option.requisition_number}
+                                                    </Box>
+                                                );
+                                            }}
+                                            renderTags={(value, getTagProps) =>
+                                                value.map((r, i) => {
+                                                    const { key, ...tagProps } = getTagProps({ index: i });
+                                                    return (
+                                                        <Chip
+                                                            key={key}
+                                                            {...tagProps}
+                                                            label={i === 0 ? `${r.number || r.requisition_number} (primary)` : (r.number || r.requisition_number)}
+                                                            size="small"
+                                                            sx={{ fontFamily: 'monospace', fontSize: 10, fontWeight: 700, bgcolor: i === 0 ? '#DBEAFE' : '#EFF6FF', color: PRIMARY, '& .MuiChip-deleteIcon': { fontSize: 14 } }}
+                                                        />
+                                                    );
+                                                })
+                                            }
+                                            renderInput={(params) => (
                                                 <TextField
-                                                    value={reqSearch}
-                                                    onChange={(e) => {
-                                                        setReqSearch(e.target.value);
-                                                        setReqOpen(true);
-                                                    }}
-                                                    onFocus={() => setReqOpen(true)}
-                                                    onBlur={() => setTimeout(() => setReqOpen(false), 150)}
-                                                    placeholder="Search & add requisition(s)..."
-                                                    fullWidth size="small"
-                                                    InputProps={{ startAdornment: <SearchIcon sx={{ fontSize: 16, color: 'text.disabled', mr: 0.5 }} /> }}
+                                                    {...params}
+                                                    size="small"
+                                                    placeholder={selectedRequisitions.length ? "Add more…" : "Search & add requisition(s)…"}
                                                     sx={inputSx}
+                                                    slotProps={{
+                                                        ...params.slotProps,
+                                                        input: {
+                                                            ...params.slotProps?.input,
+                                                            startAdornment: (
+                                                                <>
+                                                                    <SearchIcon sx={{ fontSize: 16, color: 'text.disabled', ml: 0.5, mr: 0.25 }} />
+                                                                    {params.slotProps?.input?.startAdornment}
+                                                                </>
+                                                            ),
+                                                        },
+                                                    }}
                                                 />
-                                                {reqOpen && (
-                                                    <Box sx={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, mt: 0.5, bgcolor: 'white', border: '1px solid', borderColor: 'divider', borderRadius: 2, boxShadow: 3, maxHeight: 220, overflowY: 'auto' }}>
-                                                        {requisitions.length === 0 ? (
-                                                            <Typography sx={{ fontSize: 12, color: 'text.disabled', textAlign: 'center', py: 2, fontStyle: 'italic' }}>
-                                                                {reqSearch ? "No matching requisition" : "Type to search requisitions"}
-                                                            </Typography>
-                                                        ) : requisitions.map(req => {
-                                                            const alreadyAdded = selectedRequisitions.some(r => r.id === req.id);
-                                                            return (
-                                                                <Box
-                                                                    key={req.id}
-                                                                    onMouseDown={(e) => e.preventDefault()}
-                                                                    onClick={() => !alreadyAdded && selectRequisition(req)}
-                                                                    sx={{ px: 1.5, py: 1, cursor: alreadyAdded ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'monospace', borderBottom: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: alreadyAdded ? '#F1F5F9' : 'white', color: alreadyAdded ? 'text.disabled' : 'text.primary', '&:hover': { bgcolor: alreadyAdded ? '#F1F5F9' : '#EFF6FF' } }}
-                                                                >
-                                                                    {req.requisition_number}
-                                                                    {alreadyAdded && <Typography component="span" sx={{ fontSize: 10, fontWeight: 700, color: 'success.main' }}>✓ added</Typography>}
-                                                                </Box>
-                                                            );
-                                                        })}
-                                                    </Box>
-                                                )}
-                                                {selectedRequisitions.length > 0 && (
-                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.75 }}>
-                                                        {selectedRequisitions.map((r, i) => (
-                                                            <Chip
-                                                                key={r.id}
-                                                                label={i === 0 ? `${r.number} (primary)` : r.number}
-                                                                size="small"
-                                                                onDelete={() => removeRequisition(r.id)}
-                                                                sx={{ fontFamily: 'monospace', fontSize: 10, fontWeight: 700, bgcolor: i === 0 ? '#DBEAFE' : '#EFF6FF', color: PRIMARY, '& .MuiChip-deleteIcon': { fontSize: 14 } }}
-                                                            />
-                                                        ))}
-                                                    </Box>
-                                                )}
-                                        </Box>
+                                            )}
+                                        />
                                     </Grid>
                                 ) : (
                                     <Grid item xs={12} md={4}>
@@ -886,8 +910,8 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                                         </Grid>
                                     )}
                                     <Grid item xs={12} md>
-                                        <Typography sx={labelSx}>L/C Number</Typography>
-                                        <TextField name="lc_number" value={formData.lc_number} onChange={handleInputChange} placeholder="e.g. LC-2026-001" fullWidth size="small" sx={{ ...inputSx, '& .MuiInputBase-input': { fontFamily: 'monospace', fontSize: 13 } }} />
+                                        <Typography sx={labelSx}>L/C No &amp; Date</Typography>
+                                        <TextField name="lc_number" value={formData.lc_number} onChange={handleInputChange} placeholder="e.g. LC-2026-001 DT. 14.03.2026" helperText="Optional — add later (in Edit) once the L/C is opened" fullWidth size="small" sx={{ ...inputSx, '& .MuiInputBase-input': { fontFamily: 'monospace', fontSize: 13 } }} />
                                     </Grid>
                                     <Grid item xs={12} md>
                                         <Typography sx={labelSx}>Exporter Ref</Typography>
@@ -897,6 +921,28 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                                         <Typography sx={labelSx}>GST Number</Typography>
                                         <TextField name="gst_number" value={formData.gst_number} onChange={handleInputChange} placeholder="e.g. 19AABCE..." fullWidth size="small" sx={{ ...inputSx, '& .MuiInputBase-input': { fontFamily: 'monospace', fontSize: 13 } }} />
                                     </Grid>
+                                    <Grid item xs={12} md>
+                                        <Typography sx={labelSx}>Freight Charges</Typography>
+                                        <TextField
+                                            type="number"
+                                            name="freight_charges"
+                                            value={formData.freight_charges}
+                                            onChange={handleInputChange}
+                                            inputProps={{ step: "0.01", min: 0 }}
+                                            placeholder="0.00"
+                                            fullWidth
+                                            size="small"
+                                            title="If greater than 0, the PI PDF grand total shows '(INCLUDING OF FREIGHT CHARGES ...)'"
+                                            InputProps={{
+                                                startAdornment: (
+                                                    <InputAdornment position="start">
+                                                        {formData.currency === "INR" ? "₹" : formData.currency === "USD" ? "$" : formData.currency}
+                                                    </InputAdornment>
+                                                ),
+                                            }}
+                                            sx={{ ...inputSx, '& .MuiInputBase-input': { fontWeight: 700, fontSize: 13 } }}
+                                        />
+                                    </Grid>
                                 </Grid>
                             </Box>
 
@@ -904,15 +950,15 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                             <Grid container spacing={2}>
                                 <Grid item xs={12} md={4}>
                                     <Typography sx={labelSx}>Exporter Beneficiary *</Typography>
-                                    <TextField name="exporter_beneficiary" value={formData.exporter_beneficiary} onChange={handleInputChange} fullWidth size="small" required sx={inputSx} />
+                                    <TextField name="exporter_beneficiary" value={formData.exporter_beneficiary} onChange={handleInputChange} placeholder={"Company name & full address\ne.g. ENERGYPAC ENGINEERING LIMITED.\nPLOT NO.22, KB BLOCK 4TH FLOOR..."} fullWidth size="small" required multiline minRows={4} sx={inputSx} />
                                 </Grid>
                                 <Grid item xs={12} md={4}>
                                     <Typography sx={labelSx}>Consignee *</Typography>
-                                    <TextField name="consignee" value={formData.consignee} onChange={handleInputChange} placeholder="e.g. ABC Corp, Dubai" fullWidth size="small" required sx={inputSx} />
+                                    <TextField name="consignee" value={formData.consignee} onChange={handleInputChange} placeholder="e.g. CONSIGNED TO THE ORDER OF L/C ISSUING BANK" fullWidth size="small" required multiline minRows={4} sx={inputSx} />
                                 </Grid>
                                 <Grid item xs={12} md={4}>
                                     <Typography sx={labelSx}>Applicant Importer *</Typography>
-                                    <TextField name="applicant_importer" value={formData.applicant_importer} onChange={handleInputChange} placeholder="e.g. ABC Trading LLC, UAE" fullWidth size="small" required sx={inputSx} />
+                                    <TextField name="applicant_importer" value={formData.applicant_importer} onChange={handleInputChange} placeholder={"Applicant / Importer / Notify Party\nName, address, BIN"} fullWidth size="small" required multiline minRows={4} sx={inputSx} />
                                 </Grid>
                             </Grid>
 
@@ -932,7 +978,23 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                                     </Grid>
                                     <Grid item xs={12} md={3}>
                                         <Typography sx={labelSx}>Pre-carriage By</Typography>
-                                        <TextField name="pre_carriage_by" value={formData.pre_carriage_by} onChange={handleInputChange} placeholder="e.g. BY ROAD" fullWidth size="small" sx={{ ...inputSx, '& .MuiInputBase-input': { fontSize: 12, fontWeight: 600 } }} />
+                                        <TextField
+                                            select
+                                            name="pre_carriage_by"
+                                            value={formData.pre_carriage_by || ""}
+                                            onChange={handleInputChange}
+                                            fullWidth
+                                            size="small"
+                                            sx={{ ...inputSx, '& .MuiInputBase-input': { fontSize: 12, fontWeight: 600 } }}
+                                        >
+                                            <MenuItem value=""><em>Select…</em></MenuItem>
+                                            {["By Road", "By Air", "By Sea"].map((o) => (
+                                                <MenuItem key={o} value={o}>{o}</MenuItem>
+                                            ))}
+                                            {formData.pre_carriage_by && !["By Road", "By Air", "By Sea"].includes(formData.pre_carriage_by) && (
+                                                <MenuItem value={formData.pre_carriage_by}>{formData.pre_carriage_by}</MenuItem>
+                                            )}
+                                        </TextField>
                                     </Grid>
                                     <Grid item xs={12} md={3}>
                                         <Typography sx={labelSx}>Place of Receipt</Typography>
@@ -1192,6 +1254,11 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                                                                         <Typography component="span" sx={{ ml: 1, color: '#059669', fontSize: 10 }}>Stock: {item.current_stock}</Typography>
                                                                     )}
                                                                 </Typography>
+                                                                {piMode === "requisition" && Number(item.actual_purchase_rate) > 0 && (
+                                                                    <Typography sx={{ fontSize: 10, color: '#B45309', fontWeight: 700, mt: 0.25 }}>
+                                                                        Bought @ ₹{Number(item.actual_purchase_rate).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/unit
+                                                                    </Typography>
+                                                                )}
                                                                 {piMode === "requisition" && item.requisition_number && selectedRequisitions.length > 1 && (
                                                                     <Chip
                                                                         label={item.requisition_number}
@@ -1288,7 +1355,19 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                                                                         </Box>
                                                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                                                             <Typography sx={{ fontSize: 10, color: 'text.secondary', fontWeight: 600 }}>Last LC No &amp; Date</Typography>
-                                                                            <TextField value={item.last_lc_reference ?? ""} onChange={(e) => handleItemChange(index, "last_lc_reference", e.target.value)} size="small" placeholder="LC ref / date" disabled={disabled} sx={{ width: 180, '& .MuiInputBase-input': { fontSize: 11, py: 0.5, px: 1 } }} />
+                                                                            <Autocomplete
+                                                                                freeSolo
+                                                                                options={lcOptions}
+                                                                                value={item.last_lc_reference ?? ""}
+                                                                                inputValue={item.last_lc_reference ?? ""}
+                                                                                onInputChange={(e, val) => handleItemChange(index, "last_lc_reference", val)}
+                                                                                disabled={disabled}
+                                                                                size="small"
+                                                                                sx={{ width: 200 }}
+                                                                                renderInput={(params) => (
+                                                                                    <TextField {...params} placeholder="Type or pick shared LC" title="Items with the SAME LC text are grouped & merged in the Note Sheet" sx={{ '& .MuiInputBase-input': { fontSize: 11, py: '2px !important', px: 1 } }} />
+                                                                                )}
+                                                                            />
                                                                         </Box>
                                                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                                                             <Typography sx={{ fontSize: 10, color: 'text.secondary', fontWeight: 600 }}>Last Unit Price</Typography>

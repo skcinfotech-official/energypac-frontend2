@@ -30,9 +30,11 @@ import {
 const SalesPerformance = () => {
     const [performanceData, setPerformanceData] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [filters, setFilters] = useState({
-        start_date: "",
-        end_date: "",
+    // Default to All Time so existing data always shows (backend default is only last 30 days).
+    const [filters, setFilters] = useState(() => {
+        const d = new Date();
+        const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+        return { start_date: "2000-01-01", end_date: local.toISOString().slice(0, 10) };
     });
 
     useEffect(() => {

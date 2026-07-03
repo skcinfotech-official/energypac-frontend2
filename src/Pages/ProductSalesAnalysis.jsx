@@ -288,7 +288,7 @@ const ProductSalesAnalysis = () => {
                 <>
                     {/* Summary Cards */}
                     <Grid container spacing={2}>
-                        <Grid item xs={12} md={4}>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <SummaryCard
                                 title="Total Products Quoted"
                                 value={analysisData.summary?.total_products}
@@ -296,7 +296,7 @@ const ProductSalesAnalysis = () => {
                                 color="blue"
                             />
                         </Grid>
-                        <Grid item xs={12} md={4}>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <SummaryCard
                                 title="Total Quantity Quoted"
                                 value={analysisData.summary?.total_quantity_quoted}
@@ -304,7 +304,7 @@ const ProductSalesAnalysis = () => {
                                 color="purple"
                             />
                         </Grid>
-                        <Grid item xs={12} md={4}>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <SummaryCard
                                 title="Total Value Quoted"
                                 value={formatCurrency(analysisData.summary?.total_value_quoted)}
@@ -316,7 +316,7 @@ const ProductSalesAnalysis = () => {
 
                     <Grid container spacing={3}>
                         {/* Top Stock Products Chart */}
-                        <Grid item xs={12} lg={6}>
+                        <Grid size={{ xs: 12, lg: 6 }}>
                             <Card
                                 sx={{
                                     borderRadius: 4,
@@ -357,7 +357,7 @@ const ProductSalesAnalysis = () => {
                         </Grid>
 
                         {/* Top Manual Products Chart */}
-                        <Grid item xs={12} lg={6}>
+                        <Grid size={{ xs: 12, lg: 6 }}>
                             <Card
                                 sx={{
                                     borderRadius: 4,

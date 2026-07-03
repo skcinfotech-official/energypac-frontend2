@@ -33,18 +33,23 @@ import {
     Inventory as InventoryIcon,
     CheckCircle as VerifyIcon,
     TableChart as ExcelIcon,
+    PictureAsPdf as PdfIcon,
+    EditNote as EditSheetIcon,
 } from "@mui/icons-material";
 import { getProformaInvoiceById } from "../../services/salesService";
 import { apiGet, apiDownload } from "../../services/api";
 import { pdf } from "@react-pdf/renderer";
 import ClientQuotationPDF from "./ClientQuotationPDF";
 import PIVerificationModal from "../signature/PIVerificationModal";
+import EditComparisonSheetModal from "./EditComparisonSheetModal";
 
 const ClientQuotationDetailsModal = ({ isOpen, onClose, invoice }) => {
     const [details, setDetails] = useState(null);
     const [loading, setLoading] = useState(false);
     const [generatingPdf, setGeneratingPdf] = useState(false);
     const [downloadingExcel, setDownloadingExcel] = useState(false);
+    const [downloadingNotePdf, setDownloadingNotePdf] = useState(false);
+    const [editSheetOpen, setEditSheetOpen] = useState(false);
     const [verificationModalOpen, setVerificationModalOpen] = useState(false);
     const [verifStatus, setVerifStatus] = useState(null);
 
@@ -92,7 +97,7 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, invoice }) => {
             let verificationData = null;
             try {
                 verificationData = await apiGet(`/api/pi/${details.id}/verification-status/`);
-            } catch (err) {
+            } catch {
                 // Verification data not available, continue without it
             }
 
@@ -118,6 +123,20 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, invoice }) => {
             alert("Failed to download Excel");
         } finally {
             setDownloadingExcel(false);
+        }
+    };
+
+    const handleDownloadNoteSheetPdf = async () => {
+        if (!details) return;
+        setDownloadingNotePdf(true);
+        try {
+            const safeNo = (details.pi_number || "PI").replace(/\//g, "-");
+            await apiDownload(`/api/proforma-invoices/${details.id}/note-sheet-pdf`, `${safeNo}-note-sheet.pdf`);
+        } catch (err) {
+            console.error("Failed to download Note Sheet PDF", err);
+            alert("Failed to download Note Sheet PDF");
+        } finally {
+            setDownloadingNotePdf(false);
         }
     };
 
@@ -178,6 +197,29 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, invoice }) => {
                             sx={{ color: "#137333", borderColor: "#137333", "&:hover": { bgcolor: "#E6F4EA", borderColor: "#137333" } }}
                         >
                             {downloadingExcel ? "Preparing..." : "Download Excel"}
+                        </Button>
+                    )}
+                    {details && (
+                        <Button
+                            startIcon={<PdfIcon />}
+                            onClick={handleDownloadNoteSheetPdf}
+                            disabled={downloadingNotePdf}
+                            variant="outlined"
+                            size="small"
+                            sx={{ color: "#B45309", borderColor: "#B45309", "&:hover": { bgcolor: "#FEF3C7", borderColor: "#B45309" } }}
+                        >
+                            {downloadingNotePdf ? "Preparing..." : "Note Sheet PDF"}
+                        </Button>
+                    )}
+                    {details && (
+                        <Button
+                            startIcon={<EditSheetIcon />}
+                            onClick={() => setEditSheetOpen(true)}
+                            variant="outlined"
+                            size="small"
+                            sx={{ color: "#6D28D9", borderColor: "#6D28D9", "&:hover": { bgcolor: "#EDE9FE", borderColor: "#6D28D9" } }}
+                        >
+                            Edit Comparison Sheet
                         </Button>
                     )}
                     {details && (
@@ -545,6 +587,21 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, invoice }) => {
                         setVerificationModalOpen(false);
                         // Refresh status so the button flips to a "Sent" chip
                         loadVerifStatus(details.id);
+                    }}
+                />
+            )}
+
+            {details && editSheetOpen && (
+                <EditComparisonSheetModal
+                    isOpen={editSheetOpen}
+                    piId={details.id}
+                    onClose={() => setEditSheetOpen(false)}
+                    onSuccess={async () => {
+                        setEditSheetOpen(false);
+                        try {
+                            const fresh = await getProformaInvoiceById(details.id);
+                            setDetails(fresh);
+                        } catch { /* ignore refresh error */ }
                     }}
                 />
             )}

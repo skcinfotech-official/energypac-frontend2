@@ -400,6 +400,40 @@ const guideData = [
                 }
             },
             {
+                id: "sales-pi-create-detailed",
+                title: "Creating a PI — Domestic / International & Sources",
+                icon: <ReceiptIcon />,
+                content: {
+                    path: "Sidebar → Sales → Proforma Invoice → + New PI",
+                    description: "Every PI starts with two choices that change how the form behaves: the Trade Type (Domestic or International) and the Source (From Requisition, Stock Sale, or Direct). Trade Type decides the tax/document flow; Source decides where the items come from and whether stock/purchase is checked.",
+                    flow: [
+                        { step: "1. Choose Trade Type", detail: "Domestic (within India) or International (export). This controls GST and the follow-on documents." },
+                        { step: "2. Choose Source", detail: "From Requisition, Stock Sale, or Direct — this controls how you add items." },
+                        { step: "3. Fill Header & Items", detail: "Party details, currency, line items with quantity & unit price, and terms." },
+                        { step: "4. Save → Send → Accept", detail: "PI is created in DRAFT. Send it to the client, mark Accepted, then create the Bill." },
+                    ],
+                    steps: [
+                        { action: "Domestic PI", detail: "Trade Type = Domestic. Meant for sales within India. After the client accepts, you raise a PI Bill where GST (CGST/SGST/IGST) and any discount are applied. Currency is usually INR." },
+                        { action: "International PI", detail: "Trade Type = International (export). NO GST is charged on the PI. After acceptance the flow uses a Commercial Invoice + Packing List instead of a GST bill. Fill export fields — Beneficiary/Exporter, Consignee, Applicant/Importer, Country of Origin, Final Destination, Ports, Terms of Delivery/Payment, L/C No & Date, Pre-carriage By (By Road / By Air / By Sea)." },
+                        { action: "Source: From Requisition", detail: "Use when the goods were procured through the purchase flow. Search & select one or more Requisitions in the dropdown (first one is the 'primary'; add more to pull extra received items). Only items that are actually PURCHASED and RECEIVED on a PO can be added — not-yet-received items are shown disabled. Each added item also displays 'Bought @ ₹.../unit' (its actual purchase price from the PO)." },
+                        { action: "Source: Stock Sale", detail: "Use when selling leftover on-hand inventory with no requisition. Search products and add them from stock. The system checks available stock and will not let you oversell (requested qty cannot exceed current stock)." },
+                        { action: "Source: Direct PI", detail: "Use for ad-hoc / phone-rate sales with no requisition and no stock check. Add any product with your own quantity & price. On save, the system quietly creates a backing requisition so the items still show up for the Purchase team ('Pending Purchase') and profit/loss tracking keeps working." },
+                        { action: "Currency & Conversion", detail: "Pick the PI currency (e.g. INR/USD). For non-INR, enter the Conversion Rate (1 unit = ₹?) — it is stored immutably so all profit/loss reporting can convert back to INR." },
+                        { action: "Freight Charges", detail: "Enter total freight (with the currency symbol shown). If greater than 0, the PI PDF grand-total line reads 'GRAND TOTAL (INCLUDING OF FREIGHT CHARGES ...)'; if 0, it just says 'GRAND TOTAL'." },
+                        { action: "Note Sheet / Comparative Statement", detail: "Per-item Freight, Export Cost, Last LC No & Date, and Last Unit Price feed the internal Note Sheet (Excel 'Sheet1' + landscape Note Sheet PDF). These compare each vendor's offer, the actual purchase price, and the new/last sale price. Profit Loading % (header) is applied on the purchase cost." },
+                        { action: "Download Documents", detail: "From a PI's detail view you can Download Excel (client PI + Note Sheet), Note Sheet PDF (landscape comparison), or Print Invoice (client PDF). Vendor offers can be tweaked via 'Edit Comparison Sheet'." },
+                    ],
+                    tips: [
+                        "Domestic = GST applied later on the PI Bill; International = no GST, uses Commercial Invoice + Packing List.",
+                        "From Requisition only lists items already purchased & received — if an item is missing, its PO isn't received yet.",
+                        "Stock Sale is capped by on-hand stock; Direct PI has no stock/PO check but auto-creates a backing requisition.",
+                        "L/C is optional at creation — the buyer usually opens the L/C after the PI, so you can fill 'L/C No & Date' later in Edit.",
+                        "Requisition dropdown is searchable and multi-select — selected ones become removable chips (the first is the 'primary').",
+                        "Amounts show in the chosen currency; all profit/loss is computed in INR using the stored conversion rate.",
+                    ]
+                }
+            },
+            {
                 id: "sales-pi-verification",
                 title: "PI Verification & Signatures",
                 icon: <CheckCircleIcon />,

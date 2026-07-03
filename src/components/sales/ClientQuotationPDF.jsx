@@ -97,6 +97,13 @@ const ClientQuotationPDF = ({ quotation, verification }) => {
         <Document>
             <Page size="A4" style={styles.page}>
 
+                {/* L/C No & Date — at the very top, centred (only when filled) */}
+                {quotation.lc_number ? (
+                    <View style={{ alignItems: 'center', marginBottom: 6 }}>
+                        <Text style={{ fontSize: 10, fontWeight: 'bold' }}>L/C No &amp; Date: {quotation.lc_number}</Text>
+                    </View>
+                ) : null}
+
                 {/* ══════════ HEADER GRID ══════════ */}
                 <View style={styles.grid}>
 

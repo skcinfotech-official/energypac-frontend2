@@ -32,9 +32,10 @@ import {
     Print as PrintIcon,
     Inventory as InventoryIcon,
     CheckCircle as VerifyIcon,
+    TableChart as ExcelIcon,
 } from "@mui/icons-material";
 import { getProformaInvoiceById } from "../../services/salesService";
-import { apiGet } from "../../services/api";
+import { apiGet, apiDownload } from "../../services/api";
 import { pdf } from "@react-pdf/renderer";
 import ClientQuotationPDF from "./ClientQuotationPDF";
 import PIVerificationModal from "../signature/PIVerificationModal";
@@ -43,6 +44,7 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, invoice }) => {
     const [details, setDetails] = useState(null);
     const [loading, setLoading] = useState(false);
     const [generatingPdf, setGeneratingPdf] = useState(false);
+    const [downloadingExcel, setDownloadingExcel] = useState(false);
     const [verificationModalOpen, setVerificationModalOpen] = useState(false);
     const [verifStatus, setVerifStatus] = useState(null);
 
@@ -105,6 +107,20 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, invoice }) => {
         }
     };
 
+    const handleDownloadExcel = async () => {
+        if (!details) return;
+        setDownloadingExcel(true);
+        try {
+            const safeNo = (details.pi_number || "PI").replace(/\//g, "-");
+            await apiDownload(`/api/proforma-invoices/${details.id}/excel`, `${safeNo}.xlsx`);
+        } catch (err) {
+            console.error("Failed to download Excel", err);
+            alert("Failed to download Excel");
+        } finally {
+            setDownloadingExcel(false);
+        }
+    };
+
     const getStatusColor = (status) => {
         const s = (status || "DRAFT").toUpperCase();
         switch (s) {
@@ -151,6 +167,18 @@ const ClientQuotationDetailsModal = ({ isOpen, onClose, invoice }) => {
                                 Send for Verification
                             </Button>
                         )
+                    )}
+                    {details && (
+                        <Button
+                            startIcon={<ExcelIcon />}
+                            onClick={handleDownloadExcel}
+                            disabled={downloadingExcel}
+                            variant="outlined"
+                            size="small"
+                            sx={{ color: "#137333", borderColor: "#137333", "&:hover": { bgcolor: "#E6F4EA", borderColor: "#137333" } }}
+                        >
+                            {downloadingExcel ? "Preparing..." : "Download Excel"}
+                        </Button>
                     )}
                     {details && (
                         <Button

@@ -131,6 +131,29 @@ export async function apiUpload(endpoint, formData, options = {}) {
   }
 }
 
+/**
+ * Download a binary file (e.g. Excel/PDF) from an authenticated endpoint
+ * and trigger a browser save. Returns nothing; throws on HTTP error.
+ */
+export async function apiDownload(endpoint, filename) {
+  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+  const response = await fetch(url, { method: 'GET', headers: getAuthHeader() });
+  if (!response.ok) {
+    const error = new Error(`Download Failed: ${response.status}`);
+    error.status = response.status;
+    throw error;
+  }
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = filename || 'download';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
 export default {
   apiRequest,
   apiGet,
@@ -138,4 +161,5 @@ export default {
   apiPatch,
   apiDelete,
   apiUpload,
+  apiDownload,
 };

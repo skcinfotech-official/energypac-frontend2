@@ -19,6 +19,7 @@ export default function ProductModal({
         hsn_code: "",
         unit: "PCS",
         rate: "",
+        current_stock: "",
     });
 
     const [loading, setLoading] = useState(false);
@@ -34,6 +35,7 @@ export default function ProductModal({
                 hsn_code: product.hsn_code || "",
                 unit: product.unit || "PCS",
                 rate: product.rate ?? "",
+                current_stock: product.current_stock ?? "",
             });
         } else {
             setForm({
@@ -42,6 +44,7 @@ export default function ProductModal({
                 hsn_code: "",
                 unit: "PCS",
                 rate: "",
+                current_stock: "",
             });
         }
         setError("");
@@ -61,6 +64,7 @@ export default function ProductModal({
             const payload = {
                 ...form,
                 rate: Number(form.rate) || 0,
+                current_stock: Number(form.current_stock) || 0,
             };
 
             if (mode === "edit") {
@@ -136,6 +140,19 @@ export default function ProductModal({
                             onChange={handleChange}
                             placeholder="e.g. 250.00"
                             inputProps={{ step: "0.01" }}
+                            size="small"
+                        />
+
+                        <TextField
+                            fullWidth
+                            type="number"
+                            label="Current Stock (optional)"
+                            name="current_stock"
+                            value={form.current_stock}
+                            onChange={handleChange}
+                            placeholder="e.g. 0"
+                            inputProps={{ step: "0.01", min: 0 }}
+                            helperText="Opening stock quantity. Leave blank or 0 if none."
                             size="small"
                         />
                     </Box>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Box, Typography, IconButton, Button, TextField, Grid,
@@ -75,6 +75,11 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
         country_of_origin: "INDIA",
         final_destination: "BANGLADESH",
         place_of_receipt: "",
+        // Note Sheet (internal costing)
+        project_name: "",
+        negotiated_by: "",
+        checked_by: "",
+        profit_loading_percent: 5,
     });
 
     const [requisitions, setRequisitions] = useState([]);
@@ -144,6 +149,10 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                     country_of_origin: invoice.country_of_origin || "INDIA",
                     final_destination: invoice.final_destination || "BANGLADESH",
                     place_of_receipt: invoice.place_of_receipt || "",
+                    project_name: invoice.project_name || "",
+                    negotiated_by: invoice.negotiated_by || "",
+                    checked_by: invoice.checked_by || "",
+                    profit_loading_percent: invoice.profit_loading_percent ?? 5,
                 });
 
                 const populatedItems = (invoice.items || []).map(item => ({
@@ -158,6 +167,11 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                     unit: item.unit || "pcs",
                     requisition: item.source_requisition || invoice.requisition || "",
                     requisition_number: item.source_requisition_number || invoice.requisition_number || "",
+                    // Note Sheet (internal costing) per-line fields
+                    freight: Number(item.freight) || 0,
+                    export_cost: Number(item.export_cost) || 0,
+                    last_lc_reference: item.last_lc_reference || "",
+                    last_unit_price: Number(item.last_unit_price) || 0,
                     // Existing lines are always included & editable.
                     selected: true,
                     can_add_to_pi: true,
@@ -218,6 +232,10 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                     country_of_origin: "INDIA",
                     final_destination: "BANGLADESH",
                     place_of_receipt: "",
+                    project_name: "",
+                    negotiated_by: "",
+                    checked_by: "",
+                    profit_loading_percent: 5,
                 });
                 setItems([]);
                 setTerms(makeDefaultTerms());
@@ -541,6 +559,7 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                 requisitions: piMode === "requisition" ? selectedRequisitions.map(r => r.id) : [],
                 source: piMode === "stock_sale" ? "STOCK_SALE" : piMode === "direct" ? "DIRECT" : undefined,
                 trade_type: tradeType,
+                profit_loading_percent: Number(formData.profit_loading_percent) || 0,
                 items: selectedItems.map(it => ({
                     ...(it.id ? { id: it.id } : {}),
                     product: it.product,
@@ -548,7 +567,11 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                     hsn_code: it.hsn_code,
                     unit: (it.unit || "").trim(),
                     quantity: Number(it.quantity),
-                    unit_price: Number(it.unit_price)
+                    unit_price: Number(it.unit_price),
+                    freight: Number(it.freight) || 0,
+                    export_cost: Number(it.export_cost) || 0,
+                    last_lc_reference: (it.last_lc_reference || "").trim(),
+                    last_unit_price: Number(it.last_unit_price) || 0,
                 })),
                 terms_and_conditions: terms
                     .filter(t => (t.value || "").trim() !== "" || (t.key || "").trim() !== "")
@@ -1145,7 +1168,8 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                                                     const disabled = piMode === "requisition" && !item.can_add_to_pi;
                                                     const excluded = piMode === "requisition" && !item.selected;
                                                     return (
-                                                        <TableRow key={index} sx={{ bgcolor: disabled ? 'rgba(239,68,68,0.04)' : excluded ? '#F8FAFC' : 'white', opacity: disabled || excluded ? 0.55 : 1, '&:hover': { bgcolor: disabled ? undefined : '#F8FAFC' }, transition: 'background 0.15s' }}>
+                                                      <Fragment key={index}>
+                                                        <TableRow sx={{ bgcolor: disabled ? 'rgba(239,68,68,0.04)' : excluded ? '#F8FAFC' : 'white', opacity: disabled || excluded ? 0.55 : 1, '&:hover': { bgcolor: disabled ? undefined : '#F8FAFC' }, transition: 'background 0.15s' }}>
                                                             {piMode === "requisition" && (
                                                                 <TableCell sx={{ textAlign: 'center', py: 1.5 }}>
                                                                     <Checkbox
@@ -1249,6 +1273,32 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                                                                 )}
                                                             </TableCell>
                                                         </TableRow>
+                                                        {!excluded && (
+                                                            <TableRow sx={{ bgcolor: disabled ? 'rgba(239,68,68,0.02)' : '#FCFCFD', opacity: disabled ? 0.55 : 1 }}>
+                                                                <TableCell colSpan={piMode === "requisition" ? 9 : 7} sx={{ py: 1, borderBottom: '2px solid', borderColor: '#EEF2F7' }}>
+                                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', pl: piMode === "requisition" ? 6 : 4 }}>
+                                                                        <Typography sx={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#137333' }}>Note Sheet:</Typography>
+                                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                                            <Typography sx={{ fontSize: 10, color: 'text.secondary', fontWeight: 600 }}>Freight</Typography>
+                                                                            <TextField type="number" inputProps={{ step: "0.01", min: 0, style: { textAlign: 'right' } }} value={item.freight ?? 0} onChange={(e) => handleItemChange(index, "freight", e.target.value)} size="small" disabled={disabled} sx={{ width: 90, '& .MuiInputBase-input': { fontSize: 11, py: 0.5, px: 1 } }} />
+                                                                        </Box>
+                                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                                            <Typography sx={{ fontSize: 10, color: 'text.secondary', fontWeight: 600 }}>Export Cost</Typography>
+                                                                            <TextField type="number" inputProps={{ step: "0.01", min: 0, style: { textAlign: 'right' } }} value={item.export_cost ?? 0} onChange={(e) => handleItemChange(index, "export_cost", e.target.value)} size="small" disabled={disabled} sx={{ width: 90, '& .MuiInputBase-input': { fontSize: 11, py: 0.5, px: 1 } }} />
+                                                                        </Box>
+                                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                                            <Typography sx={{ fontSize: 10, color: 'text.secondary', fontWeight: 600 }}>Last LC No &amp; Date</Typography>
+                                                                            <TextField value={item.last_lc_reference ?? ""} onChange={(e) => handleItemChange(index, "last_lc_reference", e.target.value)} size="small" placeholder="LC ref / date" disabled={disabled} sx={{ width: 180, '& .MuiInputBase-input': { fontSize: 11, py: 0.5, px: 1 } }} />
+                                                                        </Box>
+                                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                                            <Typography sx={{ fontSize: 10, color: 'text.secondary', fontWeight: 600 }}>Last Unit Price</Typography>
+                                                                            <TextField type="number" inputProps={{ step: "0.0001", min: 0, style: { textAlign: 'right' } }} value={item.last_unit_price ?? 0} onChange={(e) => handleItemChange(index, "last_unit_price", e.target.value)} size="small" disabled={disabled} sx={{ width: 100, '& .MuiInputBase-input': { fontSize: 11, py: 0.5, px: 1 } }} />
+                                                                        </Box>
+                                                                    </Box>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        )}
+                                                      </Fragment>
                                                     );
                                                 })
                                             )}
@@ -1348,6 +1398,35 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                                     size="small"
                                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 }, '& .MuiInputBase-input': { fontSize: 12, fontWeight: 600 } }}
                                 />
+                            </Box>
+
+                            {/* NOTE SHEET (INTERNAL COSTING) */}
+                            <Box sx={{ p: 2.5, bgcolor: '#F0FDF4', border: '1px solid', borderColor: '#BBF7D0', borderRadius: 3 }}>
+                                <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#137333', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.5 }}>
+                                    📝 Note Sheet / Comparative Statement (Internal)
+                                </Typography>
+                                <Typography sx={{ fontSize: 11, color: 'text.secondary', mb: 2 }}>
+                                    Appears on the Excel "Sheet1" (Comparative Statement). Purchase cost & vendor comparison auto-fill from the selected vendor quotation.
+                                </Typography>
+                                <Grid container spacing={2}>
+                                    <Grid item xs={12} md={6}>
+                                        <Typography sx={labelSx}>Project Name</Typography>
+                                        <TextField name="project_name" value={formData.project_name} onChange={handleInputChange} placeholder="e.g. FACTORY" fullWidth size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 }, '& .MuiInputBase-input': { fontSize: 12, fontWeight: 600 } }} />
+                                    </Grid>
+                                    <Grid item xs={12} md={3}>
+                                        <Typography sx={labelSx}>Profit Loading %</Typography>
+                                        <TextField type="number" name="profit_loading_percent" value={formData.profit_loading_percent} onChange={handleInputChange} inputProps={{ step: "0.01", min: 0 }} fullWidth size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 }, '& .MuiInputBase-input': { fontSize: 12, fontWeight: 600 } }} />
+                                    </Grid>
+                                    <Grid item xs={6} md={3} />
+                                    <Grid item xs={12} md={6}>
+                                        <Typography sx={labelSx}>Negotiated By</Typography>
+                                        <TextField name="negotiated_by" value={formData.negotiated_by} onChange={handleInputChange} placeholder="Name / Designation" fullWidth size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 }, '& .MuiInputBase-input': { fontSize: 12, fontWeight: 600 } }} />
+                                    </Grid>
+                                    <Grid item xs={12} md={6}>
+                                        <Typography sx={labelSx}>Checked By</Typography>
+                                        <TextField name="checked_by" value={formData.checked_by} onChange={handleInputChange} placeholder="Name / Designation" fullWidth size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 }, '& .MuiInputBase-input': { fontSize: 12, fontWeight: 600 } }} />
+                                    </Grid>
+                                </Grid>
                             </Box>
                         </Box>
                     </form>

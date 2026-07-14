@@ -132,7 +132,7 @@ const CommercialInvoiceList = () => {
                             ) : rows.length === 0 ? (
                                 <TableRow><TableCell colSpan={9} sx={{ textAlign: "center", py: 6, fontStyle: "italic", color: "text.disabled" }}>No commercial invoices found</TableCell></TableRow>
                             ) : rows.map(ci => (
-                                <TableRow key={ci.id} hover>
+                                <TableRow key={ci.id} hover onClick={() => setCiModal({ open: true, ciId: ci.id })} sx={{ cursor: "pointer" }}>
                                     <TableCell sx={{ fontFamily: "monospace", fontWeight: 700, color: "#0E7490" }}>{ci.ci_number}</TableCell>
                                     <TableCell sx={{ fontFamily: "monospace", fontSize: 12 }}>{ci.pi_number}</TableCell>
                                     <TableCell sx={{ fontSize: 12 }}>{ci.invoice_no || "—"}</TableCell>

@@ -4,7 +4,6 @@ import {
     TableHead, TableRow, IconButton, Tooltip, Chip, CircularProgress,
     Dialog, Button, LinearProgress, ToggleButton, ToggleButtonGroup,
 } from "@mui/material";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import CloseIcon from "@mui/icons-material/Close";
 import Inventory2Icon from "@mui/icons-material/Inventory2";
 
@@ -76,21 +75,21 @@ const DispatchBoard = () => {
                     <Table size="small" sx={{ "& .MuiTableCell-root": { fontSize: "0.78rem" } }}>
                         <TableHead>
                             <TableRow sx={{ bgcolor: "#F8FAFC" }}>
-                                {["Reference", side === "BUY" ? "Vendor" : "Client", "Ordered Qty", "Shipped Qty", "Pending Lines", "Progress", "Action"].map((h, i) => (
-                                    <TableCell key={h} align={[2, 3].includes(i) ? "right" : i === 6 ? "center" : "left"}
+                                {["Reference", side === "BUY" ? "Vendor" : "Client", "Ordered Qty", "Shipped Qty", "Pending Lines", "Progress"].map((h, i) => (
+                                    <TableCell key={h} align={[2, 3].includes(i) ? "right" : "left"}
                                         sx={{ fontWeight: 800, fontSize: 11, textTransform: "uppercase", color: "text.secondary" }}>{h}</TableCell>
                                 ))}
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {loading ? (
-                                <TableRow><TableCell colSpan={7} sx={{ textAlign: "center", py: 6 }}><CircularProgress size={28} /></TableCell></TableRow>
+                                <TableRow><TableCell colSpan={6} sx={{ textAlign: "center", py: 6 }}><CircularProgress size={28} /></TableCell></TableRow>
                             ) : pending.length === 0 ? (
-                                <TableRow><TableCell colSpan={7} sx={{ textAlign: "center", py: 6, fontStyle: "italic", color: "text.disabled" }}>Nothing pending — all items dispatched 🎉</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={6} sx={{ textAlign: "center", py: 6, fontStyle: "italic", color: "text.disabled" }}>Nothing pending — all items dispatched 🎉</TableCell></TableRow>
                             ) : pending.map((r) => {
                                 const pct = r.total_ordered_qty > 0 ? Math.min(100, (r.total_shipped_qty / r.total_ordered_qty) * 100) : 0;
                                 return (
-                                    <TableRow key={r.id} hover>
+                                    <TableRow key={r.id} hover onClick={() => openTracker(r)} sx={{ cursor: "pointer" }}>
                                         <TableCell sx={{ fontFamily: "monospace", fontWeight: 800, color: "#0ea5e9" }}>{r.reference}</TableCell>
                                         <TableCell>{r.party}</TableCell>
                                         <TableCell align="right" sx={{ fontWeight: 700 }}>{r.total_ordered_qty}</TableCell>
@@ -99,9 +98,6 @@ const DispatchBoard = () => {
                                         <TableCell sx={{ minWidth: 120 }}>
                                             <LinearProgress variant="determinate" value={pct} sx={{ height: 8, borderRadius: 4, bgcolor: "#e2e8f0", "& .MuiLinearProgress-bar": { bgcolor: pct >= 100 ? "#059669" : "#f59e0b" } }} />
                                             <Typography sx={{ fontSize: 9, color: "#64748b", mt: 0.3 }}>{Math.round(pct)}% shipped</Typography>
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <Tooltip title="View dispatch tracker"><IconButton size="small" onClick={() => openTracker(r)} sx={{ color: "#7c3aed" }}><VisibilityIcon fontSize="small" /></IconButton></Tooltip>
                                         </TableCell>
                                     </TableRow>
                                 );

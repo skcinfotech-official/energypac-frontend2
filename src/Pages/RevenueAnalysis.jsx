@@ -30,7 +30,6 @@ import {
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import SyncIcon from "@mui/icons-material/Sync";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
@@ -591,14 +590,13 @@ export default function RevenueAnalysis() {
                                     <TableCell align="right" sx={{ fontWeight: 700, fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>P&L</TableCell>
                                     <TableCell align="center" sx={{ fontWeight: 700, fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>Margin</TableCell>
                                     <TableCell align="center" sx={{ fontWeight: 700, fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>Status</TableCell>
-                                    <TableCell align="center" sx={{ fontWeight: 700, fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}></TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {pnlLoading ? (
                                     Array(3).fill(0).map((_, i) => (
                                         <TableRow key={i}>
-                                            <TableCell colSpan={9} sx={{ py: 3 }}>
+                                            <TableCell colSpan={8} sx={{ py: 3 }}>
                                                 <Skeleton variant="rectangular" height={12} sx={{ borderRadius: 1 }} />
                                             </TableCell>
                                         </TableRow>
@@ -611,8 +609,11 @@ export default function RevenueAnalysis() {
                                         <TableRow
                                             key={item.requisition_id || idx}
                                             hover
+                                            onClick={() => {
+                                                if (item.requisition_id) openItemModal(item.requisition_id, item.requisition_number);
+                                            }}
                                             sx={{
-                                                "&:hover .view-btn": { opacity: 1 },
+                                                cursor: item.requisition_id ? "pointer" : "default",
                                                 "& td": { borderBottom: "1px solid #f1f5f9" },
                                             }}
                                         >
@@ -653,34 +654,11 @@ export default function RevenueAnalysis() {
                                             </TableCell>
                                             <TableCell align="center"><MarginBadge margin={margin} /></TableCell>
                                             <TableCell align="center"><StatusBadge alert={item.alert} revenue={revenue} /></TableCell>
-                                            <TableCell align="center" sx={{ py: 1.5 }}>
-                                                {item.requisition_id ? (
-                                                    <Tooltip title="Item Breakdown" arrow>
-                                                        <IconButton
-                                                            className="view-btn"
-                                                            size="small"
-                                                            onClick={() => openItemModal(item.requisition_id, item.requisition_number)}
-                                                            sx={{
-                                                                bgcolor: "#f1f5f9",
-                                                                color: "#64748b",
-                                                                opacity: 0.6,
-                                                                transition: "all 0.2s",
-                                                                "&:hover": { bgcolor: PRIMARY, color: "#fff" },
-                                                                borderRadius: 1.5,
-                                                            }}
-                                                        >
-                                                            <VisibilityIcon sx={{ fontSize: 16 }} />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                ) : (
-                                                    <Typography sx={{ fontSize: "0.55rem", color: "#94a3b8", fontWeight: 700 }}>N/A</Typography>
-                                                )}
-                                            </TableCell>
                                         </TableRow>
                                     );
                                 }) : (
                                     <TableRow>
-                                        <TableCell colSpan={9} sx={{ py: 8, textAlign: "center" }}>
+                                        <TableCell colSpan={8} sx={{ py: 8, textAlign: "center" }}>
                                             <ReceiptLongIcon sx={{ fontSize: 32, color: "#e2e8f0", mb: 1 }} />
                                             <Typography sx={{ color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", fontSize: "0.6rem", letterSpacing: "0.1em" }}>
                                                 No P&L records found

@@ -186,6 +186,64 @@ const guideData = [
         ]
     },
     {
+        id: "stock",
+        title: "Stock",
+        icon: <InventoryIcon />,
+        color: "emerald",
+        sections: [
+            {
+                id: "stock-register",
+                title: "Stock Register",
+                icon: <Inventory2Icon />,
+                content: {
+                    path: "Sidebar → Stock",
+                    description: "One page that answers: what do we have, how many times did we buy it, at what price, what is the latest price, how much is already sold, and how much is still free to sell.",
+                    flow: [
+                        { step: "1", title: "PO received", detail: "Stock goes UP when a Purchase Order item is marked as received" },
+                        { step: "2", title: "PI created (Draft/Sent)", detail: "That quantity becomes RESERVED — still in stock, but promised to a customer" },
+                        { step: "3", title: "PI accepted", detail: "Stock goes DOWN — the item is now genuinely sold" },
+                        { step: "4", title: "Free to sell", detail: "Free to sell = In stock − Reserved. Only these items appear in a Stock Sale PI" }
+                    ],
+                    steps: [
+                        { action: "Read the KPI cards", detail: "Items in stock, Free to sell (bought but not yet sold), Reserved units (locked in open PIs), Stock value at weighted-average cost, and Out of stock / Low stock counts" },
+                        { action: "Times bought & prices", detail: "Each row shows how many times the item was purchased, the total quantity, the LAST buy price (with the vendor and date), the AVERAGE buy price, and the lowest–highest price range" },
+                        { action: "Price trend arrow", detail: "A red ↑ means the last purchase was costlier than the previous one, a green ↓ means cheaper. Hover to see the exact %" },
+                        { action: "Reserved vs Free to sell", detail: "'Reserved' = quantity already claimed by Draft/Sent PIs. 'Free to sell' is what a new Stock Sale PI can actually take" },
+                        { action: "Filters", detail: "Free to sell · In stock · Out of stock · Low stock · Never bought. Search works on item name, code and HSN" },
+                        { action: "Sort", detail: "Click any column header (Times bought, Avg buy price, In stock, Free to sell, Stock value) to sort" },
+                        { action: "Full item history", detail: "Click any row to open the item ledger: every purchase (date, PO, vendor, requisition, qty, rate), every sale (PI, buyer, qty, price, sold/reserved) and everything still On Order (PO raised but not yet received)" }
+                    ],
+                    tips: [
+                        "All prices are shown in INR — foreign-currency POs are converted using the conversion rate stored on that PO",
+                        "Stock value uses the weighted-average purchase cost, not the item-master rate",
+                        "'Never bought' items are catalog items that never came in through a PO — usually only used on Direct PIs",
+                        "If an item is not showing in a Stock Sale PI, open it here — its free quantity is probably 0 because another open PI has reserved it"
+                    ]
+                }
+            },
+            {
+                id: "stock-sale-link",
+                title: "How Stock connects to a Stock Sale PI",
+                icon: <MonetizationOnIcon />,
+                content: {
+                    path: "Sidebar → Sales → Proforma Invoice → Create → Stock Sale",
+                    description: "A Stock Sale PI can only sell what was actually bought and is not already sold or promised. The item list on the PI form is driven straight by the Stock Register.",
+                    steps: [
+                        { action: "Only sellable items are listed", detail: "The 'Add Products from Stock' list shows an item only if Free to sell > 0 (in stock, minus quantity reserved by other Draft/Sent PIs)" },
+                        { action: "Bought-at price is shown", detail: "Every item in the list shows what it was bought for — the last purchase price, the average price, how many times it was bought, and the last vendor" },
+                        { action: "Quantity is capped", detail: "You cannot save a PI for more than the free quantity. The form warns you, and the server rejects it too — so the same unit can never be sold on two PIs" },
+                        { action: "Editing a PI", detail: "While editing, that PI's own lines are not counted against it, so you can freely raise or lower its quantities up to the free limit" },
+                        { action: "Cancelling a PI", detail: "Cancelling releases the reservation immediately; if the PI was already Accepted, the stock is added back" }
+                    ],
+                    tips: [
+                        "Requisition PIs and Direct PIs are different: a Requisition PI is limited by what was purchased against that requisition; a Direct PI is not stock-bound at all",
+                        "If a customer walks away, cancel the PI — otherwise its quantity stays reserved and blocks other sales"
+                    ]
+                }
+            }
+        ]
+    },
+    {
         id: "purchase",
         title: "Purchase",
         icon: <LocalOfferIcon />,

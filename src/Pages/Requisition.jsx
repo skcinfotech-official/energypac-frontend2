@@ -8,7 +8,7 @@ import {
   RadioGroup, Radio, FormControlLabel
 } from "@mui/material";
 import {
-  Add as AddIcon, Edit as EditIcon, Visibility as ViewIcon,
+  Add as AddIcon, Edit as EditIcon,
   FileDownload as ExcelIcon, Search as SearchIcon,
   ChevronLeft as PrevIcon, ChevronRight as NextIcon,
 } from "@mui/icons-material";
@@ -466,7 +466,9 @@ const Requisition = () => {
                 list.map((row, index) => (
                   <TableRow
                     key={row.id}
+                    onClick={() => handleView(row)}
                     sx={{
+                      cursor: 'pointer',
                       bgcolor: index % 2 === 0 ? '#FAFBFC' : 'white',
                       '&:hover': { bgcolor: '#EEF2F6' },
                       transition: 'background-color 0.15s'
@@ -519,24 +521,14 @@ const Requisition = () => {
                         />
                       )}
                     </TableCell>
-                    <TableCell align="center">
+                    <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                       <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
-                        <Tooltip title="View">
-                          <IconButton size="small" onClick={() => handleView(row)} color="default">
-                            <ViewIcon fontSize="small" />
+                        <Tooltip title={row.is_assigned
+                          ? "Edit — changes also update the vendor assignments"
+                          : "Edit"}>
+                          <IconButton size="small" onClick={() => handleEdit(row)} color="primary">
+                            <EditIcon fontSize="small" />
                           </IconButton>
-                        </Tooltip>
-                        <Tooltip title={row.is_assigned ? "Editing Disabled (Assigned)" : "Edit"}>
-                          <span>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleEdit(row)}
-                              disabled={row.is_assigned}
-                              color="primary"
-                            >
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                          </span>
                         </Tooltip>
                       </Box>
                     </TableCell>

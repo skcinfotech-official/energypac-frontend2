@@ -29,7 +29,6 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import DescriptionIcon from "@mui/icons-material/Description";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -341,13 +340,12 @@ const Enquiry = () => {
                                 <TableCell sx={{ px: 3, py: 2 }}>Customer</TableCell>
                                 <TableCell sx={{ px: 3, py: 2 }}>Contact</TableCell>
                                 <TableCell sx={{ px: 3, py: 2 }}>Status</TableCell>
-                                <TableCell sx={{ px: 3, py: 2, textAlign: "center" }}>Actions</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} sx={{ textAlign: "center", py: 4 }}>
+                                    <TableCell colSpan={5} sx={{ textAlign: "center", py: 4 }}>
                                         <CircularProgress size={28} />
                                         <Typography variant="body2" sx={{ mt: 1, color: "grey.500" }}>
                                             Loading...
@@ -358,7 +356,9 @@ const Enquiry = () => {
                                 enquiries.map((item, index) => (
                                     <TableRow
                                         key={item.id}
+                                        onClick={() => handleView(item.id)}
                                         sx={{
+                                            cursor: "pointer",
                                             bgcolor: index % 2 === 0 ? "grey.100" : "white",
                                             "&:hover": { bgcolor: "grey.200" },
                                             transition: "background-color 0.15s",
@@ -394,22 +394,11 @@ const Enquiry = () => {
                                                 {...statusChipProps(item.status)}
                                             />
                                         </TableCell>
-                                        <TableCell sx={{ px: 3, py: 2, textAlign: "center" }}>
-                                            <Tooltip title="View Details">
-                                                <IconButton
-                                                    size="small"
-                                                    onClick={() => handleView(item.id)}
-                                                    sx={{ color: "primary.main" }}
-                                                >
-                                                    <VisibilityIcon fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </TableCell>
                                     </TableRow>
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={6} sx={{ textAlign: "center", py: 4, color: "grey.500" }}>
+                                    <TableCell colSpan={5} sx={{ textAlign: "center", py: 4, color: "grey.500" }}>
                                         No data found
                                     </TableCell>
                                 </TableRow>

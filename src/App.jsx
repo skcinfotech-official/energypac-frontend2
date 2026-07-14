@@ -15,6 +15,7 @@ import Requisition from "./Pages/Requisition.jsx";
 import RequisitionFormPage from "./Pages/RequisitionFormPage.jsx";
 import Login from "./Pages/Login.jsx";
 import Products from "./Pages/Products.jsx";
+import Stock from "./Pages/Stock.jsx";
 import Vendor from "./Pages/Vendor.jsx";
 import Currency from "./Pages/Currency.jsx";
 import VendorAssignment from "./Pages/VendorAssignment.jsx";
@@ -84,6 +85,7 @@ export default function App() {
                   <Route path="/" element={<HomeRedirect />} />
                   <Route path="/audit-logs" element={<AuditLogs />} />
                   <Route path="/master/item" element={<Products />} />
+                  <Route path="/stock" element={<Stock />} />
                   <Route path="/master/vendor" element={<Vendor />} />
                   <Route path="/master/currency" element={<Currency />} />
                   <Route path="/sales/dashboard" element={<SalesDashboard />} />

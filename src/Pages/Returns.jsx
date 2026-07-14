@@ -5,7 +5,7 @@ import {
     Chip, InputAdornment, Tabs, Tab,
 } from "@mui/material";
 import {
-    Add as AddIcon, Search as SearchIcon, Visibility as ViewIcon,
+    Add as AddIcon, Search as SearchIcon,
     Check as CheckIcon, Close as CloseIcon, Undo as UndoIcon,
     Inventory2 as BoxOpenIcon, LocalShipping as TruckIcon,
     ChevronLeft as PrevIcon, ChevronRight as NextIcon,
@@ -292,7 +292,7 @@ const Returns = () => {
                                 const chipProps = getStatusChipProps(st);
                                 const noteNumber = activeTab === "sales" ? item.credit_note_number : item.debit_note_number;
                                 return (
-                                    <TableRow key={item.id} hover>
+                                    <TableRow key={item.id} hover onClick={() => setViewItem(item)} sx={{ cursor: "pointer" }}>
                                         <TableCell sx={{ fontSize: "0.75rem", fontWeight: 700, fontFamily: "monospace", color: "primary.main" }}>
                                             {item.return_number}
                                         </TableCell>
@@ -337,13 +337,8 @@ const Returns = () => {
                                                 sx={{ fontWeight: 700, fontSize: "0.75rem" }}
                                             />
                                         </TableCell>
-                                        <TableCell sx={{ textAlign: "center" }}>
+                                        <TableCell sx={{ textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
                                             <Box sx={{ display: "flex", justifyContent: "center", gap: 0.5 }}>
-                                                <Tooltip title="View Details">
-                                                    <IconButton size="small" onClick={() => setViewItem(item)} sx={{ color: "text.secondary", "&:hover": { color: "primary.main", bgcolor: "primary.lighter" } }}>
-                                                        <ViewIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
                                                 <Tooltip title={st === 'DRAFT' ? "Approve" : "Cannot approve"}>
                                                     <span>
                                                         <IconButton

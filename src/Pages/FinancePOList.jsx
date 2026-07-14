@@ -6,7 +6,7 @@ import {
     Menu, ListItemIcon, ListItemText
 } from "@mui/material";
 import {
-    Visibility as ViewIcon,
+
     Search as SearchIcon,
     Payment as PaymentIcon,
     CalendarToday as CalendarIcon,
@@ -706,13 +706,6 @@ const FinancePOList = () => {
                 transformOrigin={{ vertical: 'top', horizontal: 'right' }}
                 PaperProps={{ sx: { borderRadius: 2, minWidth: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.12)' } }}
             >
-                <MenuItem onClick={runAction((po) => {
-                    setItemsModalOpen(false); setPaymentModalOpen(false); setHistoryModalOpen(false);
-                    setSelectedPO(po); setDetailsModalOpen(true);
-                })}>
-                    <ListItemIcon><ViewIcon fontSize="small" sx={{ color: 'primary.main' }} /></ListItemIcon>
-                    <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}>View Details</ListItemText>
-                </MenuItem>
                 <MenuItem onClick={runAction((po) => {
                     setDetailsModalOpen(false); setItemsModalOpen(false); setHistoryModalOpen(false);
                     setSelectedPO(po); setPaymentModalOpen(true);

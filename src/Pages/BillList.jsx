@@ -49,7 +49,6 @@ import {
 
 // MUI Icons
 import SearchIcon from "@mui/icons-material/Search";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import PaymentIcon from "@mui/icons-material/Payment";
 import CancelIcon from "@mui/icons-material/Cancel";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -596,7 +595,12 @@ const BillList = () => {
                                     ))
                                 ) : bills.length > 0 ? (
                                     bills.map((bill) => (
-                                        <TableRow key={bill.id} hover sx={{ '&:hover': { bgcolor: '#f8fafc' } }}>
+                                        <TableRow
+                                            key={bill.id}
+                                            hover
+                                            onClick={() => handleViewDetails(bill.id)}
+                                            sx={{ cursor: 'pointer', '&:hover': { bgcolor: '#f8fafc' } }}
+                                        >
                                             <TableCell sx={{ py: 2 }}>
                                                 <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                                                     <Typography
@@ -682,7 +686,7 @@ const BillList = () => {
                                                     {...getStatusChipProps(bill.status)}
                                                 />
                                             </TableCell>
-                                            <TableCell sx={{ py: 2 }}>
+                                            <TableCell sx={{ py: 2 }} onClick={(e) => e.stopPropagation()}>
                                                 <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                                                     <Tooltip title="Actions" arrow>
                                                         <IconButton
@@ -823,10 +827,6 @@ const BillList = () => {
                 transformOrigin={{ vertical: 'top', horizontal: 'right' }}
                 PaperProps={{ sx: { borderRadius: 2, minWidth: 210, boxShadow: '0 8px 24px rgba(0,0,0,0.12)' } }}
             >
-                <MenuItem onClick={runAction((bill) => handleViewDetails(bill.id))}>
-                    <ListItemIcon><VisibilityIcon sx={{ fontSize: 18, color: '#2563eb' }} /></ListItemIcon>
-                    <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}>Quick View</ListItemText>
-                </MenuItem>
                 <MenuItem onClick={runAction((bill) => handleViewHistory(bill))}>
                     <ListItemIcon><HistoryIcon sx={{ fontSize: 18, color: '#d97706' }} /></ListItemIcon>
                     <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}>Collection History</ListItemText>

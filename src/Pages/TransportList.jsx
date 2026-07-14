@@ -47,7 +47,6 @@ import SearchIcon from "@mui/icons-material/Search";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import PersonIcon from "@mui/icons-material/Person";
 import PhoneIcon from "@mui/icons-material/Phone";
@@ -912,7 +911,7 @@ const TransportList = () => {
                                     filteredTransports.map((trn) => {
                                         const totalTrnCost = trn.total_cost ? parseFloat(trn.total_cost) : (trn.cost_items || []).reduce((s, cost) => s + parseFloat(cost.amount || 0), 0);
                                         return (
-                                            <TableRow key={trn.id} hover sx={{ "&:hover": { bgcolor: "grey.50" }, transition: "background 0.15s" }}>
+                                            <TableRow key={trn.id} hover onClick={() => setViewingTransport(trn)} sx={{ cursor: "pointer", "&:hover": { bgcolor: "grey.50" }, transition: "background 0.15s" }}>
                                                 <TableCell sx={{ py: 2 }}>
                                                     <Box sx={{ display: "flex", flexDirection: "column" }}>
                                                         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
@@ -1004,13 +1003,8 @@ const TransportList = () => {
                                                 <TableCell sx={{ py: 2, textAlign: "center" }}>
                                                     {getVerificationStatusChip(trn)}
                                                 </TableCell>
-                                                <TableCell sx={{ py: 2 }}>
+                                                <TableCell sx={{ py: 2 }} onClick={(e) => e.stopPropagation()}>
                                                     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0.5 }}>
-                                                        <Tooltip title="Quick View">
-                                                            <IconButton size="small" onClick={() => setViewingTransport(trn)} sx={{ color: "grey.500", "&:hover": { color: "primary.main", bgcolor: "primary.50" } }}>
-                                                                <VisibilityIcon sx={{ fontSize: 18 }} />
-                                                            </IconButton>
-                                                        </Tooltip>
                                                         <Tooltip title="Transport Note PDF">
                                                             <IconButton size="small" onClick={() => handleDownloadNote(trn)} sx={{ color: "#b91c1c", "&:hover": { color: "#7f1d1d", bgcolor: "#fef2f2" } }}>
                                                                 <PictureAsPdfIcon sx={{ fontSize: 18 }} />

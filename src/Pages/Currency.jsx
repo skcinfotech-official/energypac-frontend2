@@ -6,7 +6,7 @@ import {
 } from "@mui/material";
 import {
     Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
-    Visibility as ViewIcon, Public as GlobeIcon, Search as SearchIcon,
+    Public as GlobeIcon, Search as SearchIcon,
     ChevronLeft as PrevIcon, ChevronRight as NextIcon,
 } from "@mui/icons-material";
 
@@ -292,7 +292,7 @@ export default function Currency() {
                             )}
 
                             {!loading && currencies.map((c) => (
-                                <TableRow key={c.id} hover>
+                                <TableRow key={c.id} hover onClick={() => handleView(c)} sx={{ cursor: 'pointer' }}>
                                     <TableCell>
                                         <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 700, color: '#1565C0' }}>
                                             {c.code}
@@ -317,13 +317,8 @@ export default function Currency() {
                                             sx={{ fontWeight: 600, fontSize: '0.75rem' }}
                                         />
                                     </TableCell>
-                                    <TableCell align="center">
+                                    <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                                         <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
-                                            <Tooltip title="View">
-                                                <IconButton size="small" onClick={() => handleView(c)} color="default">
-                                                    <ViewIcon fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
                                             <Tooltip title="Edit">
                                                 <IconButton size="small" onClick={() => handleEdit(c)} color="primary">
                                                     <EditIcon fontSize="small" />

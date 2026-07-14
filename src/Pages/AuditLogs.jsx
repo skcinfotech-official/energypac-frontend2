@@ -5,7 +5,7 @@ import {
     Select, MenuItem, FormControl, InputLabel, Grid
 } from "@mui/material";
 import {
-    History as HistoryIcon, Search as SearchIcon, Visibility as ViewIcon,
+    History as HistoryIcon, Search as SearchIcon,
     CalendarMonth as CalendarIcon, Clear as ClearIcon,
     ChevronLeft as PrevIcon, ChevronRight as NextIcon,
 } from "@mui/icons-material";
@@ -128,23 +128,22 @@ export default function AuditLogs() {
                                 <TableCell align="center">Action</TableCell>
                                 <TableCell>Component</TableCell>
                                 <TableCell>Affected Object</TableCell>
-                                <TableCell align="center">Changes</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {loading && (
-                                <TableRow><TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                                <TableRow><TableCell colSpan={5} align="center" sx={{ py: 6 }}>
                                     <CircularProgress size={28} />
                                     <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 1 }}>Loading audit trail...</Typography>
                                 </TableCell></TableRow>
                             )}
                             {!loading && logs.length === 0 && (
-                                <TableRow><TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                                <TableRow><TableCell colSpan={5} align="center" sx={{ py: 6 }}>
                                     <Typography variant="body2" color="text.secondary">No audit logs found for the current filter settings.</Typography>
                                 </TableCell></TableRow>
                             )}
                             {!loading && logs.map(log => (
-                                <TableRow key={log.id}>
+                                <TableRow key={log.id} hover onClick={() => { setSelectedLog(log); setModalOpen(true); }} sx={{ cursor: 'pointer' }}>
                                     <TableCell>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                                             <CalendarIcon sx={{ fontSize: '0.85rem', color: 'text.secondary' }} />
@@ -168,13 +167,6 @@ export default function AuditLogs() {
                                         <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'text.secondary' }} title={log.object_id}>
                                             Ref ID: {log.object_id}
                                         </Typography>
-                                    </TableCell>
-                                    <TableCell align="center">
-                                        <Button size="small" variant="outlined" startIcon={<ViewIcon sx={{ fontSize: '0.9rem' }} />}
-                                            onClick={() => { setSelectedLog(log); setModalOpen(true); }}
-                                            sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
-                                            View Diff
-                                        </Button>
                                     </TableCell>
                                 </TableRow>
                             ))}

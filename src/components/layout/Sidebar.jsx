@@ -102,6 +102,10 @@ export default function Sidebar({ isOpen }) {
                 <SidebarLink to="/audit-logs" label="Audit Logs" icon={<HistoryIcon />} isOpen={isOpen} tourId="tour-audit" />
                 <SidebarLink to="/sales/client-query" label="Client Query" icon={<SupportAgentIcon />} isOpen={isOpen} tourId="tour-client-query" />
 
+                {(hasPermission("MASTER") || hasPermission("PURCHASE") || hasPermission("SALES")) && (
+                    <SidebarLink to="/stock" label="Stock" icon={<WarehouseIcon />} isOpen={isOpen} tourId="tour-stock" />
+                )}
+
                 {hasPermission("MASTER") && (
                     <SidebarDropdown label="Master" icon={<InventoryIcon />} isOpen={isOpen} tourId="tour-master" items={[
                         { to: "/master/item", label: "Item", icon: <CategoryIcon /> },

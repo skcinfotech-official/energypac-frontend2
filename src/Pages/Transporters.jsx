@@ -277,7 +277,7 @@ const Transporters = () => {
                             ) : rows.length === 0 ? (
                                 <TableRow><TableCell colSpan={8} sx={{ textAlign: "center", py: 6, fontStyle: "italic", color: "text.disabled" }}>No transporters yet</TableCell></TableRow>
                             ) : rows.map((r) => (
-                                <TableRow key={r.id} hover>
+                                <TableRow key={r.id} hover onClick={() => openLedger(r)} sx={{ cursor: "pointer" }}>
                                     <TableCell sx={{ fontFamily: "monospace", fontWeight: 800, color: "#0ea5e9" }}>{r.transporter_code}</TableCell>
                                     <TableCell sx={{ fontWeight: 700 }}>{r.name}</TableCell>
                                     <TableCell>{r.contact_person || "—"}</TableCell>
@@ -288,8 +288,7 @@ const Transporters = () => {
                                         <Chip label={r.is_active ? "Active" : "Inactive"} size="small"
                                             sx={{ fontSize: 9, height: 20, fontWeight: 800, bgcolor: r.is_active ? "#ecfdf5" : "#f1f5f9", color: r.is_active ? "#047857" : "#64748b" }} />
                                     </TableCell>
-                                    <TableCell align="center">
-                                        <Tooltip title="Ledger"><IconButton size="small" onClick={() => openLedger(r)} sx={{ color: "#7c3aed" }}><ReceiptLongIcon fontSize="small" /></IconButton></Tooltip>
+                                    <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                                         <Tooltip title="Edit"><IconButton size="small" onClick={() => openEdit(r)} sx={{ color: "#0ea5e9" }}><EditIcon fontSize="small" /></IconButton></Tooltip>
                                     </TableCell>
                                 </TableRow>

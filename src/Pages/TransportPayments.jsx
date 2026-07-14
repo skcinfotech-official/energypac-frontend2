@@ -219,7 +219,7 @@ const TransportPayments = () => {
                             ) : rows.length === 0 ? (
                                 <TableRow><TableCell colSpan={10} sx={{ textAlign: "center", py: 6, fontStyle: "italic", color: "text.disabled" }}>No transport entries found</TableCell></TableRow>
                             ) : rows.map((r) => (
-                                <TableRow key={r.id} hover>
+                                <TableRow key={r.id} hover onClick={() => openHistory(r)} sx={{ cursor: "pointer" }}>
                                     <TableCell sx={{ fontFamily: "monospace", fontWeight: 800, color: "#0ea5e9" }}>{r.transport_number}</TableCell>
                                     <TableCell>
                                         <Chip label={r.direction === "BUY" ? "BUY" : "SELL"} size="small"

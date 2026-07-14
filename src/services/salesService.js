@@ -420,9 +420,12 @@ export const getRequisitionItemsForPi = async (requisitionId) => {
     }
 };
 
-export const getStockItemsForPi = async () => {
+// Sellable stock = bought but not yet sold (on-hand minus qty locked in open PIs).
+// `excludePiId` skips the PI being edited so its own lines don't block it.
+export const getStockItemsForPi = async (excludePiId = null) => {
     try {
-        const response = await axiosSecure.get(`/api/proforma-invoices/stock_items`);
+        const params = excludePiId ? { exclude_pi: excludePiId } : {};
+        const response = await axiosSecure.get(`/api/proforma-invoices/stock_items`, { params });
         return response.data;
     } catch (error) {
         console.error("Error fetching stock items for PI:", error);

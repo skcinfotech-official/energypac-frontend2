@@ -17,7 +17,7 @@ import {
 import {
     Add as AddIcon,
     Search as SearchIcon,
-    Visibility as ViewIcon,
+
     Edit as EditIcon,
     Send as SendIcon,
     Check as CheckIcon,
@@ -446,7 +446,12 @@ const ClientQuotation = () => {
                                 invoices.map((item) => {
                                     const status = (item.status || "DRAFT").toUpperCase();
                                     return (
-                                        <TableRow key={item.id} hover>
+                                        <TableRow
+                                            key={item.id}
+                                            hover
+                                            onClick={() => { setSelectedInvoice(item); setViewModalOpen(true); }}
+                                            sx={{ cursor: 'pointer' }}
+                                        >
                                             <TableCell sx={{ whiteSpace: 'nowrap' }}>
                                                 <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 700, color: '#1565C0' }}>
                                                     {item.pi_number || `#${item.id?.substring(0, 8) || "N/A"}`}
@@ -520,7 +525,7 @@ const ClientQuotation = () => {
                                             <TableCell align="center">
                                                 {getVerificationStatusChip(item.id)}
                                             </TableCell>
-                                            <TableCell align="center">
+                                            <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                                                 <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                                                     <Tooltip title="Actions">
                                                         <IconButton size="small" onClick={(e) => openActionMenu(e, item)}>
@@ -589,10 +594,6 @@ const ClientQuotation = () => {
                     if (!it) return null;
                     const st = it.status;
                     return [
-                        <MenuItem key="view" onClick={runAction((x) => { setSelectedInvoice(x); setViewModalOpen(true); })}>
-                            <ListItemIcon><ViewIcon fontSize="small" /></ListItemIcon>
-                            <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}>View Details</ListItemText>
-                        </MenuItem>,
                         <MenuItem key="edit" disabled={st === 'ACCEPTED' || st === 'CANCELLED'} onClick={runAction((x) => handleEdit(x))}>
                             <ListItemIcon><EditIcon fontSize="small" color="primary" /></ListItemIcon>
                             <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}>Edit Proforma Invoice</ListItemText>

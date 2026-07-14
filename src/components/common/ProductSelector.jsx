@@ -7,7 +7,7 @@ import {
 } from "@mui/material";
 import { Search as SearchIcon, Close as CloseIcon, Add as AddIcon } from "@mui/icons-material";
 
-const ProductSelector = ({ value, onChange, placeholder = "Search product...", defaultItem = null, excludeIds = [] }) => {
+const ProductSelector = ({ value, onChange, placeholder = "Search product...", defaultItem = null, excludeIds = [], disabled = false, size = "medium" }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [products, setProducts] = useState([]);
@@ -321,32 +321,34 @@ const ProductSelector = ({ value, onChange, placeholder = "Search product...", d
         </Paper>
     );
 
+    const small = size === "small";
+
     return (
         <Box sx={{ position: 'relative', width: '100%' }} ref={dropdownRef}>
             <Box
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={() => { if (!disabled) setIsOpen(!isOpen); }}
                 sx={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    cursor: 'pointer',
-                    px: 2,
-                    py: 1.2,
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    px: small ? 1.25 : 2,
+                    py: small ? 0.75 : 1.2,
                     border: '2px solid',
-                    borderColor: isOpen ? '#0ea5e9' : '#dbeafe',
+                    borderColor: disabled ? '#e2e8f0' : isOpen ? '#0ea5e9' : '#dbeafe',
                     borderRadius: 1.2,
-                    bgcolor: 'background.paper',
-                    fontSize: '14px',
+                    bgcolor: disabled ? '#f8fafc' : 'background.paper',
+                    fontSize: small ? '13px' : '14px',
                     fontWeight: 500,
-                    minHeight: '44px',
-                    boxShadow: isOpen ? '0 2px 8px rgba(14, 165, 233, 0.12)' : '0 1px 3px rgba(0, 0, 0, 0.05)',
-                    '&:hover': { borderColor: '#0ea5e9', boxShadow: '0 2px 8px rgba(14, 165, 233, 0.1)' },
+                    minHeight: small ? '36px' : '44px',
+                    boxShadow: disabled ? 'none' : isOpen ? '0 2px 8px rgba(14, 165, 233, 0.12)' : '0 1px 3px rgba(0, 0, 0, 0.05)',
+                    '&:hover': disabled ? {} : { borderColor: '#0ea5e9', boxShadow: '0 2px 8px rgba(14, 165, 233, 0.1)' },
                 }}
             >
-                <Typography sx={{ color: !selectedProduct ? 'text.secondary' : 'text.primary', fontSize: '14px', fontWeight: selectedProduct ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                <Typography sx={{ color: disabled ? 'text.disabled' : !selectedProduct ? 'text.secondary' : 'text.primary', fontSize: small ? '13px' : '14px', fontWeight: selectedProduct ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                     {selectedProduct ? `${selectedProduct.item_name} (${selectedProduct.item_code || "N/A"})` : placeholder}
                 </Typography>
-                {value && (
+                {value && !disabled && (
                     <CloseIcon
                         onClick={(e) => {
                             e.stopPropagation();
@@ -358,7 +360,7 @@ const ProductSelector = ({ value, onChange, placeholder = "Search product...", d
                 )}
             </Box>
 
-            {isOpen && createPortal(dropdownContent, document.body)}
+            {isOpen && !disabled && createPortal(dropdownContent, document.body)}
         </Box>
     );
 };

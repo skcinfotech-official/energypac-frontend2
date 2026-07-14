@@ -111,7 +111,7 @@ const TaxInvoiceList = ({ kind = "PRODUCT" }) => {
                             ) : rows.length === 0 ? (
                                 <TableRow><TableCell colSpan={isService ? 6 : 8} sx={{ textAlign: "center", py: 6, fontStyle: "italic", color: "text.disabled" }}>No {isService ? "service" : "tax"} invoices found</TableCell></TableRow>
                             ) : rows.map(ti => (
-                                <TableRow key={ti.id} hover>
+                                <TableRow key={ti.id} hover onClick={() => setModal({ open: true, tiId: ti.id })} sx={{ cursor: "pointer" }}>
                                     <TableCell sx={{ fontFamily: "monospace", fontWeight: 700, color: PRIMARY_C }}>{ti.ti_number}</TableCell>
                                     {!isService && <TableCell><Chip label={ti.kind === "SERVICE" ? "Service" : "Product"} size="small" sx={{ fontSize: 10, height: 20, fontWeight: 700, bgcolor: ti.kind === "SERVICE" ? "#F5F3FF" : "#ECFEFF", color: ti.kind === "SERVICE" ? "#6D28D9" : "#0E7490" }} /></TableCell>}
                                     {!isService && <TableCell sx={{ fontFamily: "monospace", fontSize: 12 }}>{ti.pi_number || "—"}</TableCell>}

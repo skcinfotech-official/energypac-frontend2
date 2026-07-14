@@ -8,7 +8,7 @@ import {
 } from "@mui/material";
 import {
     Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon,
-    Visibility as ViewIcon, FileDownload as ExcelIcon,
+    FileDownload as ExcelIcon,
     Upload as UploadIcon, Search as SearchIcon,
     ChevronLeft as PrevIcon, ChevronRight as NextIcon,
 } from "@mui/icons-material";
@@ -231,7 +231,7 @@ export default function Products() {
                                 </TableCell></TableRow>
                             )}
                             {!loading && products.map(item => (
-                                <TableRow key={item.id}>
+                                <TableRow key={item.id} hover onClick={() => handleView(item)} sx={{ cursor: 'pointer' }}>
                                     <TableCell>
                                         <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600, color: 'primary.main' }}>{item.item_code}</Typography>
                                     </TableCell>
@@ -245,9 +245,8 @@ export default function Products() {
                                     <TableCell><Typography variant="body2">{item.unit}</Typography></TableCell>
                                     <TableCell align="right"><Typography variant="body2" sx={{ fontWeight: 700 }}>₹{item.rate}</Typography></TableCell>
                                     <TableCell><Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{item.requisition_number || "-"}</Typography></TableCell>
-                                    <TableCell align="center">
+                                    <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                                         <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
-                                            <Tooltip title="View"><IconButton size="small" onClick={() => handleView(item)} color="default"><ViewIcon fontSize="small" /></IconButton></Tooltip>
                                             <Tooltip title="Edit"><IconButton size="small" onClick={() => handleEdit(item)} color="primary"><EditIcon fontSize="small" /></IconButton></Tooltip>
                                             <Tooltip title="Delete"><IconButton size="small" onClick={() => handleDelete(item)} color="error"><DeleteIcon fontSize="small" /></IconButton></Tooltip>
                                         </Box>

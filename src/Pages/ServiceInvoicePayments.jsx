@@ -172,7 +172,7 @@ const ServiceInvoicePayments = () => {
                             ) : rows.length === 0 ? (
                                 <TableRow><TableCell colSpan={8} sx={{ textAlign: "center", py: 6, fontStyle: "italic", color: "text.disabled" }}>No service invoices found</TableCell></TableRow>
                             ) : rows.map((ti) => (
-                                <TableRow key={ti.id} hover>
+                                <TableRow key={ti.id} hover onClick={() => openHistory(ti)} sx={{ cursor: "pointer" }}>
                                     <TableCell sx={{ fontFamily: "monospace", fontWeight: 800, color: "#7c3aed" }}>{ti.ti_number}</TableCell>
                                     <TableCell>{ti.invoice_no || "—"}</TableCell>
                                     <TableCell sx={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ti.bill_to_name || "—"}</TableCell>

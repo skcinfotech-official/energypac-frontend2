@@ -5,7 +5,7 @@ import {
     CircularProgress, Chip
 } from "@mui/material";
 import {
-    Visibility as ViewIcon,
+
     Edit as EditIcon,
     ReceiptLong as InvoiceIcon,
     Add as AddIcon,
@@ -231,7 +231,9 @@ const VendorQuotationList = ({ initialViewId, onNewQuotation }) => {
                                     <TableRow
                                         key={row.id}
                                         hover
+                                        onClick={() => handleView(row.id)}
                                         sx={{
+                                            cursor: 'pointer',
                                             bgcolor: index % 2 === 0 ? '#F8FAFC' : '#FFFFFF',
                                             '&:hover': { bgcolor: '#E2E8F0' }
                                         }}
@@ -289,20 +291,8 @@ const VendorQuotationList = ({ initialViewId, onNewQuotation }) => {
                                                 }}
                                             />
                                         </TableCell>
-                                        <TableCell sx={{ py: 1, textAlign: 'center' }}>
+                                        <TableCell sx={{ py: 1, textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
                                             <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
-                                                <Tooltip title="View Details">
-                                                    <IconButton
-                                                        size="small"
-                                                        onClick={() => handleView(row.id)}
-                                                        sx={{
-                                                            color: '#94A3B8',
-                                                            '&:hover': { color: '#1565C0', bgcolor: '#EFF6FF' }
-                                                        }}
-                                                    >
-                                                        <ViewIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
                                                 <Tooltip title="Edit Quotation">
                                                     <IconButton
                                                         size="small"

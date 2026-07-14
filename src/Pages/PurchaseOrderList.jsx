@@ -10,7 +10,7 @@ import {
     FormControlLabel, Menu, ListItemIcon, ListItemText
 } from "@mui/material";
 import {
-    Visibility, FileDownload, Close, Search, Edit, Cancel, CheckCircle, Schedule, Error,
+    FileDownload, Close, Search, Edit, Cancel, CheckCircle, Schedule, Error,
     MoreVert as MoreVertIcon
 } from "@mui/icons-material";
 import AlertToast from "../components/ui/AlertToast";
@@ -487,7 +487,9 @@ const PurchaseOrderList = () => {
                                 list.map((row, index) => (
                                     <TableRow
                                         key={row.id}
+                                        onClick={() => handleView(row)}
                                         sx={{
+                                            cursor: 'pointer',
                                             bgcolor: index % 2 === 0 ? 'grey.100' : 'white',
                                             '&:hover': { bgcolor: 'grey.200' },
                                             transition: 'background-color 0.2s'
@@ -533,7 +535,7 @@ const PurchaseOrderList = () => {
                                         <TableCell sx={{ px: 3, py: 2 }}>
                                             {getVerificationStatusChip(row.id)}
                                         </TableCell>
-                                        <TableCell sx={{ px: 3, py: 2 }}>
+                                        <TableCell sx={{ px: 3, py: 2 }} onClick={(e) => e.stopPropagation()}>
                                             <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                                                 <Tooltip title="Actions">
                                                     <IconButton size="small" onClick={(e) => openActionMenu(e, row)} sx={{ color: 'grey.600', '&:hover': { bgcolor: 'grey.100' } }}>
@@ -590,10 +592,6 @@ const PurchaseOrderList = () => {
                 transformOrigin={{ vertical: 'top', horizontal: 'right' }}
                 PaperProps={{ sx: { borderRadius: 2, minWidth: 180, boxShadow: '0 8px 24px rgba(0,0,0,0.12)' } }}
             >
-                <MenuItem onClick={runAction((row) => handleView(row))}>
-                    <ListItemIcon><Visibility fontSize="small" sx={{ color: 'primary.main' }} /></ListItemIcon>
-                    <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}>View</ListItemText>
-                </MenuItem>
                 <MenuItem
                     disabled={actionMenu.row?.status === 'CANCELLED'}
                     onClick={runAction((row) => handleEditClick(row))}

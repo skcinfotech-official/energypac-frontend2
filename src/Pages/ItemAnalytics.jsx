@@ -34,7 +34,6 @@ import {
     ShoppingCart as ShoppingCartIcon,
     Store as StoreIcon,
     Warning as WarningIcon,
-    Visibility as EyeIcon,
     Close as CloseIcon,
     ArrowForward as ArrowForwardIcon,
 } from "@mui/icons-material";
@@ -218,7 +217,6 @@ export default function ItemAnalytics() {
                                     <TableCell sx={thStyle} align="center">Last Buy</TableCell>
                                     <TableCell sx={thStyle} align="center">Last Sale</TableCell>
                                     <TableCell sx={thStyle} align="center">Status</TableCell>
-                                    <TableCell sx={thStyle} align="center">Track</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -232,8 +230,11 @@ export default function ItemAnalytics() {
                                     <TableRow
                                         key={i}
                                         hover
+                                        onClick={() => {
+                                            if (item.total_times_purchased > 0 || item.total_times_sold > 0) openTracking(item.product_id);
+                                        }}
                                         sx={{
-                                            "&:hover .track-btn": { opacity: 1 },
+                                            cursor: (item.total_times_purchased > 0 || item.total_times_sold > 0) ? "pointer" : "default",
                                             "& td": { borderBottom: "1px solid #f1f5f9" },
                                         }}
                                     >
@@ -274,26 +275,6 @@ export default function ItemAnalytics() {
                                                     size="small"
                                                     sx={{ fontSize: "9px", fontWeight: 900, textTransform: "uppercase", bgcolor: "#f8fafc", color: "#64748b", border: "1px solid #e2e8f0", height: 22 }}
                                                 />
-                                            )}
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            {(item.total_times_purchased > 0 || item.total_times_sold > 0) && (
-                                                <Tooltip title="View Full Tracking">
-                                                    <IconButton
-                                                        className="track-btn"
-                                                        onClick={() => openTracking(item.product_id)}
-                                                        size="small"
-                                                        sx={{
-                                                            bgcolor: "#f1f5f9",
-                                                            color: "#64748b",
-                                                            opacity: 0.6,
-                                                            "&:hover": { bgcolor: "#1565C0", color: "#fff" },
-                                                            transition: "all 0.2s",
-                                                        }}
-                                                    >
-                                                        <EyeIcon sx={{ fontSize: 14 }} />
-                                                    </IconButton>
-                                                </Tooltip>
                                             )}
                                         </TableCell>
                                     </TableRow>

@@ -5,7 +5,7 @@ import {
     Chip, InputAdornment
 } from "@mui/material";
 import {
-    Add as AddIcon, Edit as EditIcon, Visibility as ViewIcon,
+    Add as AddIcon, Edit as EditIcon,
     Search as SearchIcon, ChevronLeft as PrevIcon, ChevronRight as NextIcon,
 } from "@mui/icons-material";
 import { getVendorAssignments } from "../services/vendorAssignment";
@@ -102,16 +102,15 @@ const VendorAssignment = () => {
                             {loading ? (
                                 <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4 }}><CircularProgress size={28} /></TableCell></TableRow>
                             ) : data.length > 0 ? data.map(row => (
-                                <TableRow key={row.id}>
+                                <TableRow key={row.id} hover onClick={() => handleView(row)} sx={{ cursor: 'pointer' }}>
                                     <TableCell><Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600, color: 'primary.main' }}>{row.requisition_number}</Typography></TableCell>
                                     <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{row.vendor_details?.vendor_name || "-"}</Typography></TableCell>
                                     <TableCell><Typography variant="body2" color="text.secondary">{row.assigned_by_name || "-"}</Typography></TableCell>
                                     <TableCell align="center"><Chip label={row.total_items} size="small" variant="outlined" sx={{ fontWeight: 600 }} /></TableCell>
                                     <TableCell><Typography variant="caption" color="text.secondary">{row.assignment_date ? new Date(row.assignment_date).toLocaleDateString() : "-"}</Typography></TableCell>
                                     <TableCell align="center">{getStatusChip(row)}</TableCell>
-                                    <TableCell align="center">
+                                    <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                                         <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
-                                            <Tooltip title="View"><IconButton size="small" onClick={() => handleView(row)}><ViewIcon fontSize="small" /></IconButton></Tooltip>
                                             <Tooltip title={(row.quotations?.length > 0 || row.is_quoted || row.status === "Completed") ? "View only" : "Edit"}>
                                                 <IconButton size="small" color={(row.quotations?.length > 0 || row.is_quoted || row.status === "Completed") ? "default" : "primary"}
                                                     onClick={() => (row.quotations?.length > 0 || row.is_quoted || row.status === "Completed") ? handleView(row) : handleEdit(row)}>

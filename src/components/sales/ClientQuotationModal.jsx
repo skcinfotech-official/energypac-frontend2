@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Box, Typography, IconButton, Button, TextField, Grid,
@@ -374,10 +374,11 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
         });
     };
 
-    const loadStockProducts = async () => {
+    const loadStockProducts = useCallback(async () => {
         setLoadingStock(true);
         try {
-            const response = await getStockItemsForPi();
+            // While editing, this PI's own lines must not count as "reserved" against itself.
+            const response = await getStockItemsForPi(invoice?.id || null);
             setStockProducts(response?.items || []);
         } catch (err) {
             console.error("Failed to load stock items", err);
@@ -385,13 +386,13 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
         } finally {
             setLoadingStock(false);
         }
-    };
+    }, [invoice?.id]);
 
     useEffect(() => {
         if (isOpen && piMode === "stock_sale" && stockProducts.length === 0) {
             loadStockProducts();
         }
-    }, [isOpen, piMode, stockProducts.length]);
+    }, [isOpen, piMode, stockProducts.length, loadStockProducts]);
 
     // Direct PI — debounced product master search (any item, not just in-stock)
     useEffect(() => {
@@ -468,11 +469,15 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
             product: product.product_id,
             product_name: product.product_name,
             product_code: product.product_code,
-            hsn_code: "",
+            hsn_code: product.hsn_code || "",
             quantity: 1,
             unit_price: Number(product.rate) || 0,
             unit: product.unit,
             current_stock: product.current_stock,
+            // Free-to-sell cap: on-hand minus what other open PIs already promised.
+            available_qty: Number(product.available_qty) || 0,
+            actual_purchase_rate: Number(product.last_purchase_rate) || 0,
+            avg_purchase_rate: Number(product.avg_purchase_rate) || 0,
             can_add_to_pi: true,
             selected: true,
         }]);
@@ -557,6 +562,19 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
 
             if (selectedItems.length === 0) throw new Error("At least one item is required");
             if (piMode === "requisition" && selectedRequisitions.length === 0) throw new Error("Please select at least one Requisition");
+
+            // Stock sale can never exceed free-to-sell stock (backend enforces this too).
+            if (piMode === "stock_sale") {
+                const oversold = selectedItems.filter(
+                    i => i.available_qty !== undefined && Number(i.quantity) > Number(i.available_qty)
+                );
+                if (oversold.length > 0) {
+                    throw new Error(
+                        "Not enough free stock: " +
+                        oversold.map(i => `${i.product_name} (free ${i.available_qty}, asked ${i.quantity})`).join(", ")
+                    );
+                }
+            }
 
             const payload = {
                 ...formData,
@@ -1024,8 +1042,11 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                             {/* STOCK SALE: Product Search & Add */}
                             {piMode === "stock_sale" && !isEdit && (
                                 <Box sx={{ p: 2, bgcolor: 'rgba(245,158,11,0.05)', borderRadius: 3, border: '1px solid', borderColor: 'rgba(245,158,11,0.2)' }}>
-                                    <Typography sx={{ fontSize: 11, fontWeight: 700, color: '#B45309', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Typography sx={{ fontSize: 11, fontWeight: 700, color: '#B45309', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
                                         <Inventory2Icon sx={{ fontSize: 14 }} /> Add Products from Stock
+                                    </Typography>
+                                    <Typography sx={{ fontSize: 10, color: '#92400E', mb: 1.5 }}>
+                                        Only items that were <b>bought but not yet sold</b> are listed. “Free” = in stock minus what other open PIs have already promised.
                                     </Typography>
                                     <TextField
                                         value={stockSearch}
@@ -1047,16 +1068,31 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                                             ) : filteredStock.map(p => (
                                                 <Box key={p.product_id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1.5, py: 1, bgcolor: 'white', borderRadius: 2, border: '1px solid', borderColor: 'divider', mb: 0.5, '&:hover': { borderColor: '#FDE68A', bgcolor: 'rgba(245,158,11,0.04)' }, transition: 'all 0.15s' }}>
                                                     <Box>
-                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                                                             <Typography sx={{ fontSize: 13, fontWeight: 600, color: 'text.primary' }}>{p.product_name}</Typography>
                                                             <Typography sx={{ fontSize: 10, color: 'text.disabled', fontFamily: 'monospace' }}>{p.product_code}</Typography>
-                                                            <Typography sx={{ fontSize: 10, color: '#059669', fontWeight: 700 }}>Stock: {p.current_stock} {p.unit}</Typography>
+                                                            <Typography sx={{ fontSize: 10, color: '#059669', fontWeight: 700 }}>Free: {p.available_qty} {p.unit}</Typography>
+                                                            <Typography sx={{ fontSize: 10, color: 'text.disabled' }}>of {p.current_stock} in stock</Typography>
+                                                            {Number(p.reserved_qty) > 0 && (
+                                                                <Typography sx={{ fontSize: 9, color: '#B45309', fontWeight: 700, bgcolor: '#FEF3C7', px: 0.75, py: 0.15, borderRadius: 0.5 }}>
+                                                                    {p.reserved_qty} reserved in other PIs
+                                                                </Typography>
+                                                            )}
                                                         </Box>
+                                                        {Number(p.last_purchase_rate) > 0 && (
+                                                            <Typography sx={{ fontSize: 10, color: '#7C3AED', fontWeight: 700, mt: 0.25 }}>
+                                                                Bought @ &#8377;{Number(p.last_purchase_rate).toLocaleString('en-IN')}/{p.unit}
+                                                                <Typography component="span" sx={{ fontSize: 9, color: 'text.secondary', fontWeight: 500, ml: 0.75 }}>
+                                                                    (avg &#8377;{Number(p.avg_purchase_rate).toLocaleString('en-IN')} · bought {p.purchase_count}×
+                                                                    {p.last_vendor_name ? ` · last from ${p.last_vendor_name}` : ''})
+                                                                </Typography>
+                                                            </Typography>
+                                                        )}
                                                         {p.purchase_history && p.purchase_history.length > 0 && (
                                                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
                                                                 {p.purchase_history.map((ph, idx) => (
                                                                     <Typography key={idx} sx={{ fontSize: 9, color: 'text.secondary', bgcolor: '#F1F5F9', px: 1, py: 0.25, borderRadius: 0.5, fontFamily: 'monospace' }}>
-                                                                        {ph.requisition_number} → {ph.po_number} ({ph.qty} @ &#8377;{ph.rate})
+                                                                        {ph.po_number} ({ph.qty} @ {ph.currency === 'INR' ? '₹' : ph.currency + ' '}{ph.rate})
                                                                     </Typography>
                                                                 ))}
                                                             </Box>
@@ -1250,13 +1286,23 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                                                                 <Typography sx={{ fontWeight: 600, fontSize: 13, color: 'text.primary' }}>{item.product_name}</Typography>
                                                                 <Typography sx={{ fontSize: 10, color: 'text.disabled', fontFamily: 'monospace', mt: 0.25 }}>
                                                                     {item.product_code || item.product}
-                                                                    {item.current_stock !== undefined && (
+                                                                    {item.available_qty !== undefined ? (
+                                                                        <Typography component="span" sx={{ ml: 1, color: '#059669', fontSize: 10 }}>
+                                                                            Free: {item.available_qty}{item.current_stock !== undefined ? ` / ${item.current_stock} in stock` : ''}
+                                                                        </Typography>
+                                                                    ) : item.current_stock !== undefined && (
                                                                         <Typography component="span" sx={{ ml: 1, color: '#059669', fontSize: 10 }}>Stock: {item.current_stock}</Typography>
                                                                     )}
                                                                 </Typography>
-                                                                {piMode === "requisition" && Number(item.actual_purchase_rate) > 0 && (
+                                                                {Number(item.actual_purchase_rate) > 0 && (piMode === "requisition" || piMode === "stock_sale") && (
                                                                     <Typography sx={{ fontSize: 10, color: '#B45309', fontWeight: 700, mt: 0.25 }}>
                                                                         Bought @ ₹{Number(item.actual_purchase_rate).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/unit
+                                                                    </Typography>
+                                                                )}
+                                                                {piMode === "stock_sale" && item.available_qty !== undefined && Number(item.quantity) > Number(item.available_qty) && (
+                                                                    <Typography sx={{ fontSize: 10, color: 'error.main', fontWeight: 700, mt: 0.25, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                                        <WarningAmberIcon sx={{ fontSize: 10 }} />
+                                                                        Only {item.available_qty} free to sell
                                                                     </Typography>
                                                                 )}
                                                                 {piMode === "requisition" && item.requisition_number && selectedRequisitions.length > 1 && (

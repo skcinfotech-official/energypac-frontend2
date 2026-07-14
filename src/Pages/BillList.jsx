@@ -601,92 +601,58 @@ const BillList = () => {
                                             onClick={() => handleViewDetails(bill.id)}
                                             sx={{ cursor: 'pointer', '&:hover': { bgcolor: '#f8fafc' } }}
                                         >
-                                            <TableCell sx={{ py: 2 }}>
-                                                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                                                    <Typography
-                                                        component="span"
-                                                        sx={{
-                                                            fontFamily: 'monospace',
-                                                            fontWeight: 700,
-                                                            color: '#047857',
-                                                            bgcolor: '#ecfdf5',
-                                                            px: 1,
-                                                            py: 0.25,
-                                                            borderRadius: 1,
-                                                            border: '1px solid #a7f3d0',
-                                                            alignSelf: 'flex-start',
-                                                            fontSize: '0.75rem',
-                                                            mb: 0.5
-                                                        }}
-                                                    >
-                                                        {bill.bill_number}
-                                                    </Typography>
-                                                    <Typography sx={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                        PI: <Box component="span" sx={{ color: '#475569' }}>{bill.pi_number}</Box>
-                                                    </Typography>
-                                                    {bill.pi_source_display && (
-                                                        <Chip
-                                                            label={bill.pi_source_display}
-                                                            size="small"
-                                                            sx={{ alignSelf: 'flex-start', mt: 0.5, height: 18, fontSize: '0.5625rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', bgcolor: '#eef2ff', color: '#4338ca', border: '1px solid #c7d2fe' }}
-                                                        />
-                                                    )}
-                                                    <Typography sx={{ fontSize: '0.625rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.5 }}>
-                                                        <CalendarTodayIcon sx={{ fontSize: 10 }} />
-                                                        {bill.bill_date}
-                                                    </Typography>
-                                                </Box>
+                                            <TableCell sx={{ py: 1 }}>
+                                                <Typography sx={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '0.78rem', color: '#047857' }}>
+                                                    {bill.bill_number}
+                                                </Typography>
+                                                <Typography sx={{ fontSize: '0.625rem', color: '#94a3b8' }}>
+                                                    {bill.bill_date} · PI <Box component="span" sx={{ color: '#475569', fontFamily: 'monospace' }}>{bill.pi_number}</Box>
+                                                    {bill.pi_source_display ? ` · ${bill.pi_source_display}` : ''}
+                                                </Typography>
                                             </TableCell>
-                                            <TableCell sx={{ py: 2 }}>
-                                                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                                                    <Typography sx={{ fontSize: '0.875rem', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                                                        <PersonIcon sx={{ fontSize: 14, color: '#94a3b8' }} />
-                                                        {bill.client_name}
-                                                    </Typography>
-                                                    <Typography sx={{ fontSize: '0.6875rem', color: '#94a3b8', fontWeight: 500 }}>
+                                            <TableCell sx={{ py: 1 }}>
+                                                <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e293b' }}>
+                                                    {bill.client_name}
+                                                </Typography>
+                                                {bill.contact_person && (
+                                                    <Typography sx={{ fontSize: '0.625rem', color: '#94a3b8' }}>
                                                         {bill.contact_person}
                                                     </Typography>
-                                                </Box>
+                                                )}
                                             </TableCell>
-                                            <TableCell align="right" sx={{ py: 2 }}>
-                                                <Typography sx={{ fontSize: '0.875rem', fontWeight: 700, color: '#1e293b' }}>
+                                            <TableCell align="right" sx={{ py: 1 }}>
+                                                <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e293b', fontFamily: 'monospace' }}>
                                                     {formatCurrency(bill.total_amount, bill.currency)}
                                                 </Typography>
                                                 {bill.currency && bill.currency !== 'INR' && bill.conversion_rate && (
-                                                    <Typography sx={{ fontSize: '0.625rem', color: '#2563eb', fontWeight: 700 }}>
+                                                    <Typography sx={{ fontSize: '0.625rem', color: '#7c3aed', fontWeight: 700 }}>
                                                         1 {bill.currency} = {"₹"}{parseFloat(bill.conversion_rate)}
                                                     </Typography>
                                                 )}
-                                                <Typography sx={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '-0.025em' }}>
-                                                    Net Payable
-                                                </Typography>
                                             </TableCell>
-                                            <TableCell align="right" sx={{ py: 2 }}>
-                                                <Typography sx={{ fontSize: '0.875rem', fontWeight: 700, color: '#059669' }}>
+                                            <TableCell align="right" sx={{ py: 1 }}>
+                                                <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: '#059669', fontFamily: 'monospace' }}>
                                                     {formatCurrency(bill.amount_paid, bill.currency)}
                                                 </Typography>
-                                                <Typography sx={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '-0.025em' }}>
-                                                    Total Collected
-                                                </Typography>
                                             </TableCell>
-                                            <TableCell align="right" sx={{ py: 2 }}>
-                                                <Typography sx={{ fontSize: '0.875rem', fontWeight: 900, color: parseFloat(bill.balance) > 0 ? '#dc2626' : '#059669' }}>
+                                            <TableCell align="right" sx={{ py: 1 }}>
+                                                <Typography sx={{ fontSize: '0.8rem', fontWeight: 900, fontFamily: 'monospace', color: parseFloat(bill.balance) > 0 ? '#dc2626' : '#059669' }}>
                                                     {formatCurrency(bill.balance, bill.currency)}
                                                 </Typography>
                                                 {parseFloat(bill.balance) > 0 && (
-                                                    <Box sx={{ width: 64, height: 4, bgcolor: '#f1f5f9', borderRadius: 2, mt: 0.75, ml: 'auto', overflow: 'hidden' }}>
+                                                    <Box sx={{ width: 56, height: 3, bgcolor: '#f1f5f9', borderRadius: 2, mt: 0.5, ml: 'auto', overflow: 'hidden' }}>
                                                         <Box sx={{ height: '100%', bgcolor: '#f87171', width: `${Math.min(100, (bill.balance / bill.total_amount) * 100)}%` }} />
                                                     </Box>
                                                 )}
                                             </TableCell>
-                                            <TableCell align="center" sx={{ py: 2 }}>
+                                            <TableCell align="center" sx={{ py: 1 }}>
                                                 <Chip
                                                     label={bill.status}
                                                     size="small"
                                                     {...getStatusChipProps(bill.status)}
                                                 />
                                             </TableCell>
-                                            <TableCell sx={{ py: 2 }} onClick={(e) => e.stopPropagation()}>
+                                            <TableCell sx={{ py: 1 }} onClick={(e) => e.stopPropagation()}>
                                                 <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                                                     <Tooltip title="Actions" arrow>
                                                         <IconButton

@@ -164,7 +164,7 @@ const Transporters = () => {
             // ── Summary cards (colour-coded like the PDF) ───────────────────
             ws.addRow([]);
             const buy = ws.addRow(["Buy Payable Balance", n2(sum.buy_balance), "", `Billed ${n2(sum.buy_billed)}  ·  Paid ${n2(sum.buy_paid)}`]);
-            const sell = ws.addRow(["Sell Recoverable Balance", n2(sum.sell_balance), "", `Billed ${n2(sum.sell_billed)}  ·  Recd ${n2(sum.sell_paid)}`]);
+            const sell = ws.addRow(["Outbound Freight — Still Owed", n2(sum.sell_balance), "", `Billed ${n2(sum.sell_billed)}  ·  Paid ${n2(sum.sell_paid)}`]);
             const ship = ws.addRow(["Shipments", entries.length]);
             const cardRows = [
                 { row: buy, fill: "FFFEF2F2", valColor: "FFB91C1C" },
@@ -347,18 +347,21 @@ const Transporters = () => {
                         <>
                             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(3, 1fr)" }, gap: 2, mb: 2 }}>
                                 <Box sx={{ p: 2, borderRadius: 2, bgcolor: "#fef2f2", border: "1px solid #fecaca" }}>
-                                    <Typography sx={{ fontSize: 10, fontWeight: 900, color: "#64748b", textTransform: "uppercase" }}>Buy Payable Balance</Typography>
+                                    <Typography sx={{ fontSize: 10, fontWeight: 900, color: "#64748b", textTransform: "uppercase" }}>Inbound Freight — Still Owed</Typography>
                                     <Typography sx={{ fontSize: "1.05rem", fontWeight: 900, color: "#b91c1c" }}>{f2(ledger.data.summary.buy_balance)}</Typography>
                                     <Typography sx={{ fontSize: 11, color: "#64748b" }}>Billed {f2(ledger.data.summary.buy_billed)} · Paid {f2(ledger.data.summary.buy_paid)}</Typography>
                                 </Box>
-                                <Box sx={{ p: 2, borderRadius: 2, bgcolor: "#eff6ff", border: "1px solid #bfdbfe" }}>
-                                    <Typography sx={{ fontSize: 10, fontWeight: 900, color: "#64748b", textTransform: "uppercase" }}>Sell Recoverable Balance</Typography>
-                                    <Typography sx={{ fontSize: "1.05rem", fontWeight: 900, color: "#1d4ed8" }}>{f2(ledger.data.summary.sell_balance)}</Typography>
-                                    <Typography sx={{ fontSize: 11, color: "#64748b" }}>Billed {f2(ledger.data.summary.sell_billed)} · Recd {f2(ledger.data.summary.sell_paid)}</Typography>
+                                <Box sx={{ p: 2, borderRadius: 2, bgcolor: "#fef2f2", border: "1px solid #fecaca" }}>
+                                    <Typography sx={{ fontSize: 10, fontWeight: 900, color: "#64748b", textTransform: "uppercase" }}>Outbound Freight — Still Owed</Typography>
+                                    <Typography sx={{ fontSize: "1.05rem", fontWeight: 900, color: "#b91c1c" }}>{f2(ledger.data.summary.sell_balance)}</Typography>
+                                    <Typography sx={{ fontSize: 11, color: "#64748b" }}>Billed {f2(ledger.data.summary.sell_billed)} · Paid {f2(ledger.data.summary.sell_paid)}</Typography>
                                 </Box>
                                 <Box sx={{ p: 2, borderRadius: 2, bgcolor: "#f8fafc", border: "1px solid #e2e8f0" }}>
-                                    <Typography sx={{ fontSize: 10, fontWeight: 900, color: "#64748b", textTransform: "uppercase" }}>Shipments</Typography>
-                                    <Typography sx={{ fontSize: "1.05rem", fontWeight: 900, color: "#1e293b" }}>{(ledger.data.entries || []).length}</Typography>
+                                    <Typography sx={{ fontSize: 10, fontWeight: 900, color: "#64748b", textTransform: "uppercase" }}>Total Owed to Transporter</Typography>
+                                    <Typography sx={{ fontSize: "1.05rem", fontWeight: 900, color: "#c2410c" }}>
+                                        {f2(Number(ledger.data.summary.buy_balance || 0) + Number(ledger.data.summary.sell_balance || 0))}
+                                    </Typography>
+                                    <Typography sx={{ fontSize: 11, color: "#64748b" }}>{(ledger.data.entries || []).length} shipment(s)</Typography>
                                 </Box>
                             </Box>
                             <Divider sx={{ mb: 1 }} />

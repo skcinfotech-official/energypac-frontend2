@@ -141,21 +141,10 @@ const PurchaseOrderPDF = ({ details, verification }) => {
         }).replace(/\//g, '.');
     };
 
-    // Standard fallback terms if none selected/provided
-    const defaultTerms = [
-        "Price: Ex-Works.",
-        "GST: 0.1% Extra as we shall Exporting these items.",
-        "Delivery: Within 4-6 weeks.",
-        "Payment: 25% advance & balance against Proforma Invoice before dispatch.",
-        "Warranty: One year from the date of dispatch.",
-        "Test Certificates: You will have to provide us with all Test Certificates and Catalogues.",
-        "Packing: The above rates are inclusive of Standard Gunny Bags Packing.",
-        "Tolerance: ± on Qty & Value."
-    ];
-
-    const rawTerms = details.terms_and_conditions && details.terms_and_conditions.length > 0
+    // Print only what is actually on this PO — no invented terms.
+    const rawTerms = (details.terms_and_conditions && details.terms_and_conditions.length > 0)
         ? details.terms_and_conditions
-        : (details.selectedTerms && details.selectedTerms.length > 0 ? details.selectedTerms : defaultTerms);
+        : (details.selectedTerms || []);
 
     const termsToRender = rawTerms.map((term, index) => {
         let label = `Term ${index + 1}`;
@@ -248,7 +237,7 @@ const PurchaseOrderPDF = ({ details, verification }) => {
                             </View>
                             <View style={{ flexDirection: 'row', marginBottom: 3 }}>
                                 <Text style={{ width: '30%', fontSize: 7.5, fontWeight: 'bold' }}>YOUR REF :</Text>
-                                <Text style={{ width: '70%', fontSize: 7.5, lineHeight: 1.2 }}>{details.requisition_number || 'Verbal'}</Text>
+                                <Text style={{ width: '70%', fontSize: 7.5, lineHeight: 1.2 }}>{details.requisition_number || '—'}</Text>
                             </View>
                             <View style={{ flexDirection: 'row', marginBottom: 3 }}>
                                 <Text style={{ width: '30%', fontSize: 7.5, fontWeight: 'bold' }}>CURRENCY :</Text>
@@ -313,7 +302,7 @@ const PurchaseOrderPDF = ({ details, verification }) => {
                             <Text style={styles.col4}>
                                 {parseFloat(item.quantity || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </Text>
-                            <Text style={styles.col5}>{item.unit || item.uom || 'KGS'}</Text>
+                            <Text style={styles.col5}>{item.unit || item.uom || item.product_details?.unit || ''}</Text>
                             <Text style={styles.col_rate}>{formatCurrency(item.rate, details.currency)}</Text>
                             <Text style={styles.col6}>{formatCurrency(item.amount, details.currency)}</Text>
                         </View>
@@ -389,14 +378,21 @@ const PurchaseOrderPDF = ({ details, verification }) => {
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 15 }} wrap={false}>
                     {/* Left Address Column */}
                     <View style={{ width: '55%', paddingRight: 10 }}>
-                        <Text style={{ fontSize: 7, fontWeight: 'bold', textDecoration: 'underline', marginBottom: 2 }}>Bill To</Text>
-                        {(details.bill_to_name || (!details.bill_to && !details.bill_to_address)) && (
-                            <Text style={{ fontSize: 6.5, fontWeight: 'bold' }}>{details.bill_to_name || 'ENERGYPAC ENGINEERING LIMITED.'}</Text>
+                        {/* Print what is on the PO. Nothing else — a blank Bill To used to
+                            fall back to the Kolkata office address, so the vendor received a
+                            document stating an address nobody had entered. */}
+                        {(details.bill_to || details.bill_to_address || details.bill_to_name) && (
+                            <>
+                                <Text style={{ fontSize: 7, fontWeight: 'bold', textDecoration: 'underline', marginBottom: 2 }}>Bill To</Text>
+                                {details.bill_to_name && (
+                                    <Text style={{ fontSize: 6.5, fontWeight: 'bold' }}>{details.bill_to_name}</Text>
+                                )}
+                                <Text style={{ fontSize: 6.5, color: '#444', lineHeight: 1.2 }}>
+                                    {details.bill_to || details.bill_to_address}
+                                </Text>
+                            </>
                         )}
-                        <Text style={{ fontSize: 6.5, color: '#444', lineHeight: 1.2 }}>
-                            {details.bill_to || details.bill_to_address || 'KB-22, BHAKTA TOWER, 4TH FLOOR, SEC-3\nSALT LAKE, KOLKATA - 700106 WEST BENGAL, INDIA.'}
-                        </Text>
-                        
+
                         {(details.ship_to || details.ship_to_address || details.ship_to_name) && (
                             <>
                                 <Text style={{ fontSize: 7, fontWeight: 'bold', textDecoration: 'underline', marginTop: 6, marginBottom: 2 }}>Ship To</Text>

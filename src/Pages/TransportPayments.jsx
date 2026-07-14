@@ -70,12 +70,11 @@ const TransportPayments = () => {
     const [pwModal, setPwModal] = useState({ open: false, onConfirm: null, loading: false });
     const [history, setHistory] = useState({ open: false, loading: false, data: null });
 
-    const fetchData = useCallback(async (s) => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const params = s === "ALL" ? {} : { side: s };
-            const res = await getTransportPaymentsFinance(params);
-            setData(res);
+            // Always load both legs. Tabs then filter in place — no refetch, no flicker.
+            setData(await getTransportPaymentsFinance({}));
         } catch (err) {
             console.error(err);
             setAlert({ open: true, type: "error", message: "Failed to load transport payments" });
@@ -84,9 +83,10 @@ const TransportPayments = () => {
         }
     }, []);
 
-    useEffect(() => { fetchData(side); }, [side, fetchData]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
     const rows = (data?.entries || []).filter((r) => {
+        if (side !== "ALL" && r.direction !== side) return false;
         if (!search.trim()) return true;
         const q = search.toLowerCase();
         return [r.transport_number, r.reference, r.party, r.transporter_name].some((v) => (v || "").toLowerCase().includes(q));
@@ -115,7 +115,7 @@ const TransportPayments = () => {
                     setAlert({ open: true, type: "success", message: res.message || "Payment recorded" });
                     setPayModal({ open: false, row: null, amount: "", payment_date: "", payment_mode: "NEFT", reference_number: "", remarks: "" });
                     setPwModal({ open: false });
-                    fetchData(side);
+                    fetchData();
                 } catch (err) {
                     const msg = err.response?.data?.error || err.response?.data?.detail || "Failed to record payment";
                     setAlert({ open: true, type: "error", message: msg });
@@ -152,16 +152,16 @@ const TransportPayments = () => {
     const active = isSell ? sell : buy;
     const cards = side === "ALL"
         ? [
-            { label: "Buy Freight (Payable)", value: data ? f2(buy.billed) : "—", color: "#b91c1c", bg: "#fef2f2", bd: "#fecaca" },
-            { label: "Buy Paid", value: data ? f2(buy.paid) : "—", color: "#047857", bg: "#ecfdf5", bd: "#a7f3d0" },
-            { label: "Sell Freight (Recoverable)", value: data ? f2(sell.billed) : "—", color: "#1d4ed8", bg: "#eff6ff", bd: "#bfdbfe" },
-            { label: "Net Cost to Co.", value: data ? f2(data.net_cost_to_company) : "—", color: "#7c2d12", bg: "#fff7ed", bd: "#fed7aa" },
+            { label: "Inbound freight (on POs)", value: data ? f2(buy.billed) : "—", color: "#b91c1c", bg: "#fef2f2", bd: "#fecaca" },
+            { label: "Outbound freight (on PIs)", value: data ? f2(sell.billed) : "—", color: "#b91c1c", bg: "#fef2f2", bd: "#fecaca" },
+            { label: "Total freight cost", value: data ? f2(data.total_freight_cost) : "—", color: "#7c2d12", bg: "#fff7ed", bd: "#fed7aa" },
+            { label: "Paid / still owed", value: data ? `${f2(data.total_paid)} / ${f2(data.total_outstanding)}` : "—", color: "#047857", bg: "#ecfdf5", bd: "#a7f3d0" },
         ]
         : [
             { label: "Shipments", value: data ? active.count : "—", color: "#1e293b", bg: "#f8fafc", bd: "#e2e8f0" },
-            { label: isSell ? "Recoverable" : "Total Payable", value: data ? f2(active.billed) : "—", color: "#1d4ed8", bg: "#eff6ff", bd: "#bfdbfe" },
-            { label: isSell ? "Received" : "Paid", value: data ? f2(active.paid) : "—", color: "#047857", bg: "#ecfdf5", bd: "#a7f3d0" },
-            { label: "Outstanding", value: data ? f2(active.balance) : "—", color: "#c2410c", bg: "#fff7ed", bd: "#fed7aa" },
+            { label: isSell ? "Outbound freight (payable)" : "Inbound freight (payable)", value: data ? f2(active.billed) : "—", color: "#b91c1c", bg: "#fef2f2", bd: "#fecaca" },
+            { label: "Paid to transporter", value: data ? f2(active.paid) : "—", color: "#047857", bg: "#ecfdf5", bd: "#a7f3d0" },
+            { label: "Still owed", value: data ? f2(active.balance) : "—", color: "#c2410c", bg: "#fff7ed", bd: "#fed7aa" },
         ];
 
     return (
@@ -174,7 +174,7 @@ const TransportPayments = () => {
                         Transport Payments
                     </Typography>
                     <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-                        Freight we pay transporters on purchases (Buy) and freight we recover from clients on sales (Sell)
+                        The transporter is paid on both legs — inbound to bring the goods in (PO) and outbound to ship them to the client (PI). Both are our cost.
                         {!canRecord && (
                             <Chip label="View only" size="small" sx={{ ml: 1, height: 18, fontSize: 9, fontWeight: 800, bgcolor: "#f1f5f9", color: "#64748b" }} />
                         )}
@@ -186,8 +186,8 @@ const TransportPayments = () => {
 
             {/* Side toggle */}
             <ToggleButtonGroup value={side} exclusive size="small" onChange={(e, v) => v && setSide(v)} sx={{ alignSelf: "flex-start" }}>
-                <ToggleButton value="BUY" sx={{ fontWeight: 800, textTransform: "uppercase", fontSize: 12, px: 3 }}>Buy (PO)</ToggleButton>
-                <ToggleButton value="SELL" sx={{ fontWeight: 800, textTransform: "uppercase", fontSize: 12, px: 3 }}>Sell (PI)</ToggleButton>
+                <ToggleButton value="BUY" sx={{ fontWeight: 800, textTransform: "uppercase", fontSize: 12, px: 3 }}>Inbound (PO)</ToggleButton>
+                <ToggleButton value="SELL" sx={{ fontWeight: 800, textTransform: "uppercase", fontSize: 12, px: 3 }}>Outbound (PI)</ToggleButton>
                 <ToggleButton value="ALL" sx={{ fontWeight: 800, textTransform: "uppercase", fontSize: 12, px: 3 }}>All</ToggleButton>
             </ToggleButtonGroup>
 
@@ -207,7 +207,7 @@ const TransportPayments = () => {
                     <Table size="small" sx={{ "& .MuiTableCell-root": { fontSize: "0.7rem", px: 1, py: 0.75 } }}>
                         <TableHead>
                             <TableRow sx={{ bgcolor: "#F8FAFC" }}>
-                                {["Transport No", "Side", "Reference", "Party", "Transporter", "Freight", "Paid", "Balance", "Status", "Actions"].map((h, i) => (
+                                {["Transport No", "Leg", "Reference", "Party", "Transporter", "Freight", "Paid", "Still Owed", "Status", "Actions"].map((h, i) => (
                                     <TableCell key={h} align={[5, 6, 7].includes(i) ? "right" : i === 9 ? "center" : "left"}
                                         sx={{ fontWeight: 800, fontSize: 10, textTransform: "uppercase", color: "text.secondary", whiteSpace: "nowrap" }}>{h}</TableCell>
                                 ))}
@@ -222,8 +222,8 @@ const TransportPayments = () => {
                                 <TableRow key={r.id} hover onClick={() => openHistory(r)} sx={{ cursor: "pointer" }}>
                                     <TableCell sx={{ fontFamily: "monospace", fontWeight: 800, color: "#0ea5e9" }}>{r.transport_number}</TableCell>
                                     <TableCell>
-                                        <Chip label={r.direction === "BUY" ? "BUY" : "SELL"} size="small"
-                                            sx={{ fontSize: 9, height: 18, fontWeight: 800, bgcolor: r.direction === "BUY" ? "#fef2f2" : "#eff6ff", color: r.direction === "BUY" ? "#b91c1c" : "#1d4ed8" }} />
+                                        <Chip label={r.direction === "BUY" ? "INBOUND" : "OUTBOUND"} size="small"
+                                            sx={{ fontSize: 9, height: 18, fontWeight: 800, bgcolor: "#fef2f2", color: "#b91c1c" }} />
                                     </TableCell>
                                     <TableCell sx={{ fontFamily: "monospace", fontSize: 11 }}>{r.reference}</TableCell>
                                     <TableCell sx={{ maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.party}</TableCell>
@@ -258,7 +258,7 @@ const TransportPayments = () => {
                     >
                         <ListItemIcon><PaymentIcon fontSize="small" sx={{ color: "#059669" }} /></ListItemIcon>
                         <ListItemText primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}>
-                            {actionMenu.row?.direction === "SELL" ? "Record Receipt" : "Record Payment"}
+                            Record Payment
                         </ListItemText>
                     </MenuItem>
                 )}
@@ -277,7 +277,7 @@ const TransportPayments = () => {
                 <Box sx={{ bgcolor: "#0f172a", color: "#fff", p: 3, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <Box>
                         <Typography variant="h6" sx={{ fontWeight: 900, display: "flex", alignItems: "center", gap: 1 }}>
-                            <PaymentIcon sx={{ color: "#34d399" }} /> {payModal.row?.direction === "SELL" ? "Record Receipt" : "Record Payment"}
+                            <PaymentIcon sx={{ color: "#34d399" }} /> Record Payment to Transporter
                         </Typography>
                         <Typography sx={{ fontSize: 12, color: "#94a3b8", fontWeight: 700, mt: 0.5, fontFamily: "monospace" }}>
                             {payModal.row?.transport_number} · {payModal.row?.transporter_name}

@@ -1,52 +1,43 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    Box,
-    Card,
-    CardContent,
-    TextField,
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableRow,
-    Typography,
-    Button,
-    Alert,
-    CircularProgress,
-    Grid,
-    Chip,
+    Dialog, DialogTitle, DialogContent, DialogActions,
+    Box, TextField, Table, TableBody, TableCell, TableContainer,
+    TableHead, TableRow, Typography, Button, Alert, CircularProgress,
+    Chip, IconButton, Divider,
 } from "@mui/material";
 import {
     Close as CloseIcon,
-    FilePresent as FileInvoiceDollarIcon,
-    PersonOutlined as UserTieIcon,
-    Inventory2Outlined as BoxOpenIcon,
-    ChecklistOutlined as ClipboardListIcon,
-    EventOutlined as CalendarAltIcon,
-    Info as InformationCircleIcon,
+    RequestQuote as QuoteIcon,
 } from "@mui/icons-material";
-import { styled } from "@mui/material/styles";
 import { getVendorQuotationById, updateQuotation } from "../../services/vendorQuotationService";
-import { exchangeRateService } from "../../services/exchangeRateService";
 
-const StyledDialog = styled(Dialog)(({ theme }) => ({
-    "& .MuiDialog-paper": {
-        borderRadius: "16px",
-        maxWidth: "90vw",
-        width: "100%",
+const LABEL = {
+    fontSize: 10, fontWeight: 900, color: "#64748b",
+    textTransform: "uppercase", letterSpacing: "0.05em",
+};
+const VALUE = { fontSize: 13, fontWeight: 700, color: "#0f172a", mt: 0.25 };
+const TH = {
+    fontSize: 10, fontWeight: 900, color: "#475569", textTransform: "uppercase",
+    letterSpacing: "0.05em", bgcolor: "#f8fafc", borderBottom: "1px solid #e2e8f0",
+    py: 1, whiteSpace: "nowrap",
+};
+const TD = { fontSize: 13, py: 1, borderBottom: "1px solid #f1f5f9" };
+const INPUT = {
+    "& .MuiOutlinedInput-root": {
+        borderRadius: 1, bgcolor: "white", fontSize: 13, fontWeight: 700,
+        "& fieldset": { borderColor: "#dbeafe" },
     },
-}));
+};
 
-const StyledInput = styled(TextField)(({ theme }) => ({
-    "& .MuiInputBase-root": {
-        backgroundColor: "#ffffff",
-        fontSize: "0.875rem",
-    },
-}));
+/** One label/value pair — the whole header is just a grid of these. */
+function Field({ label, children }) {
+    return (
+        <Box sx={{ minWidth: 0 }}>
+            <Typography sx={LABEL}>{label}</Typography>
+            <Box sx={VALUE}>{children || <Box component="span" sx={{ color: "#cbd5e1" }}>—</Box>}</Box>
+        </Box>
+    );
+}
 
 const VendorQuotationEditModal = ({ open, onClose, quotationId, onSuccess }) => {
     const [data, setData] = useState(null);
@@ -55,71 +46,48 @@ const VendorQuotationEditModal = ({ open, onClose, quotationId, onSuccess }) => 
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
     const [currency, setCurrency] = useState("INR");
-    const [exchangeRate, setExchangeRate] = useState(1.0);
-    const [rateLoading, setRateLoading] = useState(false);
 
-    useEffect(() => {
-        if (open && quotationId) {
-            loadDetails();
-        } else {
-            setData(null);
-            setItems([]);
-        }
-    }, [open, quotationId]);
-
-    const loadDetails = async () => {
+    const loadDetails = useCallback(async (id) => {
         setLoading(true);
         setError("");
         try {
-            const res = await getVendorQuotationById(quotationId);
+            const res = await getVendorQuotationById(id);
             setData(res);
             setCurrency(res.currency || "INR");
 
-            if (res.currency === "USD") {
-                try {
-                    const rateData = await exchangeRateService.getCurrentRate();
-                    setExchangeRate(rateData.rate);
-                } catch (e) {
-                    console.error("Exchange rate fetch failed", e);
-                }
-            }
-
-            if (res.items) {
-                setItems(
-                    res.items.map((item) => ({
-                        ...item,
-                        quoted_rate: item.quoted_rate || "",
-                    }))
-                );
-            }
+            setItems((res.items || []).map((item) => ({
+                ...item,
+                quoted_rate: item.quoted_rate ?? "",
+                remarks: item.remarks || "",
+            })));
         } catch (err) {
             console.error(err);
             setError("Failed to load quotation details.");
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const handleRateChange = (index, value) => {
-        const newItems = [...items];
-        newItems[index].quoted_rate = value;
-        setItems(newItems);
-    };
+    useEffect(() => {
+        if (open && quotationId) {
+            loadDetails(quotationId);
+        } else {
+            setData(null);
+            setItems([]);
+        }
+    }, [open, quotationId, loadDetails]);
 
-    const calculateRowAmount = (qty, rate) => {
-        const q = parseFloat(qty) || 0;
-        const r = parseFloat(rate) || 0;
-        return (q * r).toFixed(2);
-    };
+    const updateItem = (index, field, value) =>
+        setItems((prev) => prev.map((it, i) => (i === index ? { ...it, [field]: value } : it)));
 
-    const calculateTotal = () => {
-        return items.reduce((sum, item) => {
-            return sum + (parseFloat(item.quantity || 0) * parseFloat(item.quoted_rate || 0));
-        }, 0);
-    };
+    const rowAmount = (item) => (parseFloat(item.quantity) || 0) * (parseFloat(item.quoted_rate) || 0);
+    const totalAmount = items.reduce((sum, item) => sum + rowAmount(item), 0);
+    const isForeign = currency !== "INR";
+    const symbol = isForeign ? `${currency} ` : "₹";
 
-    const totalAmount = calculateTotal();
-    const totalAmountINR = currency === "USD" ? totalAmount * exchangeRate : totalAmount;
+    const money = (v) => `${symbol}${Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    const unpriced = items.filter((i) => !(Number(i.quoted_rate) > 0)).length;
 
     const handleSubmit = async () => {
         setSubmitting(true);
@@ -130,9 +98,9 @@ const VendorQuotationEditModal = ({ open, onClose, quotationId, onSuccess }) => 
                     id: item.id,
                     vendor_item: item.vendor_item,
                     quoted_rate: parseFloat(item.quoted_rate) || 0,
+                    remarks: item.remarks || "",
                 })),
             };
-
             await updateQuotation(quotationId, payload);
             if (onSuccess) onSuccess();
             onClose();
@@ -152,286 +120,233 @@ const VendorQuotationEditModal = ({ open, onClose, quotationId, onSuccess }) => 
         }
     };
 
+    const vendorGst = data?.gst_number || data?.vendor?.gst_number;
+    const vendorPan = data?.pan_number || data?.vendor?.pan_number;
+    const bankName = data?.bank_name || data?.vendor?.bank_name;
+    const bankAcct = data?.bank_account_number || data?.vendor?.bank_account_number || data?.account_number || data?.vendor?.account_number;
+    const bankIfsc = data?.ifsc_code || data?.vendor?.ifsc_code;
+
     return (
-        <StyledDialog open={open} onClose={onClose} maxWidth="md" fullWidth sx={{ zIndex: 9999 }} PaperProps={{ sx: { borderRadius: 3, zIndex: 9999 } }} BackdropProps={{ sx: { zIndex: 9998 } }}>
-            {/* HEADER */}
-            <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", bgcolor: "#1a1a2e", color: "white", py: 2.5, px: 3, fontWeight: 900 }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <FileInvoiceDollarIcon sx={{ color: "#0ea5e9", fontSize: 24 }} />
-                    <Box>
-                        <Typography variant="h6" sx={{ fontWeight: 900, textTransform: "uppercase" }}>
+        <Dialog
+            open={open}
+            onClose={onClose}
+            maxWidth="lg"
+            fullWidth
+            PaperProps={{ sx: { borderRadius: 3, height: "88vh", display: "flex", flexDirection: "column" } }}
+        >
+            {/* ── HEADER ─────────────────────────────────────────────────── */}
+            <DialogTitle sx={{
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+                bgcolor: "#1a1a2e", color: "white", py: 1.75, px: 2.5, flexShrink: 0,
+            }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, minWidth: 0 }}>
+                    <QuoteIcon sx={{ color: "#0ea5e9", fontSize: 22 }} />
+                    <Box sx={{ minWidth: 0 }}>
+                        <Typography sx={{ fontWeight: 900, fontSize: 16, textTransform: "uppercase" }}>
                             Edit Quotation
                         </Typography>
-                        <Typography variant="caption" sx={{ color: "#cbd5e1", fontSize: "9px", textTransform: "uppercase" }}>Update quotation rates and details</Typography>
+                        <Typography sx={{ color: "#cbd5e1", fontSize: 10, fontFamily: "monospace" }}>
+                            {data?.quotation_number || "Draft"} {data?.vendor_name ? `· ${data.vendor_name}` : ""}
+                        </Typography>
                     </Box>
                 </Box>
-                <Button size="small" onClick={onClose} sx={{ minWidth: "auto", color: "#cbd5e1", "&:hover": { color: "white" } }}>
-                    <CloseIcon />
-                </Button>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Chip
+                        label={currency}
+                        size="small"
+                        sx={{
+                            fontWeight: 900, fontSize: 10,
+                            bgcolor: isForeign ? "#1d4ed8" : "rgba(255,255,255,0.12)",
+                            color: "white",
+                        }}
+                    />
+                    <IconButton onClick={onClose} size="small" sx={{ color: "#cbd5e1", "&:hover": { color: "white" } }}>
+                        <CloseIcon />
+                    </IconButton>
+                </Box>
             </DialogTitle>
 
-            {/* CONTENT */}
-            <DialogContent dividers sx={{ display: "flex", flexDirection: "column", gap: 2, bgcolor: "#f1f5f9" }}>
-                {error && (
-                    <Alert
-                        severity="error"
-                        icon={<InformationCircleIcon />}
-                        sx={{ borderRadius: 2 }}
-                    >
-                        {error}
-                    </Alert>
-                )}
+            {/* ── BODY ───────────────────────────────────────────────────── */}
+            <DialogContent sx={{ p: 2, bgcolor: "#f8fafc", flex: 1, overflowY: "auto" }}>
+                {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2, fontSize: 13 }}>{error}</Alert>}
 
                 {loading ? (
-                    <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-                        <CircularProgress size={40} />
-                    </Box>
-                ) : data ? (
+                    <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}><CircularProgress size={32} /></Box>
+                ) : !data ? (
+                    <Typography sx={{ textAlign: "center", py: 8, color: "#94a3b8", fontSize: 13 }}>No data found</Typography>
+                ) : (
                     <>
-                        {/* Top Card: Info */}
-                        <Card sx={{ border: "1px solid #e5e7eb" }}>
-                            <CardContent sx={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 2 }}>
-                                {/* Left: General Info */}
-                                <Box>
-                                    <Typography variant="h6" sx={{ fontWeight: 700, color: "#1f2937", mb: 1.5 }}>
-                                        {data.quotation_number || "Draft Quotation"}
-                                    </Typography>
+                        {/* Details — a plain grid, no cards nested in cards */}
+                        <Box sx={{
+                            p: 2, mb: 2, bgcolor: "white",
+                            border: "1px solid #e2e8f0", borderRadius: 2,
+                        }}>
+                            <Box sx={{
+                                display: "grid",
+                                gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4, 1fr)" },
+                                gap: 2,
+                            }}>
+                                <Field label="Quotation No.">
+                                    <Box component="span" sx={{ fontFamily: "monospace" }}>{data.quotation_number}</Box>
+                                </Field>
+                                <Field label="Requisition">
+                                    <Box component="span" sx={{ fontFamily: "monospace" }}>{data.requisition_number}</Box>
+                                </Field>
+                                <Field label="Quoted On">{data.quotation_date}</Field>
+                                <Field label="Valid Until">{data.validity_date}</Field>
 
-                                    <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                            <BoxOpenIcon sx={{ color: "#9ca3af", fontSize: 16 }} />
-                                            <Typography variant="body2" sx={{ fontWeight: 600, color: "#6b7280" }}>
-                                                Requisition:
-                                            </Typography>
-                                            <Typography variant="body2" sx={{ color: "#1f2937" }}>
-                                                {data.requisition_number}
-                                            </Typography>
-                                        </Box>
-
-                                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                            <UserTieIcon sx={{ color: "#9ca3af", fontSize: 16 }} />
-                                            <Typography variant="body2" sx={{ fontWeight: 600, color: "#6b7280" }}>
-                                                Vendor:
-                                            </Typography>
-                                            <Typography variant="body2" sx={{ color: "#1f2937" }}>
-                                                {data.vendor_name}
-                                            </Typography>
-                                            <Chip
-                                                label={data.vendor_code}
-                                                size="small"
-                                                variant="outlined"
-                                                sx={{ ml: 1 }}
-                                            />
-                                        </Box>
-
-                                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, pt: 0.5 }}>
-                                            {(data.gst_number || data?.vendor?.gst_number) && (
-                                                <Chip
-                                                    label={`GST: ${data.gst_number || data?.vendor?.gst_number}`}
-                                                    size="small"
-                                                    variant="outlined"
-                                                    sx={{ fontSize: "0.75rem" }}
-                                                />
-                                            )}
-                                            {(data.pan_number || data?.vendor?.pan_number) && (
-                                                <Chip
-                                                    label={`PAN: ${data.pan_number || data?.vendor?.pan_number}`}
-                                                    size="small"
-                                                    variant="outlined"
-                                                    sx={{ fontSize: "0.75rem" }}
-                                                />
-                                            )}
-                                        </Box>
-
-                                        {(data.bank_name || data?.vendor?.bank_name || data.bank_account_number || data?.vendor?.bank_account_number || data?.account_number || data?.vendor?.account_number) && (
-                                            <Typography variant="caption" sx={{ fontStyle: "italic", color: "#6b7280", pt: 0.5 }}>
-                                                {data.bank_name || data?.vendor?.bank_name} | {data.bank_account_number || data?.vendor?.bank_account_number || data?.account_number || data?.vendor?.account_number} | {data.ifsc_code || data?.vendor?.ifsc_code}
-                                            </Typography>
-                                        )}
-
-                                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, pt: 1 }}>
-                                            <CalendarAltIcon sx={{ color: "#9ca3af", fontSize: 16 }} />
-                                            <Typography variant="body2" sx={{ fontWeight: 600, color: "#6b7280" }}>
-                                                Quoted Date:
-                                            </Typography>
-                                            <Typography variant="body2" sx={{ color: "#1f2937" }}>
-                                                {data.quotation_date}
-                                            </Typography>
-                                        </Box>
-                                    </Box>
-                                </Box>
-
-                                {/* Right: Terms & Validity */}
-                                <Box sx={{ textAlign: "right" }}>
-                                    <Card sx={{ backgroundColor: "#fffbeb", border: "1px solid #fcd34d", p: 1.5, mb: 1.5 }}>
-                                        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "#92400e" }}>
-                                            Valid Until:
+                                <Field label="Vendor">
+                                    {data.vendor_name}
+                                    {data.vendor_code && (
+                                        <Typography component="span" sx={{ ml: 0.75, fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>
+                                            {data.vendor_code}
                                         </Typography>
-                                        <Typography variant="body2" sx={{ color: "#1f2937" }}>
-                                            {data.validity_date}
-                                        </Typography>
-                                    </Card>
-
-                                    <Typography variant="caption" sx={{ display: "block", color: "#6b7280", fontWeight: 600, mb: 1 }}>
-                                        Ref No: {data.reference_number || "-"}
-                                    </Typography>
-
-                                    <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 1 }}>
-                                        <Typography variant="caption" sx={{ fontWeight: 700, color: "#9ca3af", textTransform: "uppercase" }}>
-                                            Currency:
-                                        </Typography>
-                                        <Chip
-                                            label={currency}
-                                            color={currency === "USD" ? "primary" : "default"}
-                                            size="small"
-                                            sx={{
-                                                fontWeight: 700,
-                                                color: currency === "USD" ? "#ffffff" : "#1f2937",
-                                            }}
-                                        />
-                                    </Box>
-                                </Box>
-                            </CardContent>
-                        </Card>
-
-                        {/* Items Table */}
-                        <Card sx={{ border: "1px solid #e5e7eb" }}>
-                            <Box sx={{ backgroundColor: "#f9fafb", px: 2, py: 1.5, borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                    <ClipboardListIcon sx={{ fontSize: 18 }} />
-                                    <Typography variant="subtitle2" sx={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                                        Edit Rates
-                                    </Typography>
-                                </Box>
-                                <Typography variant="body2" sx={{ fontWeight: 700, color: "#1f2937" }}>
-                                    Total Items: {items.length}
-                                </Typography>
+                                    )}
+                                </Field>
+                                <Field label="Vendor Ref No.">{data.reference_number}</Field>
+                                <Field label="GST">
+                                    {vendorGst && <Box component="span" sx={{ fontFamily: "monospace", fontSize: 12 }}>{vendorGst}</Box>}
+                                </Field>
+                                <Field label="PAN">
+                                    {vendorPan && <Box component="span" sx={{ fontFamily: "monospace", fontSize: 12 }}>{vendorPan}</Box>}
+                                </Field>
                             </Box>
 
-                            <Box sx={{ overflowX: "auto" }}>
-                                <Table sx={{ minWidth: 700 }}>
-                                    <TableHead sx={{ backgroundColor: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                                        <TableRow>
-                                            <TableCell sx={{ fontWeight: 700, color: "#4b5563", fontSize: "0.75rem", textTransform: "uppercase" }}>
-                                                Product
-                                            </TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 700, color: "#4b5563", fontSize: "0.75rem", textTransform: "uppercase" }}>
-                                                Quantity
-                                            </TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 700, color: "#4b5563", fontSize: "0.75rem", textTransform: "uppercase" }}>
-                                                Rate ({currency})
-                                            </TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 700, color: "#4b5563", fontSize: "0.75rem", textTransform: "uppercase" }}>
-                                                Amount ({currency})
-                                            </TableCell>
-                                            {currency === "USD" && (
-                                                <TableCell align="right" sx={{ fontWeight: 700, color: "#4b5563", fontSize: "0.75rem", textTransform: "uppercase" }}>
-                                                    Amount (INR)
-                                                </TableCell>
-                                            )}
-                                            <TableCell sx={{ fontWeight: 700, color: "#4b5563", fontSize: "0.75rem", textTransform: "uppercase" }}>
-                                                Remarks
-                                            </TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody sx={{ borderTop: "1px solid #e5e7eb" }}>
-                                        {items.map((item, idx) => (
-                                            <TableRow
-                                                key={item.id}
-                                                sx={{
-                                                    backgroundColor: idx % 2 === 0 ? "#f9fafb" : "#ffffff",
-                                                    "&:hover": { backgroundColor: "#f3f4f6" },
-                                                }}
-                                            >
-                                                <TableCell sx={{ py: 1, fontSize: "0.875rem" }}>
-                                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "#1f2937" }}>
+                            {(bankName || bankAcct || bankIfsc) && (
+                                <>
+                                    <Divider sx={{ my: 1.75 }} />
+                                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 2 }}>
+                                        <Field label="Bank">{bankName}</Field>
+                                        <Field label="Account No.">
+                                            {bankAcct && <Box component="span" sx={{ fontFamily: "monospace", fontSize: 12 }}>{bankAcct}</Box>}
+                                        </Field>
+                                        <Field label="IFSC">
+                                            {bankIfsc && <Box component="span" sx={{ fontFamily: "monospace", fontSize: 12 }}>{bankIfsc}</Box>}
+                                        </Field>
+                                    </Box>
+                                </>
+                            )}
+
+                            {(data.payment_terms || data.delivery_terms || data.remarks) && (
+                                <>
+                                    <Divider sx={{ my: 1.75 }} />
+                                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 2 }}>
+                                        <Field label="Payment Terms">{data.payment_terms}</Field>
+                                        <Field label="Delivery Terms">{data.delivery_terms}</Field>
+                                        <Field label="Remarks">{data.remarks}</Field>
+                                    </Box>
+                                </>
+                            )}
+                        </Box>
+
+                        {/* Items */}
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+                            <Typography sx={{ fontSize: 11, fontWeight: 900, color: "#1e40af", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                Item Rates ({items.length})
+                            </Typography>
+                            {unpriced > 0 && (
+                                <Typography sx={{ fontSize: 11, fontWeight: 800, color: "#b45309" }}>
+                                    {unpriced} item{unpriced > 1 ? "s" : ""} without a rate
+                                </Typography>
+                            )}
+                        </Box>
+
+                        <TableContainer sx={{ bgcolor: "white", border: "1px solid #e2e8f0", borderRadius: 2 }}>
+                            <Table size="small" stickyHeader>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell sx={{ ...TH, width: 40 }}>#</TableCell>
+                                        <TableCell sx={TH}>Product</TableCell>
+                                        <TableCell sx={TH} align="right">Qty</TableCell>
+                                        <TableCell sx={TH} align="right">Rate ({currency}) *</TableCell>
+                                        <TableCell sx={TH} align="right">Amount ({currency})</TableCell>
+                                        <TableCell sx={TH}>Remarks</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {items.map((item, idx) => {
+                                        const amount = rowAmount(item);
+                                        const missing = !(Number(item.quoted_rate) > 0);
+                                        return (
+                                            <TableRow key={item.id} hover>
+                                                <TableCell sx={{ ...TD, color: "#94a3b8", fontWeight: 800 }}>{idx + 1}</TableCell>
+                                                <TableCell sx={TD}>
+                                                    <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
                                                         {item.product_name}
                                                     </Typography>
-                                                    <Typography variant="caption" sx={{ fontFamily: "monospace", color: "#9ca3af" }}>
+                                                    <Typography sx={{ fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>
                                                         {item.product_code}
                                                     </Typography>
                                                 </TableCell>
-                                                <TableCell align="right" sx={{ py: 1, fontWeight: 600, color: "#4b5563", fontSize: "0.875rem" }}>
-                                                    {Number(item.quantity).toFixed(2)} <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>{item.unit}</span>
+                                                <TableCell sx={{ ...TD, fontWeight: 700 }} align="right">
+                                                    {Number(item.quantity).toFixed(2)}
+                                                    <Typography component="span" sx={{ ml: 0.5, fontSize: 10, color: "#94a3b8" }}>
+                                                        {item.unit}
+                                                    </Typography>
                                                 </TableCell>
-                                                <TableCell align="right" sx={{ py: 1 }}>
-                                                    <StyledInput
+                                                <TableCell sx={{ ...TD, width: 130 }} align="right">
+                                                    <TextField
                                                         type="number"
-                                                        inputProps={{ min: "0", step: "0.01" }}
                                                         size="small"
                                                         value={item.quoted_rate}
-                                                        onChange={(e) => handleRateChange(idx, e.target.value)}
-                                                        sx={{ width: "100px" }}
+                                                        onChange={(e) => updateItem(idx, "quoted_rate", e.target.value)}
+                                                        inputProps={{ min: "0", step: "0.01", style: { textAlign: "right" } }}
+                                                        error={missing}
+                                                        sx={{ ...INPUT, width: 110 }}
                                                     />
                                                 </TableCell>
-                                                <TableCell align="right" sx={{ py: 1, fontWeight: 700, color: "#1f2937", fontSize: "0.875rem" }}>
-                                                    {currency === "USD" ? "$" : "₹"} {calculateRowAmount(item.quantity, item.quoted_rate)}
-                                                </TableCell>
-                                                {currency === "USD" && (
-                                                    <TableCell align="right" sx={{ py: 1, fontWeight: 700, color: "#2563eb", fontSize: "0.875rem" }}>
-                                                        ₹ {(parseFloat(calculateRowAmount(item.quantity, item.quoted_rate)) * exchangeRate).toFixed(2)}
-                                                    </TableCell>
-                                                )}
-                                                <TableCell sx={{ py: 1, color: "#6b7280", fontSize: "0.875rem", maxWidth: "150px", overflow: "hidden", textOverflow: "ellipsis", fontStyle: "italic" }}>
-                                                    {item.remarks || "-"}
+                                                <TableCell sx={{ ...TD, fontWeight: 800 }} align="right">{money(amount)}</TableCell>
+                                                <TableCell sx={{ ...TD, minWidth: 160 }}>
+                                                    <TextField
+                                                        size="small"
+                                                        placeholder="—"
+                                                        value={item.remarks}
+                                                        onChange={(e) => updateItem(idx, "remarks", e.target.value)}
+                                                        sx={{ ...INPUT, width: "100%", "& .MuiOutlinedInput-root": { ...INPUT["& .MuiOutlinedInput-root"], fontWeight: 400 } }}
+                                                    />
                                                 </TableCell>
                                             </TableRow>
-                                        ))}
-                                    </TableBody>
-                                    <Box
-                                        component="tfoot"
-                                        sx={{
-                                            backgroundColor: "#f9fafb",
-                                            fontWeight: 700,
-                                            color: "#1f2937",
-                                            display: "table-footer-group",
-                                        }}
-                                    >
-                                        <TableRow>
-                                            <TableCell colSpan={currency === "USD" ? "4" : "3"} align="right" sx={{ py: 1.5, fontSize: "0.75rem", textTransform: "uppercase", borderTop: "1px solid #e5e7eb", color: "#6b7280" }}>
-                                                Total Amount
-                                            </TableCell>
-                                            <TableCell align="right" sx={{ py: 1.5, borderTop: "1px solid #e5e7eb" }}>
-                                                <Box>
-                                                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#1f2937" }}>
-                                                        {totalAmount.toLocaleString("en-IN", { style: "currency", currency: currency })}
-                                                    </Typography>
-                                                    {currency === "USD" && (
-                                                        <Typography variant="caption" sx={{ fontWeight: 600, color: "#2563eb" }}>
-                                                            (Approx {totalAmountINR.toLocaleString("en-IN", { style: "currency", currency: "INR" })})
-                                                        </Typography>
-                                                    )}
-                                                </Box>
-                                            </TableCell>
-                                            <TableCell sx={{ borderTop: "1px solid #e5e7eb" }}></TableCell>
-                                        </TableRow>
-                                    </Box>
-                                </Table>
-                            </Box>
-                        </Card>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
                     </>
-                ) : (
-                    <Typography sx={{ textAlign: "center", py: 4, color: "#9ca3af" }}>
-                        No data found
-                    </Typography>
                 )}
             </DialogContent>
 
-            {/* ACTIONS */}
-            <DialogActions sx={{ p: 2, backgroundColor: "#ffffff", borderTop: "1px solid #e2e8f0", gap: 1 }}>
-                <Button onClick={onClose} variant="outlined" disabled={submitting}>
-                    Cancel
-                </Button>
-                <Button
-                    onClick={handleSubmit}
-                    variant="contained"
-                    color="primary"
-                    disabled={submitting || !data}
-                >
-                    {submitting ? "Updating..." : "Update Quotation"}
-                </Button>
+            {/* ── FOOTER: total sits with the buttons, always visible ────── */}
+            <DialogActions sx={{
+                px: 2.5, py: 1.75, bgcolor: "white", borderTop: "1px solid #e2e8f0",
+                gap: 1.5, justifyContent: "space-between", flexShrink: 0,
+            }}>
+                <Box>
+                    <Typography sx={LABEL}>Total</Typography>
+                    <Typography sx={{ fontSize: 20, fontWeight: 900, color: "#0f172a" }}>
+                        {money(totalAmount)}
+                    </Typography>
+                </Box>
+
+                <Box sx={{ display: "flex", gap: 1.5 }}>
+                    <Button onClick={onClose} disabled={submitting}
+                        sx={{ textTransform: "uppercase", fontWeight: 900, fontSize: 12, color: "#64748b" }}>
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleSubmit}
+                        variant="contained"
+                        disabled={submitting || !data}
+                        startIcon={submitting ? <CircularProgress size={15} color="inherit" /> : undefined}
+                        sx={{
+                            bgcolor: "#0ea5e9", textTransform: "uppercase", fontWeight: 900,
+                            fontSize: 12, borderRadius: 1.5, px: 3, "&:hover": { bgcolor: "#0284c7" },
+                        }}
+                    >
+                        {submitting ? "Updating…" : "Update Quotation"}
+                    </Button>
+                </Box>
             </DialogActions>
-        </StyledDialog>
+        </Dialog>
     );
 };
 

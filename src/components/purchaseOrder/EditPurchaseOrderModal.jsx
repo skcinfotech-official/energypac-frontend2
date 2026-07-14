@@ -57,6 +57,7 @@ const sectionBoxSx = {
 
 const EditPurchaseOrderModal = ({ open, onClose, poData, onUpdate }) => {
     // Form fields
+    const [poNumber, setPoNumber] = useState("");
     const [poDate, setPoDate] = useState("");
     const [subject, setSubject] = useState("");
     const [projectName, setProjectName] = useState("");
@@ -78,6 +79,7 @@ const EditPurchaseOrderModal = ({ open, onClose, poData, onUpdate }) => {
     // Load PO data into state
     useEffect(() => {
         if (open && poData) {
+            setPoNumber(poData.po_number || "");
             setPoDate(poData.po_date || new Date().toISOString().split('T')[0]);
             setSubject(poData.subject || "");
             setProjectName(poData.project_name || "");
@@ -156,6 +158,7 @@ const EditPurchaseOrderModal = ({ open, onClose, poData, onUpdate }) => {
         setSaving(true);
         try {
             const payload = {
+                po_number: (poNumber || "").trim(),
                 po_date: poDate,
                 subject: subject,
                 project_name: projectName,
@@ -186,7 +189,9 @@ const EditPurchaseOrderModal = ({ open, onClose, poData, onUpdate }) => {
             onClose();
         } catch (error) {
             console.error("Failed to save PO edits", error);
-            const msg = error.response?.data?.error || error.response?.data?.detail || "Failed to update Purchase Order";
+            const d = error.response?.data;
+            const fieldErr = Array.isArray(d?.po_number) ? d.po_number[0] : d?.po_number;
+            const msg = fieldErr || d?.error || d?.detail || "Failed to update Purchase Order";
             toast.error(msg);
         } finally {
             setSaving(false);
@@ -243,6 +248,22 @@ const EditPurchaseOrderModal = ({ open, onClose, poData, onUpdate }) => {
                     {/* General Settings */}
                     <Box sx={sectionBoxSx}>
                         <Grid container spacing={3}>
+                            <Grid item xs={12} md={4}>
+                                <Typography sx={labelSx}>PO Number *</Typography>
+                                <TextField
+                                    value={poNumber}
+                                    onChange={(e) => setPoNumber(e.target.value)}
+                                    fullWidth
+                                    size="small"
+                                    placeholder="e.g. EEL/IND/RAJ/100"
+                                    helperText="Auto-generated — change it only if you need your own number. Must be unique."
+                                    sx={{
+                                        ...inputSx,
+                                        "& .MuiOutlinedInput-root": { ...inputSx["& .MuiOutlinedInput-root"], fontFamily: "monospace" },
+                                        "& .MuiFormHelperText-root": { fontSize: "10px", color: "grey.500", ml: 0.5 },
+                                    }}
+                                />
+                            </Grid>
                             <Grid item xs={12} md={4}>
                                 <Typography sx={labelSx}>PO Date *</Typography>
                                 <TextField

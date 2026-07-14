@@ -87,6 +87,7 @@ const QuotationComparison = () => {
             data.vendors.forEach(q => {
                 const vendorKey = q.vendor_id || q.id;
                 initialDetails[vendorKey] = {
+                    poNumber: "",
                     subject: "",
                     projectName: "",
                     billTo: "",
@@ -95,7 +96,9 @@ const QuotationComparison = () => {
                     cgstPercentage: 0.00,
                     sgstPercentage: 0.00,
                     igstPercentage: 0.00,
-                    conversionRate: 1.00,
+                    currency: q.currency || "INR",
+                    // Only INR may default to 1 — a foreign quote must state its rate.
+                    conversionRate: (q.currency && q.currency !== "INR") ? "" : 1.00,
                     terms: makePoDefaultTerms()
                 };
             });
@@ -105,6 +108,7 @@ const QuotationComparison = () => {
 
     const activeVendorKey = activeVendor?.vendor_id || activeVendor?.id;
     const currentDetails = vendorPoDetails[activeVendorKey] || {
+        poNumber: "",
         subject: "",
         projectName: "",
         billTo: "",
@@ -232,8 +236,14 @@ const QuotationComparison = () => {
             setToast({ open: true, type: "error", message: "CGST, SGST, and IGST percentages are mandatory." });
             return;
         }
+        const poCurrency = details.currency || targetVendorForPO.currency || "INR";
         if (convRate === "" || convRate === undefined || isNaN(Number(convRate)) || Number(convRate) <= 0) {
-            setToast({ open: true, type: "error", message: "A valid Conversion Rate (> 0) is mandatory." });
+            setToast({
+                open: true, type: "error",
+                message: poCurrency === "INR"
+                    ? "A valid Conversion Rate (> 0) is mandatory."
+                    : `Enter the INR conversion rate for this ${poCurrency} purchase order.`,
+            });
             return;
         }
         
@@ -264,6 +274,8 @@ const QuotationComparison = () => {
         const payload = {
             requisition: selectedRequisition,
             po_date: poDate,
+            // Blank = auto-generate (EEL/IND/<VENDOR>/<n>), unchanged behaviour.
+            po_number: (details.poNumber || "").trim(),
             subject: details.subject || "",
             project_name: details.projectName || "",
             bill_to: details.billTo || "",
@@ -274,7 +286,7 @@ const QuotationComparison = () => {
             cgst_percentage: Number(details.cgstPercentage) || 0,
             sgst_percentage: Number(details.sgstPercentage) || 0,
             igst_percentage: Number(details.igstPercentage) || 0,
-            conversion_rate: Number(details.conversionRate) || 1
+            conversion_rate: Number(details.conversionRate) || null
         };
 
         console.log("Generating PO for vendor with payload:", payload);
@@ -773,6 +785,21 @@ const QuotationComparison = () => {
                                     General Information
                                 </h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="md:col-span-2">
+                                        <label className="block text-xs font-bold text-slate-600 mb-1">
+                                            PO Number <span className="font-normal text-slate-400">(optional)</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
+                                            value={currentDetails.poNumber || ""}
+                                            onChange={(e) => updateVendorField("poNumber", e.target.value)}
+                                            placeholder="Leave blank to auto-generate"
+                                        />
+                                        <p className="mt-1 text-[10px] text-slate-400">
+                                            Blank → generated automatically for this vendor. If you type one it must be unique.
+                                        </p>
+                                    </div>
                                     <div>
                                         <label className="block text-xs font-bold text-slate-600 mb-1">Subject</label>
                                         <input
@@ -883,7 +910,11 @@ const QuotationComparison = () => {
                                     </div>
                                     <div className="col-span-2 md:col-span-1">
                                         <div className="flex items-center gap-1 mb-1">
-                                            <label className="block text-[10px] font-bold text-slate-600">Conv. Rate</label>
+                                            <label className="block text-[10px] font-bold text-slate-600">
+                                                {(currentDetails.currency || "INR") === "INR"
+                                                    ? "Conv. Rate"
+                                                    : `Conv. Rate (1 ${currentDetails.currency} = ₹)`}
+                                            </label>
                                             <span className="text-red-500 font-bold">*</span>
                                             <div className="relative group cursor-pointer text-slate-400 hover:text-blue-500 transition-colors">
                                                 <FaInfoCircle size={10} />
@@ -1014,7 +1045,7 @@ const QuotationComparison = () => {
                                             cgstPercentage: 0.00,
                                             sgstPercentage: 0.00,
                                             igstPercentage: 0.00,
-                                            conversionRate: 1.00,
+                                            conversionRate: (activeVendor?.currency && activeVendor.currency !== "INR") ? "" : 1.00,
                                             terms: []
                                         }
                                     }));

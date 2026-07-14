@@ -60,6 +60,8 @@ const compactINR = (v) => {
 export default function RevenueAnalysis() {
     const [pnlList, setPnlList] = useState([]);
     const [pnlSummary, setPnlSummary] = useState(null);
+    const [fxWarnings, setFxWarnings] = useState([]);
+    const [costWarnings, setCostWarnings] = useState([]);
     const [pnlLoading, setPnlLoading] = useState(false);
     const [filterRequisition, setFilterRequisition] = useState("");
     const [filterFY, setFilterFY] = useState("");
@@ -87,6 +89,8 @@ export default function RevenueAnalysis() {
             const data = await getProfitLossList(params);
             setPnlList(data.requisitions || []);
             setPnlSummary(data.summary || null);
+            setFxWarnings(data.fx_warnings || []);
+            setCostWarnings(data.cost_warnings || []);
         } catch {
             setToast({ open: true, type: "error", message: "Failed to fetch P&L data" });
         } finally {
@@ -146,9 +150,9 @@ export default function RevenueAnalysis() {
         const wb = XLSX.utils.book_new();
         const rows = [
             ["REVENUE & PROFITABILITY ANALYSIS"], ["Generated:", new Date().toLocaleString()], [],
-            ["Requisition", "Purchase", "Transport", "Freight Recovered", "Total Cost", "Revenue", "P&L", "Margin %", "Status"]
+            ["Requisition / PI", "COGS", "Freight In", "Freight Out", "Total Cost", "Revenue", "P&L", "Margin %", "Status"]
         ];
-        pnlList.forEach(i => rows.push([i.requisition_number, i.purchase_cost_inr, i.transport_cost_inr, i.transport_recovered_inr || 0, i.total_cost_inr, i.sales_revenue_inr, i.profit_loss_inr, i.margin_percentage, i.alert || "NORMAL"]));
+        pnlList.forEach(i => rows.push([i.requisition_number, i.purchase_cost_inr, i.transport_in_inr || 0, i.transport_out_inr || 0, i.total_cost_inr, i.sales_revenue_inr, i.profit_loss_inr, i.margin_percentage, i.alert || "NORMAL"]));
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), "P&L");
         saveAs(new Blob([XLSX.write(wb, { bookType: "xlsx", type: "array" })]), `Revenue_${new Date().toISOString().split('T')[0]}.xlsx`);
         setToast({ open: true, type: "success", message: "Exported" });
@@ -176,9 +180,9 @@ export default function RevenueAnalysis() {
     };
 
     const summaryCards = [
-        { label: "Revenue", value: fmt(totalRevenue), icon: <ShowChartIcon fontSize="small" />, iconBg: "#e3f2fd", iconColor: "#1565c0" },
-        { label: "Purchases", value: fmt(totalPurchases), icon: <ShoppingCartIcon fontSize="small" />, iconBg: "#ffebee", iconColor: "#c62828" },
-        { label: "Transport", value: fmt(totalTransport), subValue: (s.total_transport_recovered || 0) > 0 ? `−${fmt(s.total_transport_recovered)} recovered` : null, icon: <LocalShippingIcon fontSize="small" />, iconBg: "#fff8e1", iconColor: "#e65100" },
+        { label: "Revenue", value: fmt(totalRevenue), subValue: "Accepted PIs only", icon: <ShowChartIcon fontSize="small" />, iconBg: "#e3f2fd", iconColor: "#1565c0" },
+        { label: "Cost of goods sold", value: fmt(totalPurchases), subValue: `Stock in hand ${fmt(s.inventory_value_inr)}`, icon: <ShoppingCartIcon fontSize="small" />, iconBg: "#ffebee", iconColor: "#c62828" },
+        { label: "Transport", value: fmt(totalTransport), subValue: `In ${fmt(s.transport_in_inr)} · Out ${fmt(s.transport_out_inr)}`, icon: <LocalShippingIcon fontSize="small" />, iconBg: "#fff8e1", iconColor: "#e65100" },
         {
             label: "Net P&L",
             value: fmt(totalProfit),
@@ -290,7 +294,7 @@ export default function RevenueAnalysis() {
                                             <Typography sx={{ fontSize: "0.6rem", fontWeight: 900, color: "#047857", textTransform: "uppercase" }}>Money In (received)</Typography>
                                             <Typography sx={{ fontSize: "1.1rem", fontWeight: 900, color: "#047857" }}>{fmt(overview.total_in)}</Typography>
                                         </Box>
-                                        {[["Goods Sales", overview.money_in.goods_sales], ["Service", overview.money_in.service], ["Client Advances", overview.money_in.advances], ["Freight Recovered", overview.money_in.freight_recovered]].map(([l, v]) => (
+                                        {[["Goods Sales", overview.money_in.goods_sales], ["Service", overview.money_in.service], ["Client Advances", overview.money_in.advances]].map(([l, v]) => (
                                             <Box key={l} sx={{ display: "flex", justifyContent: "space-between", py: 0.3 }}>
                                                 <Typography sx={{ fontSize: "0.72rem", color: "#334155" }}>{l}</Typography>
                                                 <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, fontFamily: "monospace", color: "#065f46" }}>{fmtD(v)}</Typography>
@@ -305,7 +309,7 @@ export default function RevenueAnalysis() {
                                             <Typography sx={{ fontSize: "0.6rem", fontWeight: 900, color: "#b91c1c", textTransform: "uppercase" }}>Money Out (paid)</Typography>
                                             <Typography sx={{ fontSize: "1.1rem", fontWeight: 900, color: "#b91c1c" }}>{fmt(overview.total_out)}</Typography>
                                         </Box>
-                                        {[["Purchases (vendors)", overview.money_out.purchases], ["Freight Paid", overview.money_out.freight_paid]].map(([l, v]) => (
+                                        {[["Purchases (vendors)", overview.money_out.purchases], ["Freight In (purchases)", overview.money_out.freight_in], ["Freight Out (sales)", overview.money_out.freight_out]].map(([l, v]) => (
                                             <Box key={l} sx={{ display: "flex", justifyContent: "space-between", py: 0.3 }}>
                                                 <Typography sx={{ fontSize: "0.72rem", color: "#334155" }}>{l}</Typography>
                                                 <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, fontFamily: "monospace", color: "#991b1b" }}>{fmtD(v)}</Typography>
@@ -333,6 +337,64 @@ export default function RevenueAnalysis() {
                         </CardContent>
                     </Card>
                 )}
+
+                {/* Data-quality warnings — figures are only as good as what was entered */}
+                {fxWarnings.length > 0 && (
+                    <Card variant="outlined" sx={{ borderRadius: 2, borderColor: "#fecaca", bgcolor: "#fef2f2", p: 1.5 }}>
+                        <Typography sx={{ fontSize: 12, fontWeight: 900, color: "#b91c1c", mb: 0.5 }}>
+                            {fxWarnings.length} document{fxWarnings.length > 1 ? "s" : ""} excluded — conversion rate missing
+                        </Typography>
+                        <Typography sx={{ fontSize: 11, color: "#7f1d1d", mb: 0.75 }}>
+                            These are in a foreign currency but no INR rate was saved, so they cannot be valued.
+                            Open each one and set its conversion rate — until then they are left out of every figure below.
+                        </Typography>
+                        {fxWarnings.map((w, i) => (
+                            <Typography key={i} sx={{ fontSize: 11, fontFamily: "monospace", color: "#991b1b" }}>
+                                • {w.number} — {w.currency} {Number(w.amount).toLocaleString("en-IN")}
+                            </Typography>
+                        ))}
+                    </Card>
+                )}
+                {costWarnings.length > 0 && (
+                    <Card variant="outlined" sx={{ borderRadius: 2, borderColor: "#fde68a", bgcolor: "#fffbeb", p: 1.5 }}>
+                        <Typography sx={{ fontSize: 12, fontWeight: 900, color: "#b45309", mb: 0.5 }}>
+                            {costWarnings.length} sold item{costWarnings.length > 1 ? "s have" : " has"} no known purchase cost
+                        </Typography>
+                        <Typography sx={{ fontSize: 11, color: "#78350f", mb: 0.75 }}>
+                            These were never bought through a PO, so their cost counts as ₹0 and the profit on them is overstated.
+                        </Typography>
+                        {costWarnings.slice(0, 5).map((w, i) => (
+                            <Typography key={i} sx={{ fontSize: 11, fontFamily: "monospace", color: "#92400e" }}>
+                                • {w.pi_number} — {w.product}
+                            </Typography>
+                        ))}
+                    </Card>
+                )}
+
+                {/* Money in / money out — the whole system, not just what was sold */}
+                <Card variant="outlined" sx={{ borderRadius: 2, borderColor: "#e2e8f0", p: 2 }}>
+                    <Typography sx={{ fontSize: 10, fontWeight: 900, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", mb: 1.5 }}>
+                        Money movement (whole system)
+                    </Typography>
+                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2,1fr)", md: "repeat(5,1fr)" }, gap: 1.5 }}>
+                        {[
+                            { l: "Money out — purchases", v: s.total_purchases_inr, c: "#c62828", sub: "All non-cancelled POs" },
+                            { l: "Money out — freight", v: s.total_transport_billed, c: "#e65100", sub: `In ${fmt(s.transport_in_inr)} + Out ${fmt(s.transport_out_inr)}` },
+                            { l: "Still in stock", v: s.inventory_value_inr, c: "#1565c0", sub: "Bought, not yet sold" },
+                            { l: "Cash paid out", v: s.cash_out, c: "#7c3aed", sub: "Vendors + transporters" },
+                            { l: "Cash received", v: s.cash_in, c: "#2e7d32", sub: `Net ${fmt(s.net_cash)}` },
+                        ].map((x, i) => (
+                            <Box key={i} sx={{ p: 1.25, border: "1px solid #e2e8f0", borderRadius: 2 }}>
+                                <Typography sx={{ fontSize: 10, fontWeight: 800, color: "#64748b", textTransform: "uppercase" }}>{x.l}</Typography>
+                                <Typography sx={{ fontSize: 16, fontWeight: 900, color: x.c, lineHeight: 1.3 }}>{fmt(x.v)}</Typography>
+                                <Typography sx={{ fontSize: 10, color: "#94a3b8" }}>{x.sub}</Typography>
+                            </Box>
+                        ))}
+                    </Box>
+                    <Typography sx={{ fontSize: 10, color: "#94a3b8", mt: 1.25 }}>
+                        Pipeline (Draft/Sent PIs, not counted as revenue): <b>{fmt(s.pipeline_value_inr)}</b> across {s.pipeline_count || 0} PI(s).
+                    </Typography>
+                </Card>
 
                 {/* Summary Cards */}
                 <Grid container spacing={1.5}>
@@ -417,11 +479,11 @@ export default function RevenueAnalysis() {
 
                         {analytics.transport && (
                             <Grid container spacing={1.5}>
-                                {kpiCard("Freight Paid (Buy)", fmt(analytics.transport.freight_paid_buy), "#c62828")}
-                                {kpiCard("Freight Paid (Sell)", fmt(analytics.transport.freight_paid_sell), "#c62828")}
-                                {kpiCard("Freight Recovered", fmt(analytics.transport.freight_recovered_sell), "#2e7d32")}
-                                {kpiCard("Net Freight Cost", fmt(analytics.transport.net_freight_cost), "#e65100")}
-                                {kpiCard("Total Freight Paid", fmt(analytics.transport.freight_paid_total), "#475569")}
+                                {kpiCard("Freight In (on purchases)", fmt(analytics.transport.freight_buy), "#c62828")}
+                                {kpiCard("Freight Out (on sales)", fmt(analytics.transport.freight_sell), "#c62828")}
+                                {kpiCard("Total Freight Cost", fmt(analytics.transport.freight_billed_total), "#e65100")}
+                                {kpiCard("Freight Cash Paid", fmt(analytics.transport.freight_cash_paid), "#475569")}
+                                {kpiCard("Freight Still Owed", fmt(analytics.transport.freight_outstanding), "#d97706")}
                             </Grid>
                         )}
 
@@ -583,7 +645,7 @@ export default function RevenueAnalysis() {
                             <TableHead>
                                 <TableRow sx={{ bgcolor: "#f8fafc" }}>
                                     <TableCell sx={{ fontWeight: 700, fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>Requisition</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 700, fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>Purchase</TableCell>
+                                    <TableCell align="right" sx={{ fontWeight: 700, fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>COGS</TableCell>
                                     <TableCell align="right" sx={{ fontWeight: 700, fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>Transport</TableCell>
                                     <TableCell align="right" sx={{ fontWeight: 700, fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>Total Cost</TableCell>
                                     <TableCell align="right" sx={{ fontWeight: 700, fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>Revenue</TableCell>
@@ -636,9 +698,9 @@ export default function RevenueAnalysis() {
                                             <TableCell align="right" sx={{ fontFamily: "monospace", fontSize: "0.875rem", color: "#475569" }}>{fmtD(item.purchase_cost_inr)}</TableCell>
                                             <TableCell align="right" sx={{ fontFamily: "monospace", fontSize: "0.875rem", color: "#64748b" }}>
                                                 {fmtD(item.transport_cost_inr)}
-                                                {Number(item.transport_recovered_inr) > 0 && (
-                                                    <Typography component="div" sx={{ fontFamily: "monospace", fontSize: "0.6rem", fontWeight: 700, color: "#2e7d32" }}>
-                                                        −{fmtD(item.transport_recovered_inr)} recd
+                                                {(Number(item.transport_in_inr) > 0 || Number(item.transport_out_inr) > 0) && (
+                                                    <Typography component="div" sx={{ fontFamily: "monospace", fontSize: "0.6rem", fontWeight: 700, color: "#94a3b8" }}>
+                                                        in {fmtD(item.transport_in_inr)} · out {fmtD(item.transport_out_inr)}
                                                     </Typography>
                                                 )}
                                             </TableCell>

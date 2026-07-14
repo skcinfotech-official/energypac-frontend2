@@ -46,7 +46,13 @@ const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false
           const items = data.items && Array.isArray(data.items)
             ? data.items.map((i) => ({ id: i.id, product: i.product, product_name: i.product_name || i.product_details?.item_name, product_code: i.product_code || i.product_details?.item_code, unit: i.unit || i.product_details?.unit || "UNIT", quantity: i.quantity, remarks: i.remarks || "" }))
             : [{ ...emptyItem }];
-          setForm((prev) => ({ ...prev, requisition_date: data.requisition_date, remarks: data.remarks || "", items }));
+          setForm((prev) => ({
+            ...prev,
+            requisition_number: data.requisition_number || "",
+            requisition_date: data.requisition_date,
+            remarks: data.remarks || "",
+            items,
+          }));
           if (data.is_assigned !== undefined) setIsAssigned(data.is_assigned);
         } catch (error) {
           console.error("Failed to fetch details", error);
@@ -59,6 +65,7 @@ const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false
     if (editData?.id) {
       setForm((prev) => ({
         ...prev,
+        requisition_number: editData.requisition_number || "",
         requisition_date: editData.requisition_date,
         remarks: editData.remarks || "",
         items: editData.items?.map((i) => ({ id: i.id, product: i.product, product_name: i.product_name, product_code: i.product_code, quantity: i.quantity, remarks: i.remarks || "", unit: i.unit || i.product_details?.unit || "" })) || [{ ...emptyItem }],
@@ -125,7 +132,8 @@ const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false
           remarks: item.remarks || "",
         })),
       };
-      if (!editData && (form.requisition_number || "").trim()) {
+      // On create: blank = auto-generate. On edit: blank = keep the current number.
+      if ((form.requisition_number || "").trim()) {
         payload.requisition_number = form.requisition_number.trim();
       }
       editData ? await updateRequisition(editData.id, payload) : await createRequisition(payload);
@@ -216,15 +224,19 @@ const RequisitionModal = ({ open, onClose, editData, onSuccess, viewOnly = false
 
         {/* Info card — one compact row */}
         <Paper variant="outlined" sx={{ p: 1.75, mb: 2, borderRadius: 2, borderColor: "#e2e8f0" }}>
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: !editData ? "1fr 1fr 1fr" : "180px 1fr" }, gap: 1.5 }}>
-            {!editData && (
-              <Box>
-                <Typography sx={LABEL}>Requisition No. <Box component="span" sx={{ color: "#94a3b8" }}>(optional)</Box></Typography>
-                <TextField fullWidth size="small" placeholder="Auto-generate" value={form.requisition_number}
-                  onChange={(e) => setForm({ ...form, requisition_number: e.target.value })}
-                  sx={{ ...INPUT, "& .MuiOutlinedInput-root": { ...INPUT["& .MuiOutlinedInput-root"], fontFamily: "monospace" } }} />
-              </Box>
-            )}
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" }, gap: 1.5 }}>
+            <Box>
+              <Typography sx={LABEL}>
+                Requisition No.{" "}
+                <Box component="span" sx={{ color: "#94a3b8" }}>{editData ? "(must be unique)" : "(optional)"}</Box>
+              </Typography>
+              <TextField fullWidth size="small"
+                placeholder={editData ? "" : "Auto-generate"}
+                value={form.requisition_number || ""}
+                onChange={(e) => setForm({ ...form, requisition_number: e.target.value })}
+                disabled={readOnly}
+                sx={{ ...INPUT, "& .MuiOutlinedInput-root": { ...INPUT["& .MuiOutlinedInput-root"], fontFamily: "monospace" } }} />
+            </Box>
             <Box>
               <Typography sx={LABEL}>Requisition Date</Typography>
               <TextField type="date" fullWidth size="small" value={form.requisition_date || ""}

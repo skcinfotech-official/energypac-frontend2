@@ -72,6 +72,10 @@ const COLORS = [
 
 const EMPTY_SUMMARY = {
     total_freight_cost: 0,
+    inbound_cost: 0,
+    outbound_cost: 0,
+    total_paid: 0,
+    total_outstanding: 0,
     active_transports_count: 0,
     total_transports_count: 0,
     delivered_transports_count: 0,
@@ -117,6 +121,10 @@ export default function TransportDashboard() {
                 const s = sumRes.value.summary;
                 setSummary({
                     total_freight_cost: parseFloat(s.total_cost) || 0,
+                    inbound_cost: parseFloat(s.inbound_cost) || 0,
+                    outbound_cost: parseFloat(s.outbound_cost) || 0,
+                    total_paid: parseFloat(s.total_paid) || 0,
+                    total_outstanding: parseFloat(s.total_outstanding) || 0,
                     active_transports_count: (parseInt(s.pending) || 0) + (parseInt(s.in_transit) || 0),
                     total_transports_count: parseInt(s.total_entries) || 0,
                     delivered_transports_count: parseInt(s.delivered) || 0,
@@ -221,6 +229,10 @@ export default function TransportDashboard() {
                     ["Generated At:", new Date().toLocaleString()], [],
                     ["Metric", "Value"],
                     ["Total Freight Cost", summary.total_freight_cost],
+                    ["  Inbound (on POs)", summary.inbound_cost],
+                    ["  Outbound (on PIs)", summary.outbound_cost],
+                    ["Paid to Transporters", summary.total_paid],
+                    ["Still Owed", summary.total_outstanding],
                     ["Active Shipments", summary.active_transports_count],
                     ["Delivered Shipments", summary.delivered_transports_count],
                     ["Total Logistics", summary.total_transports_count],
@@ -448,10 +460,16 @@ export default function TransportDashboard() {
                                         </Avatar>
                                         <Box>
                                             <Typography sx={{ fontSize: "0.625rem", textTransform: "uppercase", fontWeight: 700, color: "grey.400", letterSpacing: 1 }}>
-                                                Total Freight
+                                                Total Freight Paid to Transporters
                                             </Typography>
                                             <Typography sx={{ fontSize: "1.15rem", fontWeight: 900, color: "grey.800", lineHeight: 1.2, mt: 0.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                                 {formatCurrency(summary.total_freight_cost)}
+                                            </Typography>
+                                            <Typography sx={{ fontSize: "0.65rem", color: "grey.500", mt: 0.25 }}>
+                                                In {formatCurrency(summary.inbound_cost)} · Out {formatCurrency(summary.outbound_cost)}
+                                            </Typography>
+                                            <Typography sx={{ fontSize: "0.65rem", color: summary.total_outstanding > 0 ? "#c2410c" : "grey.500", fontWeight: 700 }}>
+                                                {formatCurrency(summary.total_outstanding)} still owed
                                             </Typography>
                                         </Box>
                                     </CardContent>

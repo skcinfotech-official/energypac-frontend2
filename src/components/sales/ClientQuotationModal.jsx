@@ -576,10 +576,21 @@ const ClientQuotationModal = ({ isOpen, onClose, onSuccess, invoice = null, vari
                 }
             }
 
+            // A blank rate on a foreign-currency PI used to be sent as 1, which booked
+            // a $5,000 sale as ₹5,000 in every report. Send what the user actually
+            // typed — nothing — and let it fail loudly.
+            if (formData.currency !== "INR" && !(Number(formData.conversion_rate) > 0)) {
+                throw new Error(
+                    `Enter the INR conversion rate for this ${formData.currency} Proforma Invoice.`
+                );
+            }
+
             const payload = {
                 ...formData,
                 pi_number: !isEdit ? (formData.pi_number || "").trim() : undefined,
-                conversion_rate: formData.currency === "INR" ? 1 : Number(formData.conversion_rate) || 1,
+                conversion_rate: formData.currency === "INR"
+                    ? 1
+                    : (Number(formData.conversion_rate) || null),
                 requisition: piMode === "requisition" ? (formData.requisition || null) : null,
                 requisitions: piMode === "requisition" ? selectedRequisitions.map(r => r.id) : [],
                 source: piMode === "stock_sale" ? "STOCK_SALE" : piMode === "direct" ? "DIRECT" : undefined,

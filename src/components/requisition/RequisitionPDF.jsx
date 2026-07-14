@@ -153,7 +153,7 @@ const RequisitionPDF = ({ details }) => {
                             </View>
                             <Text style={styles.col3}>{item.product_code || 'N/A'}</Text>
                             <Text style={styles.col4}>
-                                {parseFloat(item.quantity || 0).toFixed(2)} {item.unit || 'UNIT'}
+                                {parseFloat(item.quantity || 0).toFixed(2)} {item.unit || ''}
                             </Text>
                             <Text style={styles.col5}>{item.remarks || '-'}</Text>
                         </View>
@@ -168,7 +168,7 @@ const RequisitionPDF = ({ details }) => {
                     </View>
                 )}
 
-                <Text style={{ marginTop: 25 }}>Prepared By: {details.created_by_name || 'System Operator'}</Text>
+                <Text style={{ marginTop: 25 }}>Prepared By: {details.created_by_name || '—'}</Text>
 
                 {/* Signatures */}
                 <View style={styles.signatureSection}>

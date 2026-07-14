@@ -125,7 +125,7 @@ const BillPDF = ({ details }) => {
                             <InfoRow label="BILL NO" value={details.bill_number} />
                             <InfoRow label="DATE" value={formatDate(details.bill_date)} />
                             <InfoRow label="PI NUMBER" value={details.pi_number} />
-                            <InfoRow label="BILL TYPE" value={details.bill_type || 'DOMESTIC'} />
+                            <InfoRow label="BILL TYPE" value={details.bill_type || '—'} />
                             <InfoRow label="CURRENCY" value={billCurrency} />
                             {billCurrency !== 'INR' && details.conversion_rate && (
                                 <InfoRow label="CONV. RATE" value={`1 ${billCurrency} = ₹${parseFloat(details.conversion_rate)}`} />
@@ -158,7 +158,7 @@ const BillPDF = ({ details }) => {
                             </View>
                             <Text style={styles.col3}>{item.hsn_code || '-'}</Text>
                             <Text style={styles.col4}>{Number(item.quantity || 0).toFixed(2)}</Text>
-                            <Text style={styles.col5}>{item.unit || 'PCS'}</Text>
+                            <Text style={styles.col5}>{item.unit || ''}</Text>
                             <Text style={styles.colRate}>{Number(item.rate || 0).toFixed(2)}</Text>
                             <Text style={styles.col6}>{Number(item.amount || (item.quantity * item.rate) || 0).toFixed(2)}</Text>
                         </View>

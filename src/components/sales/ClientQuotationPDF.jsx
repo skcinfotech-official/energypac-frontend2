@@ -49,7 +49,7 @@ const Field = ({ label, value, valueSize, minHeight }) => (
 const ClientQuotationPDF = ({ quotation, verification }) => {
     if (!quotation) return null;
 
-    const curr = quotation.currency || 'USD';
+    const curr = quotation.currency || 'INR';
 
     const num2 = (val) => Number(val || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -117,7 +117,7 @@ const ClientQuotationPDF = ({ quotation, verification }) => {
                         <View style={[{ width: '50%', minHeight: 64 }, styles.cellR, styles.pad]}>
                             <Text style={styles.hlabel}>Beneficiary / Exporter:</Text>
                             <Text style={{ fontSize: 8, fontWeight: 'bold', lineHeight: 1.3, marginTop: 2 }}>
-                                {quotation.exporter_beneficiary || 'ENERGYPAC ENGINEERING LIMITED.'}
+                                {quotation.exporter_beneficiary || ''}
                             </Text>
                         </View>
                         <View style={{ width: '50%' }}>
@@ -216,7 +216,7 @@ const ClientQuotationPDF = ({ quotation, verification }) => {
                             </View>
                             <Text style={styles.col3}>{item.hsn_code || '-'}</Text>
                             <Text style={styles.col4}>{Number(item.quantity || 0).toFixed(2)}</Text>
-                            <Text style={styles.col5}>{item.unit || 'KGS'}</Text>
+                            <Text style={styles.col5}>{item.unit || ''}</Text>
                             <Text style={styles.colRate}>{Number(item.unit_price || 0).toFixed(2)}</Text>
                             <Text style={styles.col6}>{Number(item.amount || (item.quantity * item.unit_price) || 0).toFixed(2)}</Text>
                         </View>

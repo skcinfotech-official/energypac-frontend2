@@ -23,8 +23,10 @@ export const getRequisition = (id) =>
 export const getRequisitionAssignments = (id) =>
   axiosSecure.get(`/api/requisitions/${id}/assignments`);
 
-export const getRequisitionItems = (id) =>
-  axiosSecure.get(`/api/requisitions/${id}/items`);
+export const getRequisitionItems = (id, excludeAssignment = "") =>
+  axiosSecure.get(
+    `/api/requisitions/${id}/items${excludeAssignment ? `?exclude_assignment=${excludeAssignment}` : ""}`
+  );
 
 // Fetch detailed report for a specific requisition
 export const getRequisitionDetailReport = (id) =>
